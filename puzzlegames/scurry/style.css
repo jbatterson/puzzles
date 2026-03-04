@@ -51,8 +51,9 @@ html, body {
     width: 100%;
     padding: 20px;
     overscroll-behavior-y: contain;
-    height: 100vh;
+    height: 100dvh;
     height: -webkit-fill-available;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Header */
