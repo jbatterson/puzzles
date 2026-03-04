@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import puzzleData from './puzzles.js'
+import TopBar from '../../src/shared/TopBar.jsx'
+import FoldsIcon from '../../src/shared/icons/FoldsIcon.jsx'
 
 const S = 62, H = S * Math.sqrt(3) / 2, PAD = 40, N = 4, ANIM_MS = 450;
 const up = (r, c) => (r + c) % 2 === 0;
@@ -194,17 +196,7 @@ const App = () => {
 
     return (
         <div className="game-container">
-            <div className="header-row">
-                <div className="skip-tutorial">
-                    {isTutorial && !isWon && (
-                        <span className="skip-link" onClick={() => { setIsTutorial(false); setLevelIdx(10); }}>
-                            Skip Tutorial
-                        </span>
-                    )}
-                </div>
-                <h1 className="title">Folds</h1>
-                <div className="help-btn" onClick={() => setShowInstructions(true)}>?</div>
-            </div>
+            <TopBar title="Folds" onHelp={() => setShowInstructions(true)} />
 
             <div className="level-nav">
                 <div></div>
@@ -364,6 +356,9 @@ const App = () => {
                         >✕</button>
                         <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Folds</h1>
                         <div style={{ flex: 1, textAlign: 'center' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                                <FoldsIcon size={80} />
+                            </div>
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
                                 Fold the shapes along the grid lines to match the <b>target pattern</b>.
                                 <br />

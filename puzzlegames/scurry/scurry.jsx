@@ -1,5 +1,6 @@
 import React from 'react'
 import puzzleData from './puzzles.js'
+import TopBar from '../../src/shared/TopBar.jsx'
 const { useState, useEffect, useMemo, useCallback } = React;
 
 const Bug = ({ isMoving, isFalling, isCelebrating, size = 42 }) => (
@@ -171,20 +172,7 @@ const BugPuzzle = () => {
 
     return (
         <div className="game-container">
-            <div className="header-row">
-                <div className="left-spacer">
-                    {isTutorial && (
-                        <button
-                            className="skip-link"
-                            onClick={() => { setIsTutorial(false); setCurrentPuzzle(10); }}
-                        >
-                            Skip Tutorial
-                        </button>
-                    )}
-                </div>
-                <h1 className="title">Scurry</h1>
-                <div className="help-btn" onClick={() => setShowInstructions(true)}>?</div>
-            </div>
+            <TopBar title="Scurry" onHelp={() => setShowInstructions(true)} />
 
             {/* INFO BAR */}
             <div className="level-nav">
