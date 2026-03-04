@@ -8,78 +8,11 @@
         #canvas-wrapper { border: none !important; }
         #gameCanvas { border: 2px solid var(--black); }
     </style>
-  <script type="module" crossorigin src="/puzzles/assets/productiles-feY4M1Nz.js"></script>
-  <link rel="modulepreload" crossorigin href="/puzzles/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <script type="module" crossorigin src="/puzzles/assets/productiles-DcxBv3cq.js"></script>
+  <link rel="modulepreload" crossorigin href="/puzzles/assets/client-CF9XUsNj.js">
   <link rel="stylesheet" crossorigin href="/puzzles/assets/scurry-Bm5LEJQt.css">
 </head>
 <body>
-    <div id="root">
-    <div class="game-container">
-
-        <div class="header-row">
-            <div class="left-spacer">
-                <button id="skipTutorialBtn" class="skip-link" style="display:none;">Skip Tutorial</button>
-            </div>
-            <h1 class="title">Productiles</h1>
-            <div class="help-btn" onclick="toggleHelp(true)">?</div>
-        </div>
-
-        <div class="level-nav">
-            <div></div>
-            <div class="selector-group">
-                <button id="prevBtn" class="nav-arrow disabled">←</button>
-                <div class="level-label">
-                    <span class="sub" id="modeLabel">Puzzle</span>
-                    <span class="num" id="lvlNum">1</span>
-                </div>
-                <button id="nextBtn" class="nav-arrow">→</button>
-            </div>
-            <div></div>
-        </div>
-
-        <div class="game-stage">
-            <div id="canvas-wrapper">
-                <canvas id="gameCanvas" style="position:absolute; bottom:0; right:0;"></canvas>
-                <div id="colTargets" class="col-targets" style="position:absolute; top:0; right:0;"></div>
-                <div id="rowTargets" class="row-targets" style="position:absolute; bottom:0; left:0;"></div>
-            </div>
-        </div>
-
-        <div class="button-tray" style="margin-top: 16px;">
-            <button id="undoBtn" class="btn-secondary" disabled>Undo</button>
-            <button id="resetBtn" class="btn-secondary">Reset</button>
-        </div>
-
-        <div id="goalText" class="goal-text">Match the Products</div>
-        <button id="primaryBtn" class="btn-primary" style="display:none;" onclick="handlePrimaryClick()"></button>
-
-        <div id="instructions-overlay" style="display:none;">
-            <div class="modal-content" style="position:relative;">
-                <button
-                    onclick="toggleHelp(false)"
-                    aria-label="Close instructions"
-                    style="position:absolute; top:16px; right:16px; background:none; border:none;
-                           font-size:22px; font-weight:900; cursor:pointer; line-height:1; padding:4px;"
-                >✕</button>
-                <h1 class="title" style="margin-bottom:2rem; text-align:center;">Productiles</h1>
-                <div style="flex:1; text-align:center;">
-                    <p style="font-size:1.1rem; line-height:1.6;">
-                        Slide the factor tiles so the <b>product</b> of the numbers in every
-                        row and column matches its target.
-                        <br><br>
-                        Square tiles can slide in all four directions.
-                        Long rectangles only slide the long way.
-                    </p>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:12px;">
-                    <button class="btn-primary" onclick="startMainGame()">Play Game</button>
-                    <button class="btn-secondary" onclick="startTutorial()">Tutorial Puzzles</button>
-                </div>
-            </div>
-        </div>
-
-    </div>
-    </div>
-
+    <div id="root"></div>
 </body>
 </html>
