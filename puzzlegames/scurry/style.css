@@ -45,14 +45,14 @@ html, body {
     max-width: 500px;
 }
 
-.game-container { 
+.game-container {
     display: flex;
     flex-direction: column;
     width: 100%;
     padding: 20px;
+    padding-bottom: calc(20px + max(env(safe-area-inset-bottom), 12px));
     overscroll-behavior-y: contain;
-    height: 100dvh;
-    height: -webkit-fill-available;
+    min-height: 100dvh;
 }
 
 /* Header */
