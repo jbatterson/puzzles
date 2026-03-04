@@ -1,0 +1,401 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;900&display=swap');
+
+:root {
+    --black: #000000;
+    --white: #ffffff;
+    --yellow: #FFD600;
+    --red: #FF3B30;
+
+    /* Prevents the 'grey flash' when tapping on iOS */
+    -webkit-tap-highlight-color: transparent;
+    /* Prevents the magnifying glass/selection on long-press */
+    -webkit-user-select: none;
+    user-select: none;
+    /* Improves button responsiveness */
+    touch-action: manipulation;
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    font-family: 'Outfit', sans-serif;
+    /* Calculate the space left over for the stage */
+    /* 100vh (full screen) minus 320px (approx height of header/footer/padding) */
+    --max-stage-size: calc(100vh - 320px); 
+}
+
+/* Base Layout: Top-aligned and Centered */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100vh;
+    background-color: var(--white);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; 
+}
+
+#root {
+    width: 100%;
+    max-width: 500px; /* Limits width so it doesn't get huge on desktop */
+}
+
+.game-container { 
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 20px;
+    overscroll-behavior-y: contain; /* Prevents "pull-to-refresh" on Chrome/Android */
+    height: 100vh;
+    height: -webkit-fill-available; /* Fixes the iOS Safari address bar height issue */
+}
+
+/* Header */
+.header-row { 
+    display: grid;
+    grid-template-columns: 100px 1fr 100px; /* Forces three equal-ish zones */
+    align-items: center; 
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
+
+.title { 
+    grid-column: 2; /* Explicitly tells the title to stay in the center column */
+    text-align: center;
+    margin: 0;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 900;
+    font-size: 1.8rem;
+}
+
+.help-btn {
+    grid-column: 3;
+    justify-self: end; /* Keeps the help button on the far right */
+    right: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 900;
+}
+
+.goal-text{
+    text-align: center;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 18px 0;
+    color: rgba(0,0,0,0.45);
+}
+
+/* 3-COLUMN INFO BAR (Empty | Selector | Bugs Left) */
+.level-nav {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr; /* Left column remains empty for centering */
+    align-items: center;
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+
+.selector-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.nav-arrow {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: var(--black);
+}
+
+.nav-arrow.disabled { opacity: 0.1; cursor: default; }
+
+.level-label { text-align: center; }
+.level-label .sub { display: block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+.level-label .num { font-size: 1.8rem; font-weight: 900; line-height: 1; }
+
+.stats-group {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+}
+
+.stats-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+.stats-num { font-size: 1.8rem; font-weight: 900; line-height: 1; }
+
+/* Responsive Stage */
+.game-stage {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px 0;
+    flex-grow: 1;    /* Allow it to take up available space */
+    flex-shrink: 1;  /* Crucial: allow it to shrink when the window is short */
+    min-height: 0;   /* Fixes a common CSS bug where flex items won't shrink below content height */
+    touch-action: none;
+}
+
+#canvas-wrapper {
+    width: 100%;
+    /* Pick the smallest of: 460px OR the space we calculated for the height */
+    max-width: min(460px, var(--max-stage-size));
+    aspect-ratio: 1 / 1;
+    
+    position: relative;
+    margin: 0 auto;
+    background-color: var(--white);
+    border: 2px solid var(--black);
+    
+    /* Crucial: if the screen is tiny, don't let it disappear */
+    min-width: 280px; 
+}
+
+/* BUTTONS */
+.button-tray {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.btn-primary, .btn-secondary {
+    width: 100%;
+    min-height: 60px;
+    border-radius: 4px;
+    font-weight: 900;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.btn-primary { background: var(--black); color: var(--white); border: none; }
+
+.btn-primary:active, .btn-secondary:active, .nav-arrow:active {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+    transition: transform 0.05s;
+}
+
+/* Faded/Inactive state for the primary button */
+.btn-primary:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+    background-color: var(--gray-light);
+    color: var(--gray-dark);
+    border-color: var(--gray-dark);
+}
+
+.btn-secondary { background: var(--white); color: var(--black); border: 2px solid var(--black); }
+
+/* INSTRUCTIONS MODAL: Matches Game Width */
+/* Instructions Modal */
+#instructions-overlay {
+    position: absolute; /* Changed from fixed to stay within game container */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #ffffff; /* Solid white to prevent transparency */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 100;
+    padding: 40px 20px;
+    overflow-y: auto;
+    border-radius: inherit; /* Matches parent rounding if any */
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 500px; /* Matches the game container width */
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure the grid lines are visible but subtle */
+.grid-line { 
+    border: 1px solid rgba(0,0,0,0.1); 
+    box-sizing: border-box;
+}
+
+/* Specific styling for the target squares */
+.target-square { 
+    background-color: var(--yellow) !important;
+}
+
+/* Fix for the spacer in the 3-column layout */
+.left-spacer { 
+    grid-column: 1;
+    display: flex; 
+    align-items: center; 
+    justify-content: flex-start; 
+}
+
+/* Skip Tutorial Link */
+.skip-link {
+    background: none; border: none; padding: 0;
+    color: var(--black); font-size: 0.7rem; font-weight: 900;
+    text-transform: uppercase; text-decoration: underline;
+    cursor: pointer; opacity: 0.6;
+}
+
+/* Wiggle for movement */
+@keyframes scurryWiggle {
+    0%, 100% { transform: rotate(-10deg); }
+    50% { transform: rotate(10deg); }
+}
+
+/* Wiggle for celebration */
+@keyframes happyDance {
+    0%, 100% { transform: scale(1.1) rotate(-15deg); }
+    50% { transform: scale(1.1) rotate(15deg); }
+}
+
+@keyframes touchPulse {
+    0% { background-color: rgba(0,0,0,0.1); }
+    100% { background-color: transparent; }
+}
+
+.grid-line:active {
+    animation: touchPulse 0.3s ease-out;
+}
+
+.moving-bug { animation: scurryWiggle 0.1s infinite linear; }
+.celebrating-bug { animation: happyDance 0.15s infinite linear; }
+
+/* Existing layout fixes */
+.left-spacer { 
+    display: flex; align-items: center; justify-content: flex-start; 
+}
+.grid-line { border: 1px solid rgba(0,0,0,0.1); box-sizing: border-box; }
+.target-square { background-color: var(--yellow) !important; }
+
+/* Animations */
+@keyframes wiggle { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+.moving-bug { animation: wiggle 0.1s infinite linear; }
+.bug-layer { transition: all 0.4s cubic-bezier(0.45, 0.05, 0.55, 0.95); position: absolute; pointer-events: none; }
+
+/* =================================
+   DISABLED SECONDARY BUTTONS
+   ================================= */
+
+.btn-secondary:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    border-color: rgba(0,0,0,0.35);
+    color: rgba(0,0,0,0.45);
+    background-color: var(--white);
+    transform: none;
+}
+
+/* prevent hover effects when disabled */
+@media (hover: hover) {
+  .btn-secondary:disabled:hover {
+      background-color: var(--white);
+      transform: none;
+      filter: none;
+  }
+}
+
+/* ================================
+   HOVER EFFECTS (desktop only)
+   ================================ */
+
+@media (hover: hover) {
+
+  /* shared smoothness */
+  .btn-primary,
+  .btn-secondary,
+  .nav-arrow {
+    transition:
+      transform 0.08s ease,
+      filter 0.12s ease,
+      background-color 0.12s ease,
+      opacity 0.12s ease;
+  }
+
+  /* PRIMARY (black) — brighten */
+  .btn-primary:not(:disabled):hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+  }
+
+  /* SECONDARY (white) — soft gray wash */
+  .btn-secondary:not(:disabled):hover {
+    background-color: rgba(0,0,0,0.06);
+    transform: translateY(-1px);
+  }
+
+  /* NAV ARROWS — subtle emphasis */
+  .nav-arrow:not(.disabled):hover {
+    transform: scale(1.12);
+    opacity: 0.75;
+  }
+
+  /* help button gets same affordance */
+  .help-btn:hover {
+    transform: scale(1.08);
+    background-color: rgba(0,0,0,0.06);
+  }
+}
+
+.toast-panel {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: 420px;
+  background: rgba(15, 23, 42, 0.95);
+  color: white;
+  padding: 14px 16px;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+  z-index: 50;
+}
+
+.toast-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toast-text {
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.toast-close:hover {
+  color: white;
+}
+
+.toast-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}

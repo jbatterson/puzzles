@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Productiles</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Productiles-specific overrides */
+        #canvas-wrapper { border: none; }
+        #gameCanvas { border: 2px solid var(--black); }
+    </style>
+    <script src="puzzles.js"></script>
+</head>
+<body>
+
+    <div id="root">
+    <div class="game-container">
+
+        <!-- HEADER -->
+        <div class="header-row">
+            <div class="left-spacer">
+                <button id="skipTutorialBtn" class="skip-link" style="display:none;">Skip Tutorial</button>
+            </div>
+            <h1 class="title">Productiles</h1>
+            <div class="help-btn" onclick="toggleHelp(true)">?</div>
+        </div>
+
+        <!-- LEVEL NAV -->
+        <div class="level-nav">
+            <div></div>
+            <div class="selector-group">
+                <button id="prevBtn" class="nav-arrow disabled">←</button>
+                <div class="level-label">
+                    <span class="sub" id="modeLabel">Puzzle</span>
+                    <span class="num" id="lvlNum">1</span>
+                </div>
+                <button id="nextBtn" class="nav-arrow">→</button>
+            </div>
+            <div></div>
+        </div>
+
+        <!-- BOARD STAGE -->
+        <div class="game-stage">
+            <div id="canvas-wrapper">
+                <canvas id="gameCanvas" style="position:absolute; bottom:0; right:0;"></canvas>
+                <div id="colTargets" class="col-targets" style="position:absolute; top:0; right:0;"></div>
+                <div id="rowTargets" class="row-targets" style="position:absolute; bottom:0; left:0;"></div>
+            </div>
+        </div>
+
+        <!-- BUTTON TRAY -->
+        <div class="button-tray" style="margin-top: 16px;">
+            <button id="undoBtn" class="btn-secondary" disabled>Undo</button>
+            <button id="resetBtn" class="btn-secondary">Reset</button>
+        </div>
+
+        <!-- PRIMARY ACTION AREA -->
+        <div id="goalText" class="goal-text">Match the Products</div>
+        <button id="primaryBtn" class="btn-primary" style="display:none;" onclick="handlePrimaryClick()"></button>
+
+        <!-- INSTRUCTIONS MODAL -->
+        <div id="instructions-overlay" style="display:none;">
+            <div class="modal-content" style="position:relative;">
+                <button
+                    onclick="toggleHelp(false)"
+                    aria-label="Close instructions"
+                    style="position:absolute; top:16px; right:16px; background:none; border:none;
+                           font-size:22px; font-weight:900; cursor:pointer; line-height:1; padding:4px;"
+                >✕</button>
+
+                <h1 class="title" style="margin-bottom:2rem; text-align:center;">Productiles</h1>
+
+                <div style="flex:1; text-align:center;">
+                    <p style="font-size:1.1rem; line-height:1.6;">
+                        Slide the factor tiles so the <b>product</b> of the numbers in every
+                        row and column matches its target.
+                        <br><br>
+                        Square tiles can slide in all four directions.
+                        Long rectangles only slide the long way.
+                    </p>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <button class="btn-primary" onclick="startMainGame()">Play Game</button>
+                    <button class="btn-secondary" onclick="startTutorial()">Tutorial Puzzles</button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.game-container -->
+    </div><!-- /#root -->
+
+<script>
+    const PUZZLES = window.puzzleData || [];
+    const TUTORIAL_COUNT = 10;
+
+    // ================= CANVAS SETUP =================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // roundRect polyfill for older browsers
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+            const rad = typeof r === 'number'
+                ? { tl: r, tr: r, br: r, bl: r }
+                : { tl: 0, tr: 0, br: 0, bl: 0, ...r };
+            this.beginPath();
+            this.moveTo(x + rad.tl, y);
+            this.lineTo(x + w - rad.tr, y);
+            this.quadraticCurveTo(x + w, y, x + w, y + rad.tr);
+            this.lineTo(x + w, y + h - rad.br);
+            this.quadraticCurveTo(x + w, y + h, x + w - rad.br, y + h);
+            this.lineTo(x + rad.bl, y + h);
+            this.quadraticCurveTo(x, y + h, x, y + h - rad.bl);
+            this.lineTo(x, y + rad.tl);
+            this.quadraticCurveTo(x, y, x + rad.tl, y);
+            return this;
+        };
+    }
+
+    // ================= STATE =================
+    let tutorialMode = false;
+    let currentLvlIdx = 0;
+    let GRID_SIZE = 72;
+    const SNAP_SPEED = 0.25;
+    const SOLVE_STEP_MS = 200;
+    const SOLVE_FINAL_MS = 1000;
+
+    let p = null;
+    let originalScramble = null;
+    let isSolved = false;
+    let drag = { active: null, axis: null, lastX: 0, lastY: 0 };
+    let moveHistory = [];
+    let solveAnim = null;
+
+    // ================= HELPERS =================
+    function toggleHelp(show) {
+        document.getElementById('instructions-overlay').style.display = show ? 'flex' : 'none';
+    }
+
+    function updateNavBar() {
+        document.getElementById('modeLabel').innerText = tutorialMode ? 'Tutorial' : 'Puzzle';
+        const displayNum = tutorialMode ? currentLvlIdx + 1 : currentLvlIdx - TUTORIAL_COUNT + 1;
+        document.getElementById('lvlNum').innerText = Math.max(1, displayNum);
+
+        const minIdx = tutorialMode ? 0 : TUTORIAL_COUNT;
+        const maxIdx = tutorialMode ? TUTORIAL_COUNT - 1 : PUZZLES.length - 1;
+        document.getElementById('prevBtn').classList.toggle('disabled', currentLvlIdx <= minIdx);
+        document.getElementById('nextBtn').classList.toggle('disabled', currentLvlIdx >= maxIdx);
+    }
+
+    function updatePrimaryArea() {
+        const goalText  = document.getElementById('goalText');
+        const primaryBtn = document.getElementById('primaryBtn');
+        const skipBtn   = document.getElementById('skipTutorialBtn');
+
+        // Skip Tutorial link in header: visible only during tutorial, not when solved on last tutorial puzzle
+        const atTutorialEnd = tutorialMode && isSolved && currentLvlIdx === TUTORIAL_COUNT - 1;
+        skipBtn.style.display = (tutorialMode && !atTutorialEnd) ? 'inline' : 'none';
+
+        if (!isSolved && moveHistory.length === 0) {
+            // Idle: show passive goal text, no primary button
+            goalText.style.display  = 'block';
+            primaryBtn.style.display = 'none';
+        } else if (!isSolved) {
+            // Mid-puzzle: still show goal text
+            goalText.style.display  = 'block';
+            primaryBtn.style.display = 'none';
+        } else {
+            // Solved: hide goal text, show primary button
+            goalText.style.display  = 'none';
+            primaryBtn.style.display = 'block';
+
+            if (atTutorialEnd) {
+                primaryBtn.innerText = 'Play Game';
+            } else if (tutorialMode) {
+                primaryBtn.innerText = 'Next Puzzle';
+            } else if (currentLvlIdx < PUZZLES.length - 1) {
+                primaryBtn.innerText = 'Next Puzzle';
+            } else {
+                primaryBtn.innerText = 'You\'re Done!';
+                primaryBtn.disabled = true;
+            }
+        }
+
+        document.getElementById('undoBtn').disabled  = moveHistory.length === 0 || isSolved;
+        document.getElementById('resetBtn').disabled = moveHistory.length === 0 || isSolved;
+    }
+
+    function handlePrimaryClick() {
+        if (!isSolved) return;
+        const atTutorialEnd = tutorialMode && currentLvlIdx === TUTORIAL_COUNT - 1;
+        if (atTutorialEnd) {
+            startMainGame();
+        } else if (currentLvlIdx < PUZZLES.length - 1) {
+            currentLvlIdx++;
+            loadPuzzle(currentLvlIdx);
+        }
+    }
+
+    // ================= TUTORIAL / GAME START =================
+    function startTutorial() {
+        tutorialMode = true;
+        currentLvlIdx = 0;
+        toggleHelp(false);
+        loadPuzzle(currentLvlIdx);
+    }
+
+    function startMainGame() {
+        tutorialMode = false;
+        currentLvlIdx = TUTORIAL_COUNT;
+        toggleHelp(false);
+        loadPuzzle(currentLvlIdx);
+    }
+
+    // ================= TILE HELPERS =================
+    function allowedAxes(t) {
+        if (t.w > t.h) return { h: true,  v: false };
+        if (t.h > t.w) return { h: false, v: true  };
+        return { h: true, v: true };
+    }
+
+    function tileColor(t) {
+        if (t.w === 2 && t.h === 2) return '#1e3a8a';
+        if (t.w === 3 && t.h === 1) return '#16a34a';
+        if (t.w === 1 && t.h === 3) return '#dc2626';
+        if (t.w === 2 && t.h === 1) return '#f59e0b';
+        if (t.w === 1 && t.h === 2) return '#8b5cf6';
+        return '#3b82f6';
+    }
+
+    function parseTile(raw, id) {
+        const r = raw[0], c = raw[1], w = raw[2], h = raw[3];
+        let vals = raw.slice(4);
+        const need = w * h;
+        if (vals.length < need) vals = vals.concat(new Array(need - vals.length).fill(0));
+        vals = vals.slice(0, need).map(v => v == null ? 0 : v);
+        return {
+            id, r, c, w, h, vals,
+            x: c * GRID_SIZE + (w * GRID_SIZE) / 2,
+            y: r * GRID_SIZE + (h * GRID_SIZE) / 2
+        };
+    }
+
+    // ================= LOAD PUZZLE (FIXED) =================
+    function loadPuzzle(idx) {
+        if (!PUZZLES[idx]) return;
+        const data = PUZZLES[idx];
+        const tiles = data.b.map((raw, i) => parseTile(raw, i + 1));
+        p = { size: data.s, targets: data.t, tiles };
+        originalScramble = JSON.parse(JSON.stringify(tiles));
+
+        moveHistory = [];
+        isSolved    = false;
+        solveAnim   = null;
+        drag.active = null;
+
+        // resizeBoard() recalculates GRID_SIZE for the new puzzle size,
+        // sets the canvas dimensions, positions all tiles, and rebuilds
+        // the HTML target labels — all in one consistent pass.
+        resizeBoard();
+
+        updateNavBar();
+        updatePrimaryArea();
+    }
+
+    function setupHTMLTargets() {
+        const wrapper  = document.getElementById('canvas-wrapper');
+        const labelCol = 52;
+        const boardPx  = wrapper.clientWidth - labelCol;
+
+        const rowCont = document.getElementById('rowTargets');
+        const colCont = document.getElementById('colTargets');
+        rowCont.innerHTML = '';
+        colCont.innerHTML = '';
+
+        rowCont.style.width  = labelCol + 'px';
+        rowCont.style.height = boardPx  + 'px';
+        colCont.style.width  = boardPx  + 'px';
+        colCont.style.height = labelCol + 'px';
+
+        p.targets.rows.forEach((val, i) => {
+            const d = document.createElement('div');
+            d.className = 'target';
+            d.id = `row-t-${i}`;
+            d.innerText = val;
+            rowCont.appendChild(d);
+        });
+        p.targets.cols.forEach((val, i) => {
+            const d = document.createElement('div');
+            d.className = 'target';
+            d.id = `col-t-${i}`;
+            d.innerText = val;
+            colCont.appendChild(d);
+        });
+    }
+
+    // ================= PRODUCTS =================
+    function computeProducts() {
+        const curR    = new Array(p.size).fill(1);
+        const curC    = new Array(p.size).fill(1);
+        const hasNumR = new Array(p.size).fill(false);
+        const hasNumC = new Array(p.size).fill(false);
+
+        for (const t of p.tiles) {
+            for (let rr = 0; rr < t.h; rr++) {
+                for (let cc = 0; cc < t.w; cc++) {
+                    const v = t.vals[rr * t.w + cc];
+                    if (v) {
+                        curR[t.r + rr] *= v;
+                        curC[t.c + cc] *= v;
+                        hasNumR[t.r + rr] = true;
+                        hasNumC[t.c + cc] = true;
+                    }
+                }
+            }
+        }
+        for (let i = 0; i < p.size; i++) {
+            if (!hasNumR[i]) curR[i] = 0;
+            if (!hasNumC[i]) curC[i] = 0;
+        }
+        return { curR, curC };
+    }
+
+    // ================= MOVE ENGINE =================
+    function getBounds(t, px, py) {
+        return {
+            l: px - (t.w * GRID_SIZE) / 2, r: px + (t.w * GRID_SIZE) / 2,
+            t: py - (t.h * GRID_SIZE) / 2, b: py + (t.h * GRID_SIZE) / 2
+        };
+    }
+
+    function overlap(b1, b2) {
+        const EPS = 0.75;
+        return (Math.min(b1.r, b2.r) - Math.max(b1.l, b2.l) > EPS) &&
+               (Math.min(b1.b, b2.b) - Math.max(b1.t, b2.t) > EPS);
+    }
+
+    function testMove(t, axis, dist, visited) {
+        if (visited.has(t.id)) return true;
+        visited.add(t.id);
+        const ax = allowedAxes(t);
+        if ((axis === 'h' && !ax.h) || (axis === 'v' && !ax.v)) return false;
+        const nX = t.x + (axis === 'h' ? dist : 0);
+        const nY = t.y + (axis === 'v' ? dist : 0);
+        const b  = getBounds(t, nX, nY);
+        const lim = p.size * GRID_SIZE;
+        if (b.l < -0.1 || b.r > lim + 0.1 || b.t < -0.1 || b.b > lim + 0.1) return false;
+        for (const o of p.tiles) {
+            if (!visited.has(o.id) && overlap(b, getBounds(o, o.x, o.y))) {
+                if (!testMove(o, axis, dist, visited)) return false;
+            }
+        }
+        return true;
+    }
+
+    function executeMove(t, axis, dist, visited) {
+        if (visited.has(t.id)) return;
+        visited.add(t.id);
+        const b = getBounds(t, t.x + (axis === 'h' ? dist : 0), t.y + (axis === 'v' ? dist : 0));
+        for (const o of p.tiles) {
+            if (!visited.has(o.id) && overlap(b, getBounds(o, o.x, o.y))) {
+                executeMove(o, axis, dist, visited);
+            }
+        }
+        if (axis === 'h') t.x += dist;
+        else              t.y += dist;
+    }
+
+    function saveState() {
+        moveHistory.push(JSON.stringify(p.tiles.map(t => ({ id: t.id, r: t.r, c: t.c }))));
+        updatePrimaryArea();
+    }
+
+    // ================= POINTER INPUT =================
+    function getPointerPos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+    }
+
+    function pointerDown(evt) {
+        if (isSolved) return;
+        const { x: mx, y: my } = getPointerPos(evt);
+        const hit = p.tiles.find(t => {
+            const b = getBounds(t, t.x, t.y);
+            return mx > b.l && mx < b.r && my > b.t && my < b.b;
+        });
+        if (hit) {
+            saveState();
+            drag.active = hit;
+            drag.lastX  = mx;
+            drag.lastY  = my;
+            drag.axis   = null;
+            canvas.setPointerCapture?.(evt.pointerId);
+        }
+    }
+
+    function pointerMove(evt) {
+        if (!drag.active) return;
+        const { x: mx, y: my } = getPointerPos(evt);
+        if (!drag.axis) {
+            const dx = Math.abs(mx - drag.lastX), dy = Math.abs(my - drag.lastY);
+            if (dx <= 5 && dy <= 5) return;
+            let intended = dx > dy ? 'h' : 'v';
+            const ax = allowedAxes(drag.active);
+            if (intended === 'h' && !ax.h && ax.v) intended = 'v';
+            if (intended === 'v' && !ax.v && ax.h) intended = 'h';
+            if ((intended === 'h' && !ax.h) || (intended === 'v' && !ax.v)) return;
+            drag.axis = intended;
+        }
+        const delta = drag.axis === 'h' ? mx - drag.lastX : my - drag.lastY;
+        const steps = Math.abs(Math.round(delta));
+        const dir   = Math.sign(delta);
+        for (let i = 0; i < steps; i++) {
+            if (testMove(drag.active, drag.axis, dir, new Set())) {
+                executeMove(drag.active, drag.axis, dir, new Set());
+            } else break;
+        }
+        if (drag.axis === 'h') drag.lastX = mx;
+        else                   drag.lastY = my;
+    }
+
+    function pointerUp() {
+        if (drag.active) {
+            let moved = false;
+            for (const t of p.tiles) {
+                const oldR = t.r, oldC = t.c;
+                t.c = Math.round((t.x - (t.w * GRID_SIZE) / 2) / GRID_SIZE);
+                t.r = Math.round((t.y - (t.h * GRID_SIZE) / 2) / GRID_SIZE);
+                if (t.c !== oldC || t.r !== oldR) moved = true;
+            }
+            if (!moved) {
+                moveHistory.pop();
+                updatePrimaryArea();
+            } else {
+                checkWin();
+            }
+        }
+        drag.active = null;
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        e.preventDefault();
+        pointerDown(e);
+    }, { passive: false });
+
+    window.addEventListener('pointermove', (e) => {
+        if (drag.active) e.preventDefault();
+        pointerMove(e);
+    }, { passive: false });
+
+    window.addEventListener('pointerup',     () => pointerUp(), { passive: true });
+    window.addEventListener('pointercancel', () => pointerUp(), { passive: true });
+
+    // ================= WIN =================
+    function checkWin() {
+        const { curR, curC } = computeProducts();
+        const won = p.targets.rows.every((v, i) => curR[i] === v) &&
+                    p.targets.cols.every((v, i) => curC[i] === v);
+        if (won && !isSolved) {
+            isSolved = true;
+            solveAnim = { phase: 'rows', startTime: performance.now() };
+            updatePrimaryArea();
+        }
+    }
+
+    // ================= DRAW =================
+    function popTarget(id, localTime) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const scale = 1 + 0.35 * Math.sin(Math.min(1, localTime / SOLVE_STEP_MS) * Math.PI);
+        el.style.transform = `scale(${scale})`;
+    }
+
+    function drawVictoryOverlay(now) {
+        if (!solveAnim) return;
+        const elapsed = now - solveAnim.startTime;
+        const step    = SOLVE_STEP_MS;
+
+        if (solveAnim.phase === 'rows') {
+            const i = Math.floor(elapsed / step);
+            if (i >= p.size) { solveAnim = { phase: 'cols', startTime: now }; return; }
+            ctx.fillStyle = 'rgba(34,197,94,0.25)';
+            ctx.fillRect(0, i * GRID_SIZE, canvas.width, GRID_SIZE);
+            popTarget(`row-t-${i}`, elapsed % step);
+            return;
+        }
+        if (solveAnim.phase === 'cols') {
+            const i = Math.floor(elapsed / step);
+            if (i >= p.size) { solveAnim = { phase: 'final', startTime: now }; return; }
+            ctx.fillStyle = 'rgba(34,197,94,0.25)';
+            ctx.fillRect(i * GRID_SIZE, 0, GRID_SIZE, canvas.height);
+            popTarget(`col-t-${i}`, elapsed % step);
+            return;
+        }
+        if (solveAnim.phase === 'final') {
+            const a = Math.max(0, 1 - elapsed / SOLVE_FINAL_MS);
+            ctx.fillStyle = `rgba(34,197,94,${0.15 * a})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (elapsed >= SOLVE_FINAL_MS) solveAnim = null;
+        }
+    }
+
+    function draw(now = performance.now()) {
+        if (!p) { requestAnimationFrame(draw); return; }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const { curR, curC } = computeProducts();
+
+        // Update target label colors
+        for (let i = 0; i < p.size; i++) {
+            const rEl = document.getElementById(`row-t-${i}`);
+            const cEl = document.getElementById(`col-t-${i}`);
+            if (rEl) rEl.classList.toggle('solved', curR[i] === p.targets.rows[i]);
+            if (cEl) cEl.classList.toggle('solved', curC[i] === p.targets.cols[i]);
+        }
+
+        // Grid lines — match Scurry (rgba(0,0,0,0.1), 1px)
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth   = 1;
+        for (let j = 1; j < p.size; j++) {
+            ctx.beginPath(); ctx.moveTo(j * GRID_SIZE, 0); ctx.lineTo(j * GRID_SIZE, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, j * GRID_SIZE); ctx.lineTo(canvas.width, j * GRID_SIZE);  ctx.stroke();
+        }
+
+        if (isSolved) drawVictoryOverlay(now);
+
+        // Tiles
+        for (const t of p.tiles) {
+            if (!drag.active) {
+                const tx = t.c * GRID_SIZE + (t.w * GRID_SIZE) / 2;
+                const ty = t.r * GRID_SIZE + (t.h * GRID_SIZE) / 2;
+                t.x += (tx - t.x) * SNAP_SPEED;
+                t.y += (ty - t.y) * SNAP_SPEED;
+            }
+            ctx.fillStyle = tileColor(t);
+            ctx.beginPath();
+            ctx.roundRect(
+                t.x - (t.w * GRID_SIZE - 8) / 2,
+                t.y - (t.h * GRID_SIZE - 8) / 2,
+                t.w * GRID_SIZE - 8,
+                t.h * GRID_SIZE - 8,
+                6
+            );
+            ctx.fill();
+
+            ctx.fillStyle    = 'white';
+            ctx.font         = `600 ${Math.round(GRID_SIZE * 0.32)}px Outfit`;
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'middle';
+            const left = t.x - (t.w * GRID_SIZE) / 2;
+            const top  = t.y - (t.h * GRID_SIZE) / 2;
+            for (let rr = 0; rr < t.h; rr++) {
+                for (let cc = 0; cc < t.w; cc++) {
+                    const v = t.vals[rr * t.w + cc];
+                    if (!v) continue;
+                    ctx.fillText(v, left + cc * GRID_SIZE + GRID_SIZE / 2, top + rr * GRID_SIZE + GRID_SIZE / 2);
+                }
+            }
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    // ================= BUTTON WIRING =================
+    document.getElementById('undoBtn').onclick = () => {
+        if (moveHistory.length === 0 || isSolved) return;
+        const state = JSON.parse(moveHistory.pop());
+        for (const s of state) {
+            const tile = p.tiles.find(t => t.id === s.id);
+            if (tile) { tile.r = s.r; tile.c = s.c; }
+        }
+        updatePrimaryArea();
+    };
+
+    document.getElementById('resetBtn').onclick = () => {
+        moveHistory = [];
+        isSolved    = false;
+        solveAnim   = null;
+        for (let i = 0; i < p.tiles.length; i++) {
+            const t = p.tiles[i];
+            t.r = originalScramble[i].r;
+            t.c = originalScramble[i].c;
+            t.x = t.c * GRID_SIZE + (t.w * GRID_SIZE) / 2;
+            t.y = t.r * GRID_SIZE + (t.h * GRID_SIZE) / 2;
+        }
+        for (let i = 0; i < p.size; i++) {
+            const rEl = document.getElementById(`row-t-${i}`);
+            const cEl = document.getElementById(`col-t-${i}`);
+            if (rEl) rEl.style.transform = 'scale(1)';
+            if (cEl) cEl.style.transform = 'scale(1)';
+        }
+        updatePrimaryArea();
+    };
+
+    document.getElementById('skipTutorialBtn').onclick = () => startMainGame();
+
+    document.getElementById('prevBtn').onclick = () => {
+        const minIdx = tutorialMode ? 0 : TUTORIAL_COUNT;
+        if (currentLvlIdx <= minIdx) return;
+        currentLvlIdx--;
+        loadPuzzle(currentLvlIdx);
+    };
+
+    document.getElementById('nextBtn').onclick = () => {
+        const maxIdx = tutorialMode ? TUTORIAL_COUNT - 1 : PUZZLES.length - 1;
+        if (currentLvlIdx >= maxIdx) return;
+        currentLvlIdx++;
+        loadPuzzle(currentLvlIdx);
+    };
+
+    function resizeBoard() {
+        if (!p) return;
+        const wrapper  = document.getElementById('canvas-wrapper');
+        const labelCol = 52;
+        const boardPx  = wrapper.getBoundingClientRect().width - labelCol;
+        if (boardPx <= 0) return;
+
+        // Cap cell size so small puzzles don't have grotesquely large tiles
+        const maxCellSize = 72;
+        GRID_SIZE = Math.min(maxCellSize, Math.max(20, Math.floor(boardPx / p.size)));
+
+        // Actual board may be smaller than available space
+        const actualPx = p.size * GRID_SIZE;
+        const offset   = Math.floor((boardPx - actualPx) / 2);
+
+        canvas.width        = actualPx;
+        canvas.height       = actualPx;
+        canvas.style.width  = actualPx + 'px';
+        canvas.style.height = actualPx + 'px';
+        canvas.style.right  = offset + 'px';
+        canvas.style.bottom = offset + 'px';
+
+        for (const t of p.tiles) {
+            t.x = t.c * GRID_SIZE + (t.w * GRID_SIZE) / 2;
+            t.y = t.r * GRID_SIZE + (t.h * GRID_SIZE) / 2;
+        }
+
+        // Rebuild target labels, then position them snug against the canvas
+        setupHTMLTargets();
+        const colCont = document.getElementById('colTargets');
+        const rowCont = document.getElementById('rowTargets');
+
+        // Column targets: sit directly above the canvas
+        colCont.style.width  = actualPx + 'px';
+        colCont.style.right  = offset + 'px';
+        colCont.style.top    = 'auto';
+        colCont.style.bottom = (offset + actualPx) + 'px';
+
+        // Row targets: sit directly left of the canvas
+        rowCont.style.height = actualPx + 'px';
+        rowCont.style.bottom = offset + 'px';
+        rowCont.style.left   = 'auto';
+        rowCont.style.right  = (offset + actualPx) + 'px';
+    }
+
+    // ================= WAIT FOR LAYOUT (FIXED) =================
+    function waitForLayout() {
+        const wrapper  = document.getElementById('canvas-wrapper');
+        const labelCol = 52;
+        const boardPx  = wrapper.getBoundingClientRect().width - labelCol;
+        if (boardPx > 50) {
+            loadPuzzle(currentLvlIdx);
+            // Re-run after fonts load in case metrics shift
+            document.fonts.ready.then(() => resizeBoard());
+        } else {
+            requestAnimationFrame(waitForLayout);
+        }
+    }
+
+    window.addEventListener('resize', resizeBoard);
+    toggleHelp(true);
+    waitForLayout();
+    draw();
+</script>
+
+</body>
+</html>

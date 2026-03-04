@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Puzzles</title>
+
+<style>
+
+body{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background:#f3f3f3;
+    margin:0;
+    padding:40px 20px;
+}
+
+.container{
+    max-width:1000px;
+    margin:auto;
+}
+
+h1{
+    margin-bottom:8px;
+}
+
+.date{
+    color:#666;
+    margin-bottom:28px;
+    font-size:15px;
+}
+
+.games-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+}
+
+.game-card{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    text-decoration:none;
+    color:black;
+
+    /* NYT-style subtle depth */
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    transition:transform .15s ease, box-shadow .15s ease;
+}
+
+.game-card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 16px rgba(0,0,0,0.12);
+}
+
+.icon-box{
+    width:95px;
+    height:95px;
+    background:#e7e7e7;
+    border-radius:10px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    font-size:38px;
+}
+
+.game-title{
+    font-weight:600;
+    margin-bottom:6px;
+}
+
+.game-desc{
+    color:#555;
+    font-size:14px;
+}
+
+/* Responsive */
+
+@media (max-width:700px){
+
+.games-grid{
+    grid-template-columns:1fr;
+}
+
+.icon-box{
+    width:70px;
+    height:70px;
+    font-size:28px;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Our Daily Puzzles</h1>
+<div class="date" id="date"></div>
+
+<div class="games-grid">
+
+<a class="game-card" href="puzzlegames/scurry/">
+
+<div class="icon-box">🐞</div>
+
+<div>
+<div class="game-title">Scurry</div>
+<div class="game-desc">Slide the bugs to reach the exit.</div>
+</div>
+
+</a>
+
+
+<a class="game-card" href="puzzlegames/folds/">
+
+<div class="icon-box">🔺</div>
+
+<div>
+<div class="game-title">Folds</div>
+<div class="game-desc">Reflect triangles to fill the board.</div>
+</div>
+
+</a>
+
+
+<a class="game-card" href="puzzlegames/productiles/">
+
+<div class="icon-box">➗</div>
+
+<div>
+<div class="game-title">Productiles</div>
+<div class="game-desc">Multiply tiles to match the target.</div>
+</div>
+
+</a>
+
+
+<a class="game-card" href="puzzlegames/sumtiles/">
+
+<div class="icon-box">⬛</div>
+
+<div>
+<div class="game-title">SumTiles</div>
+<div class="game-desc">Combine tiles to reach the goal sum.</div>
+</div>
+
+</a>
+
+
+</div>
+
+</div>
+
+<script>
+
+const dateElement = document.getElementById("date");
+
+const options = {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+};
+
+const today = new Date();
+
+dateElement.textContent = today.toLocaleDateString("en-US", options);
+
+</script>
+
+</body>
+</html>

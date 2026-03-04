@@ -1,0 +1,156 @@
+export default [
+    /* TUTORIAL SET (1-10) */
+    { targets: [3, 11], maxBugs: 1, prePlaced: [7] },
+    { targets: [1, 3, 12], maxBugs: 2, prePlaced: [7] },
+    { targets: [7, 18, 20], maxBugs: 2, prePlaced: [13] },
+    { targets: [3, 13, 16, 20], maxBugs: 2, prePlaced: [12, 14] },
+    { targets: [4, 12, 24], maxBugs: 2, prePlaced: [13] },
+    { targets: [1, 13, 19], maxBugs: 2, prePlaced: [13] },
+    { targets: [11, 13, 14], maxBugs: 2, prePlaced: [12] },
+    { targets: [16, 18, 19, 20], maxBugs: 3, prePlaced: [19] },
+    { targets: [6, 7, 9, 14, 24], maxBugs: 3, prePlaced: [7,8] },
+    { targets: [7, 14, 23, 24], maxBugs: 3, prePlaced: [18] },
+    /* MAIN SEQUENCE */
+    { targets: [2, 4, 8, 13, 23], maxBugs: 4, prePlaced: [8] }, /* easy */
+    { targets: [2, 8, 10, 12, 19], maxBugs: 3, prePlaced: [8, 13] }, /* easy */
+    { targets: [6, 11, 18, 21, 23], maxBugs: 3, prePlaced: [18, 17] }, /* easy */
+    { targets: [1, 11, 14, 18, 24], maxBugs: 3, prePlaced: [18, 13] }, /* easy */
+    { targets: [1, 3, 10, 14, 20], maxBugs: 3, prePlaced: [14, 9] }, /* easy */
+    { targets: [10, 12, 18, 22, 24], maxBugs: 4, prePlaced: [18] }, /* easy */
+    { targets: [6, 17, 18, 23, 25], maxBugs: 3, prePlaced: [17, 18] }, /* easy */
+    { targets: [1, 2, 12, 13, 15], maxBugs: 3, prePlaced: [8, 7] }, /* easy */
+    { targets: [2, 3, 12, 15, 16], maxBugs: 4, prePlaced: [12] }, /* easy */
+    { targets: [6, 16, 21, 23, 24], maxBugs: 4, prePlaced: [17] }, /* easy */
+    { targets: [2, 3, 6, 14, 16], maxBugs: 3, prePlaced: [7, 8] }, /* easy */
+    { targets: [2, 12, 14, 25], maxBugs: 2, prePlaced: [7, 19] }, /* easy */
+    { targets: [3, 6, 7, 19], maxBugs: 3, prePlaced: [7] },
+    { targets: [2, 4, 13, 16, 17], maxBugs: 3, prePlaced: [17, 12] },
+    { targets: [1, 3, 10, 13, 18], maxBugs: 3, prePlaced: [8, 9] },
+    { targets: [7, 9, 11, 21, 23], maxBugs: 2, prePlaced: [17, 13, 7] },
+    { targets: [4, 6, 18, 19, 20], maxBugs: 3, prePlaced: [14, 19] },
+    { targets: [1, 2, 11, 14], maxBugs: 3, prePlaced: [7] },
+    { targets: [2, 4, 15, 17, 21], maxBugs: 3, prePlaced: [17, 13] },
+    { targets: [3, 5, 12, 13, 14], maxBugs: 2, prePlaced: [8, 9, 13] },
+    { targets: [1, 11, 13, 16, 23], maxBugs: 3, prePlaced: [17, 12] },
+    { targets: [4, 7, 13, 14, 21], maxBugs: 3, prePlaced: [13, 7] },
+    { targets: [2, 4, 11, 12, 14], maxBugs: 3, prePlaced: [8, 7] },
+    { targets: [1, 7, 13, 17, 25], maxBugs: 3, prePlaced: [13, 12] },
+    { targets: [7, 16, 18, 19, 20], maxBugs: 2, prePlaced: [17, 18, 13] },
+    { targets: [3, 5, 15, 18, 20], maxBugs: 3, prePlaced: [14, 9] },
+    { targets: [6, 10, 18, 24], maxBugs: 3, prePlaced: [14] },
+    { targets: [3, 9, 14, 15, 17], maxBugs: 2, prePlaced: [14, 9, 8] },
+    { targets: [5, 7, 19, 25], maxBugs: 3, prePlaced: [14] },
+    { targets: [1, 2, 4, 12], maxBugs: 3, prePlaced: [7] },
+    { targets: [2, 7, 11, 23], maxBugs: 3, prePlaced: [7] }, /* easy */
+    { targets: [8, 14, 22, 24, 25], maxBugs: 3, prePlaced: [18, 19] },
+    { targets: [2, 4, 11, 13, 17], maxBugs: 3, prePlaced: [12, 8] },
+    { targets: [4, 11, 12, 18], maxBugs: 3, prePlaced: [12] },
+    { targets: [3, 11, 15, 20], maxBugs: 3, prePlaced: [14] },
+    { targets: [1, 8, 14, 16], maxBugs: 3, prePlaced: [7] },
+    { targets: [3, 5, 7, 9, 19], maxBugs: 3, prePlaced: [9, 13] },
+    { targets: [1, 8, 18, 19], maxBugs: 3, prePlaced: [13] },
+    { targets: [4, 6, 7, 8, 20], maxBugs: 3, prePlaced: [8, 7] },
+    { targets: [3, 8, 9, 17, 19], maxBugs: 2, prePlaced: [8, 9, 13] },
+    { targets: [1, 8, 11, 17], maxBugs: 3, prePlaced: [12] },
+    { targets: [6, 8, 13, 14, 25], maxBugs: 2, prePlaced: [19, 14, 13] },
+    { targets: [2, 11, 12, 21, 23], maxBugs: 2, prePlaced: [7, 12, 17] },
+    { targets: [8, 11, 13, 20], maxBugs: 3, prePlaced: [13] },
+    { targets: [1, 3, 13, 15, 18], maxBugs: 2, prePlaced: [8, 9, 7] },
+    { targets: [9, 11, 12, 19], maxBugs: 3, prePlaced: [12] },
+    { targets: [7, 13, 17, 22, 25], maxBugs: 3, prePlaced: [18, 12] },
+    { targets: [7, 14, 22, 24, 25], maxBugs: 2, prePlaced: [18, 19, 13] },
+    { targets: [1, 2, 4, 12, 17], maxBugs: 3, prePlaced: [7, 12] },
+    { targets: [2, 4, 13, 18, 20], maxBugs: 3, prePlaced: [18, 14] },
+    { targets: [1, 8, 18, 21, 22], maxBugs: 3, prePlaced: [12, 17] },
+    { targets: [2, 4, 9, 15, 17], maxBugs: 3, prePlaced: [9, 8] },
+    { targets: [4, 11, 12, 14, 23], maxBugs: 2, prePlaced: [17, 13, 9] },
+    { targets: [1, 11, 13, 18, 24], maxBugs: 3, prePlaced: [18, 13] },
+    { targets: [6, 14, 16, 18, 23], maxBugs: 3, prePlaced: [18, 17] },
+    { targets: [5, 15, 20, 23], maxBugs: 3, prePlaced: [19] },
+    { targets: [3, 12, 15, 19, 24], maxBugs: 3, prePlaced: [19, 13] },
+    { targets: [8, 14, 15, 22, 25], maxBugs: 3, prePlaced: [19, 14] },
+    { targets: [7, 17, 20, 24], maxBugs: 3, prePlaced: [19] },
+    { targets: [1, 3, 5, 12, 13], maxBugs: 3, prePlaced: [12, 8] },
+
+
+    { targets: [1, 8, 10, 17, 20], maxBugs: 3, prePlaced: [7, 14] }, /* easymed */
+    { targets: [10, 11, 20, 23], maxBugs: 3, prePlaced: [18] }, /* easymed */
+    { targets: [11, 12, 13, 15, 21, 22, 23, 25], maxBugs: 6, prePlaced: [18, 12] }, /* easymed */
+    { targets: [2, 10, 16, 17, 18], maxBugs: 3, prePlaced: [17, 12] }, /* easymed */
+    { targets: [1, 9, 13, 17, 21], maxBugs: 5, prePlaced: [] }, /* easymed */
+    { targets: [4, 10, 12, 18, 20], maxBugs: 4, prePlaced: [14] }, /* easymed */
+    { targets: [3, 6, 7, 15, 16], maxBugs: 3, prePlaced: [12, 7] }, /* easymed */
+    { targets: [9, 11, 13, 19, 25], maxBugs: 4, prePlaced: [19] }, /* easymed */
+    { targets: [6, 8, 14, 19, 25], maxBugs: 3, prePlaced: [19, 14] }, /* easymed */
+    { targets: [2, 4, 5, 6, 18], maxBugs: 4, prePlaced: [8] }, /* easymed */
+    { targets: [1, 8, 11, 16, 18, 21, 23], maxBugs: 5, prePlaced: [12, 17] }, /* easymed */
+    { targets: [3, 8, 11, 12, 24], maxBugs: 3, prePlaced: [12, 8] }, /* easymed */
+    { targets: [2, 14, 15, 20, 23], maxBugs: 3, prePlaced: [19, 14] }, /* easymed */
+    { targets: [2, 4, 6, 13, 17, 18], maxBugs: 3, prePlaced: [13, 7, 17] }, /* easymed */
+    { targets: [1, 3, 5, 8, 10, 11, 18, 20], maxBugs: 6, prePlaced: [7, 8] }, /* easymed */
+    { targets: [3, 5, 7, 14, 19, 24], maxBugs: 3, prePlaced: [19, 14, 8] }, /* easymed */
+    { targets: [1, 7, 9, 13, 19, 21], maxBugs: 3, prePlaced: [7, 8, 13] }, /* easymed */
+    { targets: [3, 11, 13, 16, 18, 23], maxBugs: 3, prePlaced: [17, 13, 12] }, /* easymed */
+    { targets: [4, 5, 12, 15, 20, 24], maxBugs: 3, prePlaced: [14, 19, 13] }, /* easymed */
+    { targets: [4, 6, 12, 14], maxBugs: 3, prePlaced: [8] }, /* easymed */
+
+    { targets: [4, 6, 16, 18, 22, 24], maxBugs: 5, prePlaced: [17] },
+    { targets: [1, 3, 9, 17, 19, 20], maxBugs: 5, prePlaced: [13] },
+    { targets: [1, 2, 3, 5, 6, 18], maxBugs: 5, prePlaced: [7] },
+    { targets: [3, 5, 9, 13, 19, 21], maxBugs: 5, prePlaced: [9] },
+    { targets: [2, 4, 5, 15, 20, 25], maxBugs: 5, prePlaced: [9] },
+    { targets: [2, 14, 15, 18, 23, 25], maxBugs: 5, prePlaced: [19] },
+    { targets: [1, 11, 13, 19, 21, 24], maxBugs: 5, prePlaced: [17] },
+    { targets: [1, 3, 5, 10, 15, 18], maxBugs: 5, prePlaced: [9] },
+    { targets: [1, 2, 3, 5, 11, 16], maxBugs: 5, prePlaced: [7] },
+    { targets: [1, 2, 4, 11, 13, 17], maxBugs: 5, prePlaced: [12] },
+    { targets: [1, 3, 4, 10, 13, 19], maxBugs: 5, prePlaced: [14] },
+    { targets: [2, 4, 11, 17, 23, 25], maxBugs: 5, prePlaced: [18] },
+    { targets: [1, 2, 4, 7, 13, 21], maxBugs: 5, prePlaced: [7] },
+
+    { targets: [3, 9, 13, 19, 20, 21], maxBugs: 3, prePlaced: [13, 8, 19] }, /* med */
+    { targets: [1, 2, 11, 13, 19], maxBugs: 4, prePlaced: [7] }, /* med */
+    { targets: [6, 11, 13, 14, 15, 21, 23, 24], maxBugs: 6, prePlaced: [19, 18] }, /* med */
+    { targets: [1, 3, 4, 5, 11, 12, 14, 16], maxBugs: 6, prePlaced: [8, 12] }, /* med */
+    { targets: [1, 3, 10, 11, 13, 15, 18, 25], maxBugs: 6, prePlaced: [9, 13] }, /* med */
+    { targets: [2, 4, 14, 15, 18], maxBugs: 3, prePlaced: [13, 9] }, /* med */
+    { targets: [2, 4, 5, 11, 13, 14, 15, 23], maxBugs: 6, prePlaced: [8, 14] }, /* med */
+    { targets: [1, 3, 5, 9, 10, 16, 18, 20], maxBugs: 6, prePlaced: [9, 8] }, /* med */
+    { targets: [1, 8, 10, 13, 18], maxBugs: 3, prePlaced: [8, 14] }, /* med */
+    { targets: [10, 12, 13, 21, 23], maxBugs: 3, prePlaced: [13, 18] }, /* med */
+    { targets: [1, 3, 8, 10, 13, 20, 23, 25], maxBugs: 6, prePlaced: [8, 14] }, /* med */
+    { targets: [1, 11, 13, 16, 21, 23, 24], maxBugs: 5, prePlaced: [17, 18] }, /* med */
+    { targets: [4, 6, 12, 17, 18, 23], maxBugs: 3, prePlaced: [17, 13, 12] }, /* med */
+    { targets: [2, 4, 5, 12, 16, 17], maxBugs: 3, prePlaced: [7, 12, 8] }, /* med */
+    { targets: [4, 6, 12, 14, 18, 22], maxBugs: 3, prePlaced: [17, 12, 18] }, /* med */
+    { targets: [6, 7, 9, 13, 18, 21], maxBugs: 3, prePlaced: [7, 13, 17] }, /* med */
+    { targets: [1, 2, 4, 13, 14, 18], maxBugs: 3, prePlaced: [7, 8, 14] }, /* med */
+    { targets: [2, 7, 9, 14, 17, 19], maxBugs: 3, prePlaced: [8, 14, 18] }, /* med */
+    { targets: [1, 2, 4, 12, 13, 17], maxBugs: 3, prePlaced: [7, 12, 8] }, /* med */
+    { targets: [1, 7, 9, 11, 17, 18], maxBugs: 3, prePlaced: [12, 7, 13] }, /* med */
+    { targets: [1, 2, 4, 13, 18, 19], maxBugs: 3, prePlaced: [13, 8, 7] }, /* med */
+    { targets: [3, 5, 11, 17], maxBugs: 3, prePlaced: [8] }, /* med */
+    { targets: [1, 3, 5, 8, 10, 11, 16, 18], maxBugs: 6, prePlaced: [9, 8] }, /* hard */
+    { targets: [1, 3, 4, 12, 13, 14, 20, 23], maxBugs: 6, prePlaced: [9, 13] }, /* hard */
+    { targets: [1, 3, 8, 9, 16, 18, 19, 24], maxBugs: 6, prePlaced: [13, 17] }, /* hard */
+    { targets: [2, 4, 6, 8, 11, 18], maxBugs: 3, prePlaced: [7, 13, 12] }, /* hard */
+    { targets: [1, 2, 4, 14, 15, 20], maxBugs: 3, prePlaced: [8, 14, 9] }, /* hard */
+    { targets: [5, 8, 15, 16, 20, 22, 24, 25], maxBugs: 6, prePlaced: [19, 18] }, /* hard */
+    { targets: [2, 4, 10, 11, 13, 14, 15, 22], maxBugs: 6, prePlaced: [8, 14] }, /* hard */
+    { targets: [2, 11, 14, 16, 18, 23], maxBugs: 3, prePlaced: [12, 17, 13] }, /* hard */
+    { targets: [1, 7, 9, 18, 19, 23], maxBugs: 3, prePlaced: [7, 13, 18] }, /* hard */
+    { targets: [4, 6, 8, 18, 20, 24], maxBugs: 3, prePlaced: [14, 8, 19] }, /* hard */
+    { targets: [5, 10, 13, 15, 18, 25], maxBugs: 3, prePlaced: [14, 19, 9] }, /* hard */
+    { targets: [4, 14, 17, 18, 19, 25], maxBugs: 3, prePlaced: [18, 19, 14] }, /* hard */
+    { targets: [4, 12, 15, 17, 20, 24], maxBugs: 6, prePlaced: [] }, /* vhard */
+    { targets: [2, 11, 14, 15, 18, 20, 23, 25], maxBugs: 6, prePlaced: [14, 18] }, /* vhard */
+    { targets: [1, 2, 3, 5, 8, 14, 15, 22], maxBugs: 6, prePlaced: [9, 13] }, /* vhard */
+    { targets: [1, 3, 5, 10, 11, 13, 18, 21], maxBugs: 6, prePlaced: [13, 7] }, /* vhard */
+    { targets: [1, 3, 4, 15, 21, 23, 24, 25], maxBugs: 6, prePlaced: [19, 18] }, /* vhard */
+    { targets: [1, 3, 5, 13, 14, 15, 16, 25], maxBugs: 6, prePlaced: [9, 8] }, /* vhard */
+    { targets: [1, 2, 3, 4, 6, 11, 14, 21], maxBugs: 6, prePlaced: [8, 7] }, /* vhard */
+    { targets: [7, 8, 10, 13, 18, 21, 23, 24], maxBugs: 8, prePlaced: [] }, /* vhard */
+    { targets: [1, 3, 4, 11, 14, 18, 20, 22], maxBugs: 6, prePlaced: [7, 12] }, /* vhard */
+
+    { targets: [], maxBugs: 999, prePlaced: [] }
+];
