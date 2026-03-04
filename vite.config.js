@@ -11,6 +11,7 @@ export default defineConfig({
         scurry: 'puzzlegames/scurry/index.html',
         folds: 'puzzlegames/folds/index.html',
         sumtiles: 'puzzlegames/sumtiles/index.html',
+        productiles: 'puzzlegames/productiles/index.html',
       }
     }
   }
