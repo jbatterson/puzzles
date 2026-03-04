@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import BugIcon from './shared/icons/BugIcon.jsx'
 import FoldsIcon from './shared/icons/FoldsIcon.jsx'
 import ProductilesIcon from './shared/icons/ProductilesIcon.jsx'
@@ -6,11 +6,48 @@ import SumTilesIcon from './shared/icons/SumTilesIcon.jsx'
 
 const base = import.meta.env.BASE_URL
 
+function getDailyKey() {
+    const now = new Date()
+    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
+    return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
+}
+
+function loadCompletions(gameKey, dateKey) {
+    return [0, 1, 2].map(i => localStorage.getItem(`${gameKey}:${dateKey}:${i}`) === '1')
+}
+
+function PuzzleBoxes({ completions }) {
+    return (
+        <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+            {[0, 1, 2].map(i => (
+                <div
+                    key={i}
+                    style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '6px',
+                        background: completions[i] ? '#22c55e' : '#d1d5db',
+                        color: '#fff',
+                        fontWeight: 900,
+                        fontSize: '0.8rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background 0.2s',
+                    }}
+                >
+                    {completions[i] ? '✓' : i + 1}
+                </div>
+            ))}
+        </div>
+    )
+}
+
 const GAMES = [
-    { href: `${base}puzzlegames/scurry/`,      Icon: BugIcon,         title: 'Scurry',      desc: 'Place bugs to fill every highlighted square.' },
-    { href: `${base}puzzlegames/folds/`,       Icon: FoldsIcon,       title: 'Folds',       desc: 'Reflect triangles to match the target pattern.' },
-    { href: `${base}puzzlegames/productiles/`, Icon: ProductilesIcon, title: 'Productiles', desc: 'Slide tiles so every row and column hits its product.' },
-    { href: `${base}puzzlegames/sumtiles/`,    Icon: SumTilesIcon,    title: 'Sum Tiles',   desc: 'Slide tiles so every row and column hits its sum.' },
+    { key: 'scurry',      href: `${base}puzzlegames/scurry/`,      Icon: BugIcon,         title: 'Scurry',      desc: 'Place bugs to fill every highlighted square.' },
+    { key: 'folds',       href: `${base}puzzlegames/folds/`,       Icon: FoldsIcon,       title: 'Folds',       desc: 'Reflect triangles to match the target pattern.' },
+    { key: 'productiles', href: `${base}puzzlegames/productiles/`, Icon: ProductilesIcon, title: 'Productiles', desc: 'Slide tiles so every row and column hits its product.' },
+    { key: 'sumtiles',    href: `${base}puzzlegames/sumtiles/`,    Icon: SumTilesIcon,    title: 'Sum Tiles',   desc: 'Slide tiles so every row and column hits its sum.' },
 ]
 
 const today = new Date().toLocaleDateString('en-US', {
@@ -18,6 +55,11 @@ const today = new Date().toLocaleDateString('en-US', {
 })
 
 export default function Home() {
+    const dateKey = useMemo(() => getDailyKey(), [])
+    const completions = useMemo(() =>
+        Object.fromEntries(GAMES.map(g => [g.key, loadCompletions(g.key, dateKey)])),
+    [dateKey])
+
     return (
         <>
             <style>{`
@@ -157,7 +199,7 @@ export default function Home() {
                 <div className="hp-divider" />
 
                 <section className="hp-list">
-                    {GAMES.map(({ href, Icon, title, desc }) => (
+                    {GAMES.map(({ key, href, Icon, title, desc }) => (
                         <a key={href} className="hp-card" href={href}>
                             <div className="hp-iconTile">
                                 <Icon size={56} />
@@ -165,6 +207,7 @@ export default function Home() {
                             <div className="hp-meta">
                                 <div className="hp-cardTitle">{title}</div>
                                 <div className="hp-desc">{desc}</div>
+                                <PuzzleBoxes completions={completions[key]} />
                             </div>
                         </a>
                     ))}

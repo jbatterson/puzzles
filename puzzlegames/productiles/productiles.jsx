@@ -1,14 +1,56 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import ProductilesIcon from '../../src/shared/icons/ProductilesIcon.jsx'
 
-const PUZZLES = puzzleData || []
-const TUTORIAL_COUNT = 10
 const SNAP_SPEED = 0.25
 const SOLVE_STEP_MS = 200
 const SOLVE_FINAL_MS = 1000
 
+// ── Daily helpers ────────────────────────────────────────────────────────────
+function getDailyKey() {
+    const now = new Date()
+    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
+    return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
+}
+
+function getDateLabel() {
+    const now = new Date()
+    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
+    return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(pst)
+}
+
+function seededRandom(seed) {
+    let h = 0
+    for (let i = 0; i < seed.length; i++) h = Math.imul(31, h) + seed.charCodeAt(i) | 0
+    return () => {
+        h ^= h << 13; h ^= h >> 17; h ^= h << 5
+        return (h >>> 0) / 0xFFFFFFFF
+    }
+}
+
+function getDailyPuzzles() {
+    const key = getDailyKey()
+    const rng = seededRandom(key)
+    return {
+        puzzles: [
+            puzzleData.easy[Math.floor(rng() * puzzleData.easy.length)],
+            puzzleData.medium[Math.floor(rng() * puzzleData.medium.length)],
+            puzzleData.hard[Math.floor(rng() * puzzleData.hard.length)],
+        ],
+        key,
+    }
+}
+
+function loadCompletions(dateKey) {
+    return [0, 1, 2].map(i => localStorage.getItem(`productiles:${dateKey}:${i}`) === '1')
+}
+
+function markComplete(dateKey, idx) {
+    localStorage.setItem(`productiles:${dateKey}:${idx}`, '1')
+}
+
+// ── Canvas helpers ───────────────────────────────────────────────────────────
 function installRoundRect() {
     if (CanvasRenderingContext2D.prototype.roundRect) return
     CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
@@ -28,8 +70,8 @@ function installRoundRect() {
 }
 
 function allowedAxes(t) {
-    if (t.w > t.h) return { h: true,  v: false }
-    if (t.h > t.w) return { h: false, v: true  }
+    if (t.w > t.h) return { h: true, v: false }
+    if (t.h > t.w) return { h: false, v: true }
     return { h: true, v: true }
 }
 
@@ -60,7 +102,6 @@ function overlap(b1, b2) {
     return (Math.min(b1.r,b2.r)-Math.max(b1.l,b2.l) > EPS) && (Math.min(b1.b,b2.b)-Math.max(b1.t,b2.t) > EPS)
 }
 
-// KEY DIFFERENCE: multiplication instead of addition
 function computeProducts(tiles, size) {
     const curR = new Array(size).fill(1), curC = new Array(size).fill(1)
     const hasNumR = new Array(size).fill(false), hasNumC = new Array(size).fill(false)
@@ -79,56 +120,72 @@ function computeProducts(tiles, size) {
     return { curR, curC }
 }
 
-export default function Productiles() {
-    const canvasRef   = useRef(null)
-    const wrapperRef  = useRef(null)
-    const stateRef    = useRef(null)
-    const rafRef      = useRef(null)
-    const dragRef     = useRef({ active: null, axis: null, lastX: 0, lastY: 0 })
+// ── Puzzle boxes ─────────────────────────────────────────────────────────────
+function PuzzleBoxes({ current, completions, onChange }) {
+    return (
+        <div style={{ display: 'flex', gap: '8px' }}>
+            {[0, 1, 2].map(i => (
+                <button key={i} onClick={() => onChange(i)} style={{
+                    width: '32px', height: '32px', borderRadius: '6px', border: 'none',
+                    background: completions[i] ? '#22c55e' : current === i ? '#000' : '#d1d5db',
+                    color: '#fff', fontWeight: 900, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s',
+                }}>
+                    {completions[i] ? '✓' : i + 1}
+                </button>
+            ))}
+        </div>
+    )
+}
 
-    const [tutorialMode, setTutorialMode] = useState(false)
-    const [lvlIdx, setLvlIdx]             = useState(0)
-    const [isSolved, setIsSolved]         = useState(false)
-    const [historyLen, setHistoryLen]     = useState(0)
+// ── Main component ───────────────────────────────────────────────────────────
+export default function Productiles() {
+    const daily = useMemo(() => getDailyPuzzles(), [])
+    const dateLabel = useMemo(() => getDateLabel(), [])
+
+    const canvasRef  = useRef(null)
+    const wrapperRef = useRef(null)
+    const stateRef   = useRef(null)
+    const rafRef     = useRef(null)
+    const dragRef    = useRef({ active: null, axis: null, lastX: 0, lastY: 0 })
+
+    const [mode, setMode]               = useState('daily') // 'daily' | 'tutorial'
+    const [tutorialIdx, setTutorialIdx] = useState(0)
+    const [dailyIdx, setDailyIdx]       = useState(0)
+    const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
+    const [isSolved, setIsSolved]       = useState(false)
+    const [historyLen, setHistoryLen]   = useState(0)
     const [showInstructions, setShowInstructions] = useState(true)
 
-    const loadPuzzle = useCallback((idx, gs) => {
-        const data = PUZZLES[idx]
+    const currentPuzzleData = useMemo(() => {
+        if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
+        return daily.puzzles[dailyIdx]
+    }, [mode, tutorialIdx, dailyIdx, daily])
+
+    const loadPuzzle = useCallback((data, gs) => {
         if (!data) return
         const tiles = data.b.map((raw, i) => parseTile(raw, i+1, gs))
         stateRef.current = {
-            size: data.s,
-            targets: data.t,
-            tiles,
+            size: data.s, targets: data.t, tiles,
             originalScramble: JSON.parse(JSON.stringify(tiles)),
-            moveHistory: [],
-            solveAnim: null,
-            gridSize: gs,
+            moveHistory: [], solveAnim: null, gridSize: gs,
         }
         setIsSolved(false)
         setHistoryLen(0)
-    }, [])
-
-    const getGridSize = useCallback((puzzleSize) => {
-        if (!wrapperRef.current) return 72
-        const labelCol = 52
-        const boardPx  = wrapperRef.current.getBoundingClientRect().width - labelCol
-        return Math.min(72, Math.max(20, Math.floor(boardPx / puzzleSize)))
     }, [])
 
     const resizeBoard = useCallback(() => {
         const s = stateRef.current
         if (!s || !canvasRef.current || !wrapperRef.current) return
         const labelCol = 52
-        const boardPx  = wrapperRef.current.getBoundingClientRect().width - labelCol
+        const boardPx = wrapperRef.current.getBoundingClientRect().width - labelCol
         if (boardPx <= 0) return
-        const gs      = Math.min(72, Math.max(20, Math.floor(boardPx / s.size)))
+        const gs = Math.min(72, Math.max(20, Math.floor(boardPx / s.size)))
         const actualPx = s.size * gs
-        const offset   = Math.floor((boardPx - actualPx) / 2)
-        const canvas   = canvasRef.current
-        canvas.width  = actualPx; canvas.height = actualPx
-        canvas.style.width  = actualPx+'px'; canvas.style.height = actualPx+'px'
-        canvas.style.right  = offset+'px';   canvas.style.bottom = offset+'px'
+        const offset = Math.floor((boardPx - actualPx) / 2)
+        const canvas = canvasRef.current
+        canvas.width = actualPx; canvas.height = actualPx
+        canvas.style.width = actualPx+'px'; canvas.style.height = actualPx+'px'
+        canvas.style.right = offset+'px'; canvas.style.bottom = offset+'px'
         s.gridSize = gs
         for (const t of s.tiles) { t.x = t.c*gs+(t.w*gs)/2; t.y = t.r*gs+(t.h*gs)/2 }
         rebuildTargetLabels(s, actualPx, offset)
@@ -140,12 +197,11 @@ export default function Productiles() {
         if (!rowCont || !colCont) return
         rowCont.innerHTML = ''; colCont.innerHTML = ''
         const labelCol = 52
-        rowCont.style.width  = labelCol+'px'; rowCont.style.height = actualPx+'px'
-        colCont.style.width  = actualPx+'px'; colCont.style.height = labelCol+'px'
-        colCont.style.width  = actualPx+'px'; colCont.style.right  = offset+'px'
-        colCont.style.top    = 'auto';        colCont.style.bottom = (offset+actualPx)+'px'
+        rowCont.style.width = labelCol+'px'; rowCont.style.height = actualPx+'px'
+        colCont.style.width = actualPx+'px'; colCont.style.right = offset+'px'
+        colCont.style.top = 'auto'; colCont.style.bottom = (offset+actualPx)+'px'
         rowCont.style.height = actualPx+'px'; rowCont.style.bottom = offset+'px'
-        rowCont.style.left   = 'auto';        rowCont.style.right  = (offset+actualPx)+'px'
+        rowCont.style.left = 'auto'; rowCont.style.right = (offset+actualPx)+'px'
         s.targets.rows.forEach((val, i) => {
             const d = document.createElement('div')
             d.className='target'; d.id=`row-t-${i}`; d.innerText=val; rowCont.appendChild(d)
@@ -156,60 +212,67 @@ export default function Productiles() {
         })
     }
 
+    // Initial load
     useEffect(() => {
         installRoundRect()
         const waitForLayout = () => {
             if (!wrapperRef.current) { requestAnimationFrame(waitForLayout); return }
             const labelCol = 52
-            const boardPx  = wrapperRef.current.getBoundingClientRect().width - labelCol
+            const boardPx = wrapperRef.current.getBoundingClientRect().width - labelCol
             if (boardPx > 50) {
-                const gs = Math.min(72, Math.max(20, Math.floor(boardPx / (PUZZLES[lvlIdx]?.s || 3))))
-                loadPuzzle(lvlIdx, gs)
+                const data = currentPuzzleData
+                const gs = Math.min(72, Math.max(20, Math.floor(boardPx / (data?.s || 3))))
+                loadPuzzle(data, gs)
                 document.fonts.ready.then(() => resizeBoard())
-            } else {
-                requestAnimationFrame(waitForLayout)
-            }
+            } else requestAnimationFrame(waitForLayout)
         }
         waitForLayout()
         window.addEventListener('resize', resizeBoard)
         return () => window.removeEventListener('resize', resizeBoard)
     }, [])
 
+    // Reload when puzzle changes
     useEffect(() => {
         if (!wrapperRef.current) return
-        const data = PUZZLES[lvlIdx]
+        const data = currentPuzzleData
         if (!data) return
-        const gs = getGridSize(data.s)
-        loadPuzzle(lvlIdx, gs)
+        const labelCol = 52
+        const boardPx = wrapperRef.current.getBoundingClientRect().width - labelCol
+        const gs = Math.min(72, Math.max(20, Math.floor(boardPx / data.s)))
+        loadPuzzle(data, gs)
         resizeBoard()
-    }, [lvlIdx])
+    }, [currentPuzzleData])
 
+    // Mark complete when solved
+    useEffect(() => {
+        if (isSolved && mode === 'daily') {
+            markComplete(daily.key, dailyIdx)
+            setCompletions(loadCompletions(daily.key))
+        }
+    }, [isSolved])
+
+    // Draw loop
     useEffect(() => {
         const canvas = canvasRef.current
         if (!canvas) return
         const ctx = canvas.getContext('2d')
-
         const frame = (now) => {
             rafRef.current = requestAnimationFrame(frame)
-            const s = stateRef.current
-            if (!s) return
+            const s = stateRef.current; if (!s) return
             const gs = s.gridSize
             ctx.clearRect(0, 0, canvas.width, canvas.height)
             const { curR, curC } = computeProducts(s.tiles, s.size)
-
             for (let i=0; i<s.size; i++) {
                 const rEl = document.getElementById(`row-t-${i}`)
                 const cEl = document.getElementById(`col-t-${i}`)
                 if (rEl) rEl.classList.toggle('solved', curR[i]===s.targets.rows[i])
                 if (cEl) cEl.classList.toggle('solved', curC[i]===s.targets.cols[i])
             }
-
             ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.lineWidth=1
             for (let j=1; j<s.size; j++) {
                 ctx.beginPath(); ctx.moveTo(j*gs,0); ctx.lineTo(j*gs,canvas.height); ctx.stroke()
                 ctx.beginPath(); ctx.moveTo(0,j*gs); ctx.lineTo(canvas.width,j*gs); ctx.stroke()
             }
-
             if (s.solveAnim) {
                 const elapsed = now - s.solveAnim.startTime, step = SOLVE_STEP_MS
                 if (s.solveAnim.phase==='rows') {
@@ -234,7 +297,6 @@ export default function Productiles() {
                     if (elapsed >= SOLVE_FINAL_MS) s.solveAnim = null
                 }
             }
-
             for (const t of s.tiles) {
                 if (!dragRef.current.active) {
                     const tx = t.c*gs+(t.w*gs)/2, ty = t.r*gs+(t.h*gs)/2
@@ -257,21 +319,15 @@ export default function Productiles() {
         return () => cancelAnimationFrame(rafRef.current)
     }, [])
 
+    // Pointer events
     useEffect(() => {
-        const canvas = canvasRef.current
-        if (!canvas) return
-
-        const getPos = (e) => {
-            const rect = canvas.getBoundingClientRect()
-            return { x: e.clientX-rect.left, y: e.clientY-rect.top }
-        }
-
+        const canvas = canvasRef.current; if (!canvas) return
+        const getPos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX-r.left, y: e.clientY-r.top } }
         const onDown = (e) => {
             if (e.pointerType==='mouse' && e.button!==0) return
             e.preventDefault()
             const s = stateRef.current; if (!s || isSolved) return
-            const { x:mx, y:my } = getPos(e)
-            const gs = s.gridSize
+            const { x:mx, y:my } = getPos(e); const gs = s.gridSize
             const hit = s.tiles.find(t => { const b=getBounds(t,t.x,t.y,gs); return mx>b.l&&mx<b.r&&my>b.t&&my<b.b })
             if (hit) {
                 s.moveHistory.push(JSON.stringify(s.tiles.map(t=>({id:t.id,r:t.r,c:t.c}))))
@@ -280,13 +336,11 @@ export default function Productiles() {
                 canvas.setPointerCapture?.(e.pointerId)
             }
         }
-
         const onMove = (e) => {
             const d = dragRef.current; if (!d.active) return
             e.preventDefault()
             const s = stateRef.current; if (!s) return
-            const gs = s.gridSize
-            const { x:mx, y:my } = getPos(e)
+            const gs = s.gridSize; const { x:mx, y:my } = getPos(e)
             if (!d.axis) {
                 const dx=Math.abs(mx-d.lastX), dy=Math.abs(my-d.lastY)
                 if (dx<=5&&dy<=5) return
@@ -298,17 +352,14 @@ export default function Productiles() {
                 d.axis = intended
             }
             const delta = d.axis==='h'?mx-d.lastX:my-d.lastY
-            const steps = Math.abs(Math.round(delta)), dir = Math.sign(delta)
-            const lim = s.size * gs
+            const steps = Math.abs(Math.round(delta)), dir = Math.sign(delta), lim = s.size*gs
             for (let i=0; i<steps; i++) {
                 const ok = (() => {
                     const check = (t, ax, dist, vis) => {
-                        if (vis.has(t.id)) return true
-                        vis.add(t.id)
+                        if (vis.has(t.id)) return true; vis.add(t.id)
                         const a = allowedAxes(t)
                         if ((ax==='h'&&!a.h)||(ax==='v'&&!a.v)) return false
-                        const nX=t.x+(ax==='h'?dist:0), nY=t.y+(ax==='v'?dist:0)
-                        const b=getBounds(t,nX,nY,gs)
+                        const b=getBounds(t,t.x+(ax==='h'?dist:0),t.y+(ax==='v'?dist:0),gs)
                         if (b.l<-0.1||b.r>lim+0.1||b.t<-0.1||b.b>lim+0.1) return false
                         for (const o of s.tiles) if (!vis.has(o.id)&&overlap(b,getBounds(o,o.x,o.y,gs))) if (!check(o,ax,dist,vis)) return false
                         return true
@@ -327,16 +378,13 @@ export default function Productiles() {
             }
             if (d.axis==='h') d.lastX=mx; else d.lastY=my
         }
-
         const onUp = () => {
             const d = dragRef.current; if (!d.active) return
             const s = stateRef.current; if (!s) return
-            const gs = s.gridSize
-            let moved = false
+            const gs = s.gridSize; let moved = false
             for (const t of s.tiles) {
                 const oldR=t.r, oldC=t.c
-                t.c = Math.round((t.x-(t.w*gs)/2)/gs)
-                t.r = Math.round((t.y-(t.h*gs)/2)/gs)
+                t.c = Math.round((t.x-(t.w*gs)/2)/gs); t.r = Math.round((t.y-(t.h*gs)/2)/gs)
                 if (t.c!==oldC||t.r!==oldR) moved=true
             }
             if (!moved) { s.moveHistory.pop(); setHistoryLen(s.moveHistory.length) }
@@ -347,7 +395,6 @@ export default function Productiles() {
             }
             dragRef.current = { active:null, axis:null, lastX:0, lastY:0 }
         }
-
         canvas.addEventListener('pointerdown', onDown, { passive:false })
         window.addEventListener('pointermove', onMove, { passive:false })
         window.addEventListener('pointerup', onUp, { passive:true })
@@ -359,14 +406,6 @@ export default function Productiles() {
             window.removeEventListener('pointercancel', onUp)
         }
     }, [isSolved])
-
-    const minIdx = tutorialMode ? 0 : TUTORIAL_COUNT
-    const maxIdx = tutorialMode ? TUTORIAL_COUNT-1 : PUZZLES.length-1
-    const atTutorialEnd = tutorialMode && isSolved && lvlIdx === TUTORIAL_COUNT-1
-    const displayNum = tutorialMode ? lvlIdx+1 : lvlIdx-TUTORIAL_COUNT+1
-
-    const startTutorial = () => { setTutorialMode(true);  setLvlIdx(0);             setShowInstructions(false) }
-    const startMainGame = () => { setTutorialMode(false); setLvlIdx(TUTORIAL_COUNT); setShowInstructions(false) }
 
     const handleUndo = () => {
         const s = stateRef.current; if (!s||s.moveHistory.length===0||isSolved) return
@@ -391,32 +430,59 @@ export default function Productiles() {
     }
 
     const handlePrimary = () => {
-        if (atTutorialEnd) { startMainGame(); return }
-        if (lvlIdx < PUZZLES.length-1) setLvlIdx(l => l+1)
+        if (mode === 'tutorial') {
+            if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
+            else { setMode('daily'); setDailyIdx(0) }
+        } else {
+            const next = [0, 1, 2].find(i => i !== dailyIdx && !completions[i])
+            if (next !== undefined) setDailyIdx(next)
+        }
     }
+
+    const allDone = completions.every(Boolean)
+    const primaryLabel = isSolved
+        ? mode === 'tutorial'
+            ? tutorialIdx < puzzleData.tutorial.length - 1 ? 'Next Puzzle' : 'Play Today\'s Puzzles'
+            : allDone ? 'All Done!' : 'Next Puzzle'
+        : null
+
+    const base = import.meta.env.BASE_URL
 
     return (
         <div className="game-container">
             <TopBar title="Productiles" onHelp={() => setShowInstructions(true)} />
 
-            <div className="level-nav">
-                <div></div>
-                <div className="selector-group">
-                    <button
-                        className={`nav-arrow ${lvlIdx <= minIdx ? 'disabled' : ''}`}
-                        onClick={() => { if (lvlIdx > minIdx) setLvlIdx(l => l-1) }}
-                    >←</button>
-                    <div className="level-label">
-                        <span className="sub">{tutorialMode ? 'Tutorial' : 'Puzzle'}</span>
-                        <span className="num">{Math.max(1, displayNum)}</span>
+            {mode === 'tutorial' ? (
+                <div className="level-nav">
+                    <div className="left-spacer">
+                        <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
+                            Skip Tutorial
+                        </button>
                     </div>
-                    <button
-                        className={`nav-arrow ${lvlIdx >= maxIdx ? 'disabled' : ''}`}
-                        onClick={() => { if (lvlIdx < maxIdx) setLvlIdx(l => l+1) }}
-                    >→</button>
+                    <div className="selector-group">
+                        <button className={`nav-arrow ${tutorialIdx === 0 ? 'disabled' : ''}`}
+                            onClick={() => { if (tutorialIdx > 0) setTutorialIdx(i => i - 1) }}>←</button>
+                        <div className="level-label">
+                            <span className="sub">Tutorial</span>
+                            <span className="num">{tutorialIdx + 1}</span>
+                        </div>
+                        <button className={`nav-arrow ${tutorialIdx === puzzleData.tutorial.length - 1 ? 'disabled' : ''}`}
+                            onClick={() => { if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1) }}>→</button>
+                    </div>
+                    <div></div>
                 </div>
-                <div></div>
-            </div>
+            ) : (
+                <div className="level-nav">
+                    <div></div>
+                    <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
+                        <div className="level-label" style={{ textAlign: 'center' }}>
+                            <span className="sub">{dateLabel}</span>
+                        </div>
+                        <PuzzleBoxes current={dailyIdx} completions={completions} onChange={setDailyIdx} />
+                    </div>
+                    <div></div>
+                </div>
+            )}
 
             <div className="game-stage">
                 <div id="canvas-wrapper" ref={wrapperRef}>
@@ -431,25 +497,27 @@ export default function Productiles() {
                 <button className="btn-secondary" onClick={handleReset} disabled={historyLen === 0 || isSolved}>Reset</button>
             </div>
 
-            {!isSolved
-                ? <div className="goal-text">Match the Products</div>
-                : <button className="btn-primary" onClick={handlePrimary}>
-                    {atTutorialEnd ? 'Play Game' : lvlIdx < PUZZLES.length-1 ? 'Next Puzzle' : "You're Done!"}
-                  </button>
-            }
+            {!isSolved ? (
+                <div className="goal-text">Match the Products</div>
+            ) : primaryLabel === 'All Done!' ? (
+                <a href={base} className="btn-primary"
+                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    All Puzzles
+                </a>
+            ) : (
+                <button className="btn-primary" onClick={handlePrimary}>{primaryLabel}</button>
+            )}
 
             {showInstructions && (
                 <div id="instructions-overlay">
                     <div className="modal-content" style={{ position:'relative' }}>
-                        <button
-                            onClick={() => setShowInstructions(false)}
-                            style={{ position:'absolute', top:'16px', right:'16px', background:'none', border:'none', fontSize:'22px', fontWeight:900, cursor:'pointer' }}
-                        >✕</button>
+                        <button onClick={() => setShowInstructions(false)}
+                            style={{ position:'absolute', top:'16px', right:'16px', background:'none', border:'none', fontSize:'22px', fontWeight:900, cursor:'pointer' }}>✕</button>
                         <h1 className="title" style={{ marginBottom:'2rem', textAlign:'center' }}>Productiles</h1>
                         <div style={{ flex:1, textAlign:'center' }}>
-                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                            <div style={{ display:'flex', justifyContent:'center', marginBottom:'2rem' }}>
                                 <ProductilesIcon size={80} />
-                                </div>
+                            </div>
                             <p style={{ fontSize:'1.1rem', lineHeight:'1.6' }}>
                                 Slide the factor tiles so the <b>product</b> of the numbers in every row and column matches its target.
                                 <br /><br />
@@ -457,8 +525,8 @@ export default function Productiles() {
                             </p>
                         </div>
                         <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-                            <button className="btn-primary" onClick={startMainGame}>Play Game</button>
-                            <button className="btn-secondary" onClick={startTutorial}>Tutorial Puzzles</button>
+                            <button className="btn-primary" onClick={() => setShowInstructions(false)}>Play Today's Puzzles</button>
+                            <button className="btn-secondary" onClick={() => { setMode('tutorial'); setTutorialIdx(0); setShowInstructions(false) }}>Tutorial Puzzles</button>
                         </div>
                     </div>
                 </div>
