@@ -1,4 +1,4 @@
-import{r as o,j as e,R as c}from"./client-Bw-YqWxE.js";import{B as m}from"./BugIcon-BWfvEhW3.js";import{F as h}from"./FoldsIcon-Bupbnd5Q.js";import{P as x}from"./ProductilesIcon-BSyj-jeH.js";import{S as g}from"./SumTilesIcon-DsH9ukKd.js";const i="/puzzles/";function u(){const a=new Date,t=new Date(a.getTime()-480*60*1e3);return`${t.getUTCFullYear()}-${String(t.getUTCMonth()+1).padStart(2,"0")}-${String(t.getUTCDate()).padStart(2,"0")}`}function f(a,t){return[0,1,2].map(s=>localStorage.getItem(`${a}:${t}:${s}`)==="1")}function y({completions:a}){return e.jsx("div",{style:{display:"flex",gap:"6px",marginTop:"8px"},children:[0,1,2].map(t=>e.jsx("div",{style:{width:"28px",height:"28px",borderRadius:"6px",background:a[t]?"#22c55e":"#d1d5db",color:"#fff",fontWeight:900,fontSize:"0.8rem",display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.2s"},children:a[t]?"✓":t+1},t))})}const n=[{key:"scurry",href:`${i}puzzlegames/scurry/`,Icon:m,title:"Scurry",desc:"Place bugs to fill every highlighted square."},{key:"folds",href:`${i}puzzlegames/folds/`,Icon:h,title:"Folds",desc:"Reflect triangles to match the target pattern."},{key:"productiles",href:`${i}puzzlegames/productiles/`,Icon:x,title:"Productiles",desc:"Slide tiles so every row and column hits its product."},{key:"sumtiles",href:`${i}puzzlegames/sumtiles/`,Icon:g,title:"Sum Tiles",desc:"Slide tiles so every row and column hits its sum."}],b=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});function v(){const a=o.useMemo(()=>u(),[]),t=o.useMemo(()=>Object.fromEntries(n.map(s=>[s.key,f(s.key,a)])),[a]);return e.jsxs(e.Fragment,{children:[e.jsx("style",{children:`
+import{r as o,B as c,F as h,P as m,S as x,j as e,R as g}from"./SumTilesIcon-CECa1gFC.js";const i="/puzzles/";function u(){const s=new Date,t=new Date(s.getTime()-480*60*1e3);return`${t.getUTCFullYear()}-${String(t.getUTCMonth()+1).padStart(2,"0")}-${String(t.getUTCDate()).padStart(2,"0")}`}function f(s,t){return[0,1,2].map(a=>localStorage.getItem(`${s}:${t}:${a}`)==="1")}function y({completions:s}){return e.jsx("div",{style:{display:"flex",gap:"6px",marginTop:"8px"},children:[0,1,2].map(t=>e.jsx("div",{style:{width:"28px",height:"28px",borderRadius:"6px",background:s[t]?"#22c55e":"#d1d5db",color:"#fff",fontWeight:900,fontSize:"0.8rem",display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.2s"},children:s[t]?"✓":t+1},t))})}const n=[{key:"scurry",href:`${i}puzzlegames/scurry/`,Icon:c,title:"Scurry",desc:"Place bugs to fill every highlighted square."},{key:"folds",href:`${i}puzzlegames/folds/`,Icon:h,title:"Folds",desc:"Reflect triangles to match the target pattern."},{key:"productiles",href:`${i}puzzlegames/productiles/`,Icon:m,title:"Productiles",desc:"Slide tiles so every row and column hits its product."},{key:"sumtiles",href:`${i}puzzlegames/sumtiles/`,Icon:x,title:"Sum Tiles",desc:"Slide tiles so every row and column hits its sum."}],b=new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});function v(){const s=o.useMemo(()=>u(),[]),t=o.useMemo(()=>Object.fromEntries(n.map(a=>[a.key,f(a.key,s)])),[s]);return e.jsxs(e.Fragment,{children:[e.jsx("style",{children:`
                 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;900&display=swap');
 
                 :root {
@@ -32,7 +32,7 @@ import{r as o,j as e,R as c}from"./client-Bw-YqWxE.js";import{B as m}from"./BugI
                 .hp-top {
                     display: flex;
                     flex-direction: column;
-                    gap: 10px;
+                    gap: 6px;
                     margin-bottom: 18px;
                 }
 
@@ -40,6 +40,7 @@ import{r as o,j as e,R as c}from"./client-Bw-YqWxE.js";import{B as m}from"./BugI
                     font-size: 13px;
                     color: var(--muted);
                     letter-spacing: 0.02em;
+                    order: 2;
                 }
 
                 .hp-h1 {
@@ -84,16 +85,10 @@ import{r as o,j as e,R as c}from"./client-Bw-YqWxE.js";import{B as m}from"./BugI
                     width: 96px;
                     height: 96px;
                     border-radius: var(--radius);
-                    background: var(--tile);
-                    border: 1px solid var(--hairline);
-                    box-shadow: var(--shadow);
                     display: grid;
                     place-items: center;
                     flex: 0 0 auto;
-                    transition: background 140ms ease;
                 }
-
-                a.hp-card:hover .hp-iconTile { background: var(--tileHover); }
 
                 .hp-meta {
                     min-width: 0;
@@ -124,4 +119,4 @@ import{r as o,j as e,R as c}from"./client-Bw-YqWxE.js";import{B as m}from"./BugI
                     outline: 3px solid rgba(0,0,0,0.2);
                     outline-offset: 3px;
                 }
-            `}),e.jsxs("main",{className:"hp-page",children:[e.jsxs("header",{className:"hp-top",children:[e.jsx("div",{className:"hp-date",children:b}),e.jsx("h1",{className:"hp-h1",children:"Daily Puzzles"})]}),e.jsx("div",{className:"hp-divider"}),e.jsx("section",{className:"hp-list",children:n.map(({key:s,href:r,Icon:l,title:d,desc:p})=>e.jsxs("a",{className:"hp-card",href:r,children:[e.jsx("div",{className:"hp-iconTile",children:e.jsx(l,{size:56})}),e.jsxs("div",{className:"hp-meta",children:[e.jsx("div",{className:"hp-cardTitle",children:d}),e.jsx("div",{className:"hp-desc",children:p}),e.jsx(y,{completions:t[s]})]})]},r))})]})]})}c.createRoot(document.getElementById("root")).render(e.jsx(v,{}));
+            `}),e.jsxs("main",{className:"hp-page",children:[e.jsxs("header",{className:"hp-top",children:[e.jsx("div",{className:"hp-date",children:b}),e.jsx("h1",{className:"hp-h1",children:"Daily Puzzles"})]}),e.jsx("div",{className:"hp-divider"}),e.jsx("section",{className:"hp-list",children:n.map(({key:a,href:r,Icon:l,title:d,desc:p})=>e.jsxs("a",{className:"hp-card",href:r,children:[e.jsx("div",{className:"hp-iconTile",children:e.jsx(l,{size:56})}),e.jsxs("div",{className:"hp-meta",children:[e.jsx("div",{className:"hp-cardTitle",children:d}),e.jsx("div",{className:"hp-desc",children:p}),e.jsx(y,{completions:t[a]})]})]},r))})]})]})}g.createRoot(document.getElementById("root")).render(e.jsx(v,{}));
