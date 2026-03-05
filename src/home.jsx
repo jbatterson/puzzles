@@ -100,6 +100,15 @@ export default function Home() {
                     margin-bottom: 18px;
                 }
 
+                .hp-tagline {
+                    margin: 0;
+                    font-size: 15px;
+                    font-weight: 600;
+                    line-height: 1.4;
+                    color: var(--muted);
+                    max-width: 480px;
+                }
+
                 .hp-date {
                     font-size: 13px;
                     color: var(--muted);
@@ -187,8 +196,9 @@ export default function Home() {
 
             <main className="hp-page">
                 <header className="hp-top">
-                    <div className="hp-date">{today}</div>
                     <h1 className="hp-h1">Daily Puzzles</h1>
+                    <p className="hp-tagline">Math and logic puzzles for the breakfast table, the back seat, or the classroom warm-up.</p>
+                    <div className="hp-date">{today}</div>
                 </header>
 
                 <div className="hp-divider" />

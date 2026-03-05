@@ -27,12 +27,14 @@ function seededRandom(seed) {
 
 function getDailyPuzzles() {
     const key = getDailyKey()
-    const rng = seededRandom(key)
+    const rngEasy   = seededRandom(key + ':easy')
+    const rngMedium = seededRandom(key + ':medium')
+    const rngHard   = seededRandom(key + ':hard')
     return {
         puzzles: [
-            puzzleData.easy[Math.floor(rng() * puzzleData.easy.length)],
-            puzzleData.medium[Math.floor(rng() * puzzleData.medium.length)],
-            puzzleData.hard[Math.floor(rng() * puzzleData.hard.length)],
+            puzzleData.easy[Math.floor(rngEasy()   * puzzleData.easy.length)],
+            puzzleData.medium[Math.floor(rngMedium() * puzzleData.medium.length)],
+            puzzleData.hard[Math.floor(rngHard()   * puzzleData.hard.length)],
         ],
         key,
     }
