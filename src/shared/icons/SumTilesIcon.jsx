@@ -2,28 +2,12 @@ import React from 'react'
 
 export default function SumTilesIcon({ size = 28 }) {
     return (
-        <svg width={size} height={size} viewBox="0 0 28 28">
-            {/* Top-left tile */}
-            <rect x="1" y="1" width="11" height="11" rx="2" fill="#f59e0b" />
-            <text x="6.5" y="10" textAnchor="middle" fill="white" fontSize="7" fontWeight="900" fontFamily="sans-serif">3</text>
-
-            {/* Top-right tile */}
-            <rect x="16" y="1" width="11" height="11" rx="2" fill="#f59e0b" />
-            <text x="21.5" y="10" textAnchor="middle" fill="white" fontSize="7" fontWeight="900" fontFamily="sans-serif">5</text>
-
-            {/* Plus sign in center */}
-            <text x="14" y="10" textAnchor="middle" fill="#000" fontSize="8" fontWeight="900" fontFamily="sans-serif">+</text>
-
-            {/* Bottom-left tile */}
-            <rect x="1" y="16" width="11" height="11" rx="2" fill="#3b82f6" />
-            <text x="6.5" y="25" textAnchor="middle" fill="white" fontSize="7" fontWeight="900" fontFamily="sans-serif">4</text>
-
-            {/* Bottom-right tile */}
-            <rect x="16" y="16" width="11" height="11" rx="2" fill="#3b82f6" />
-            <text x="21.5" y="25" textAnchor="middle" fill="white" fontSize="7" fontWeight="900" fontFamily="sans-serif">2</text>
-
-            {/* Plus sign in center */}
-            <text x="14" y="25" textAnchor="middle" fill="#000" fontSize="8" fontWeight="900" fontFamily="sans-serif">+</text>
+        <svg width={size} height={size} viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#f59e0b" d="M117.48267,136.3725c6.68292-7.67084,15.80658-11.50629,27.37097-11.50629,1.77502,0,3.48621.11182,5.14636.31305v-29.2749c-7.81464,1.60901-14.35767,4.9519-19.61633,10.04626-7.43842,7.20593-11.73877,17.34656-12.901,30.42188Z"/>
+            <path fill="#f59e0b" d="M150,139.64264c-2.38733-.89636-5.00092-1.35242-7.84857-1.35242-5.52069,0-10.60553,1.65619-15.25452,4.96863-2.73938,1.95178-4.97076,4.20422-6.7215,6.74115h29.82458v-10.35736Z"/>
+            <polygon fill="#8b5cf6" points="50.50299 117.43701 50.50299 80.28284 15.64026 80.28284 15.64026 67.88269 0 67.88269 0 150 68.79797 150 68.79797 117.43701 50.50299 117.43701"/>
+            <path fill="#f59e0b" d="M81.20203,0v8.10223h6.61884v34.86273h34.86273v37.31787h-34.86273v37.15417h-6.61884v32.56299h19.85492c.49658-21.58368,5.45819-38.23389,14.90027-49.93323,8.11792-10.05865,19.46674-16.11493,34.04279-18.17322V0h-68.79797Z"/>
+            <polygon fill="#231f20" points="116.60013 74.46632 116.60009 51.53364 81.48445 51.53364 81.48445 16.418 58.55182 16.418 58.55182 51.53364 23.43618 51.53364 23.43614 74.46632 58.55178 74.46632 58.55178 109.58195 81.4845 109.58195 81.4845 74.46632 116.60013 74.46632"/>
         </svg>
     )
 }

@@ -9,7 +9,7 @@ export default function TopBar({ title, onHelp }) {
             <div className="header-row">
                 <div className="left-spacer">
                     <div
-                        className="help-btn"
+                        className="menu-btn"
                         onClick={() => setMenuOpen(true)}
                         aria-label="Open menu"
                     >☰</div>

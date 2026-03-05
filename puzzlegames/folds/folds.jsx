@@ -456,7 +456,7 @@ const App = () => {
                             </p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <button className="btn-primary" onClick={() => setShowInstructions(false)}>Play Today's Puzzles</button>
+                            <button className="btn-primary" onClick={() => { setMode('daily'); setDailyIdx(0); setShowInstructions(false) }}> Play Today's Puzzles</button>
                             <button className="btn-secondary" onClick={() => { setMode('tutorial'); setTutorialIdx(0); setShowInstructions(false) }}>Tutorial Puzzles</button>
                         </div>
                     </div>

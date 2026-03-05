@@ -96,7 +96,7 @@ export default function Home() {
                 .hp-top {
                     display: flex;
                     flex-direction: column;
-                    gap: 10px;
+                    gap: 6px;
                     margin-bottom: 18px;
                 }
 
@@ -104,6 +104,7 @@ export default function Home() {
                     font-size: 13px;
                     color: var(--muted);
                     letter-spacing: 0.02em;
+                    order: 2;
                 }
 
                 .hp-h1 {
@@ -148,16 +149,10 @@ export default function Home() {
                     width: 96px;
                     height: 96px;
                     border-radius: var(--radius);
-                    background: var(--tile);
-                    border: 1px solid var(--hairline);
-                    box-shadow: var(--shadow);
                     display: grid;
                     place-items: center;
                     flex: 0 0 auto;
-                    transition: background 140ms ease;
                 }
-
-                a.hp-card:hover .hp-iconTile { background: var(--tileHover); }
 
                 .hp-meta {
                     min-width: 0;
