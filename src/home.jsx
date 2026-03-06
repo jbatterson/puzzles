@@ -3,6 +3,7 @@ import BugIcon from './shared/icons/BugIcon.jsx'
 import FoldsIcon from './shared/icons/FoldsIcon.jsx'
 import ProductilesIcon from './shared/icons/ProductilesIcon.jsx'
 import SumTilesIcon from './shared/icons/SumTilesIcon.jsx'
+import FactorfallIcon from './shared/icons/FactorfallIcon.jsx'
 
 const base = import.meta.env.BASE_URL
 
@@ -67,6 +68,7 @@ const GAMES = [
     { key: 'folds',       href: `${base}puzzlegames/folds/`,       Icon: FoldsIcon,       title: 'Folds',       desc: 'Reflect triangles to match the target pattern.' },
     { key: 'productiles', href: `${base}puzzlegames/productiles/`, Icon: ProductilesIcon, title: 'Productiles', desc: 'Slide tiles so every row and column hits its product.' },
     { key: 'sumtiles',    href: `${base}puzzlegames/sumtiles/`,    Icon: SumTilesIcon,    title: 'Sum Tiles',   desc: 'Slide tiles so every row and column hits its sum.' },
+    { key: 'factorfall',  href: `${base}puzzlegames/factorfall/`,  Icon: FactorfallIcon,  title: 'Factorfall',  desc: 'Drop factors into the grid. Clear same-color groups that multiply to the target.' },
 ]
 
 const today = new Date().toLocaleDateString('en-US', {

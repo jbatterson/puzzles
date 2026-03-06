@@ -12,6 +12,7 @@ export default defineConfig({
         folds: 'puzzlegames/folds/index.html',
         sumtiles: 'puzzlegames/sumtiles/index.html',
         productiles: 'puzzlegames/productiles/index.html',
+        factorfall: 'puzzlegames/factorfall/index.html',
       }
     }
   }
