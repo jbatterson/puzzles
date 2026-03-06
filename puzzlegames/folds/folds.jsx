@@ -46,7 +46,7 @@ const snap = (px, py) => {
     const re = Math.round((py - PAD) / H), ce = Math.round(2 * (px - PAD) / S) - 1
     let best = Infinity, br = 0, bc = 0
     for (let r = Math.max(0, re - 2); r <= Math.min(10, re + 2); r++)
-        for (let c = Math.max(0, ce - 4); c <= Math.min(20, ce + 4); c++) {
+        for (let c = Math.max(-6, ce - 4); c <= Math.min(20, ce + 4); c++) {
             const p = cent(r, c), d = (p.x - px) ** 2 + (p.y - py) ** 2
             if (d < best) { best = d; br = r; bc = c }
         }
@@ -55,7 +55,7 @@ const snap = (px, py) => {
 
 const ALL_TRIANGLES = (() => {
     const tris = []
-    for (let r = 0; r <= 8; r++) for (let c = 0; c <= 16; c++) if (isInsideHex(r, c)) tris.push({ r, c, key: `${r},${c}` })
+    for (let r = 0; r <= 8; r++) for (let c = -5; c <= 18; c++) if (isInsideHex(r, c)) tris.push({ r, c, key: `${r},${c}` })
     return tris
 })()
 
@@ -165,9 +165,12 @@ const App = () => {
 
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
+    const [pendingFoldLine, setPendingFoldLine] = useState(null)
     const [invalidLines, setInvalidLines] = useState({})
     const [toast, setToast] = useState(null)
     const t0 = useRef(0)
+    const hoverDelayRef = useRef(null)
+    const ignoreBoardPointerUntilRef = useRef(0)
 
     const puzzle = useMemo(() => {
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
@@ -185,7 +188,12 @@ const App = () => {
         setFolds(puzzle.folds)
         setAnim(null)
         setInvalidLines({})
+        setPendingFoldLine(null)
     }, [puzzle])
+
+    useEffect(() => () => {
+        if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
+    }, [])
 
     const isWon = useMemo(() => {
         const tK = Object.keys(puzzle.target), bK = Object.keys(board)
@@ -267,10 +275,13 @@ const App = () => {
     }, [anim])
 
     const getLineStroke = (lineKey) => {
-        if (hoverLine === lineKey) return invalidLines[lineKey] ? '#ef4444' : '#6366f1'
+        const highlighted = hoverLine === lineKey || pendingFoldLine === lineKey
+        if (highlighted) return invalidLines[lineKey] ? '#ef4444' : '#6366f1'
         if (tapFlash === lineKey) return '#6366f1'
         return '#cbd5e1'
     }
+
+    const isLineHighlighted = (lineKey) => hoverLine === lineKey || pendingFoldLine === lineKey
 
     const handlePrimaryClick = () => {
         if (isWon) {
@@ -325,7 +336,11 @@ const App = () => {
                 </div>
             ) : (
                 <div className="level-nav">
-                    <div></div>
+                    <div className="left-spacer">
+                        <button className="skip-link" onClick={() => { setMode('tutorial'); setTutorialIdx(0) }}>
+                            Play Tutorial
+                        </button>
+                    </div>
                     <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
                         <div className="level-label" style={{ textAlign: 'center' }}>
                             <span className="sub">{dateLabel}</span>
@@ -366,19 +381,65 @@ const App = () => {
                             )}
                             {ALL_LINES.map(l => (
                                 <g key={l.lineKey} className="fold-group"
-                                    onPointerEnter={() => setHoverLine(l.lineKey)}
-                                    onPointerLeave={() => setHoverLine(h => (h === l.lineKey ? null : h))}
+                                    onPointerEnter={(e) => {
+                                        if (Date.now() < ignoreBoardPointerUntilRef.current) return
+                                        if (e.pointerType !== 'mouse') return
+                                        if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
+                                        hoverDelayRef.current = setTimeout(() => setHoverLine(l.lineKey), 80)
+                                    }}
+                                    onPointerLeave={(e) => {
+                                        if (Date.now() < ignoreBoardPointerUntilRef.current) return
+                                        if (e.pointerType !== 'mouse') return
+                                        if (hoverDelayRef.current) { clearTimeout(hoverDelayRef.current); hoverDelayRef.current = null }
+                                        setHoverLine(h => (h === l.lineKey ? null : h))
+                                    }}
                                     onPointerDown={(e) => {
+                                        if (Date.now() < ignoreBoardPointerUntilRef.current) return
                                         e.preventDefault()
-                                        setTapFlash(l.lineKey)
-                                        setTimeout(() => setTapFlash(null), 120)
-                                        handleFold(l.lineKey)
+                                        if (e.pointerType === 'mouse') {
+                                            setTapFlash(l.lineKey)
+                                            setTimeout(() => setTapFlash(null), 120)
+                                            setPendingFoldLine(null)
+                                            handleFold(l.lineKey)
+                                            return
+                                        }
+                                        if (e.pointerType === 'touch') {
+                                            if (pendingFoldLine === null) {
+                                                setPendingFoldLine(l.lineKey)
+                                            } else if (pendingFoldLine === l.lineKey) {
+                                                setPendingFoldLine(null)
+                                                handleFold(l.lineKey)
+                                            } else {
+                                                setPendingFoldLine(l.lineKey)
+                                            }
+                                        }
                                     }}
                                 >
                                     <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} className="fold-hit" stroke="transparent" strokeWidth="22" style={{ pointerEvents: 'stroke' }} />
-                                    <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} className="fold-visual" strokeWidth={hoverLine === l.lineKey ? 4 : 2} style={{ stroke: getLineStroke(l.lineKey) }} />
+                                    <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} className="fold-visual" strokeWidth={isLineHighlighted(l.lineKey) ? 4 : 2} style={{ stroke: getLineStroke(l.lineKey) }} />
                                 </g>
                             ))}
+                            {pendingFoldLine && (() => {
+                                const l = ALL_LINES.find(ln => ln.lineKey === pendingFoldLine)
+                                if (!l) return null
+                                const cx = (l.x1 + l.x2) / 2, cy = (l.y1 + l.y2) / 2
+                                const confirmFold = (e) => {
+                                    if (Date.now() < ignoreBoardPointerUntilRef.current) return
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    setPendingFoldLine(null)
+                                    handleFold(l.lineKey)
+                                }
+                                return (
+                                    <g key="fold-overlay">
+                                        <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={getLineStroke(l.lineKey)} strokeWidth={4} style={{ pointerEvents: 'stroke' }} onPointerDown={confirmFold} />
+                                        <g transform={`rotate(-30 ${cx} ${cy})`} onPointerDown={confirmFold} style={{ cursor: 'pointer' }}>
+                                            <circle cx={cx} cy={cy} r={20} fill={getLineStroke(l.lineKey)} />
+                                            <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={10} fontWeight={700} style={{ userSelect: 'none', pointerEvents: 'none' }}>FOLD</text>
+                                        </g>
+                                    </g>
+                                )
+                            })()}
                         </g>
                     </svg>
                 </div>
@@ -444,7 +505,7 @@ const App = () => {
             {showInstructions && (
                 <div id="instructions-overlay">
                     <div className="modal-content" style={{ position: 'relative' }}>
-                        <button onClick={() => setShowInstructions(false)} aria-label="Close instructions"
+                        <button onClick={() => { setHoverLine(null); setPendingFoldLine(null); ignoreBoardPointerUntilRef.current = Date.now() + 400; setShowInstructions(false) }} aria-label="Close instructions"
                             style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '22px', fontWeight: 900, cursor: 'pointer', lineHeight: 1, padding: '4px' }}>✕</button>
                         <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Folds</h1>
                         <div style={{ flex: 1, textAlign: 'center' }}>
@@ -458,8 +519,8 @@ const App = () => {
                             </p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <button className="btn-primary" onClick={() => { setMode('daily'); setDailyIdx(0); setShowInstructions(false) }}> Play Today's Puzzles</button>
-                            <button className="btn-secondary" onClick={() => { setMode('tutorial'); setTutorialIdx(0); setShowInstructions(false) }}>Tutorial Puzzles</button>
+                            <button className="btn-primary" onClick={() => { setHoverLine(null); setPendingFoldLine(null); ignoreBoardPointerUntilRef.current = Date.now() + 400; setMode('daily'); setDailyIdx(0); setShowInstructions(false) }}> Play Today's Puzzles</button>
+                            <button className="btn-secondary" onClick={() => { setHoverLine(null); setPendingFoldLine(null); ignoreBoardPointerUntilRef.current = Date.now() + 400; setMode('tutorial'); setTutorialIdx(0); setShowInstructions(false) }}>Tutorial Puzzles</button>
                         </div>
                     </div>
                 </div>

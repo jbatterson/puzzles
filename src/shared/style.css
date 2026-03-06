@@ -103,11 +103,11 @@ html, body {
 }
 
 /*
- * .menu-btn and .help-btn: the hamburger and ? buttons in the TopBar.
- * Styled as bold typographic symbols — no border, no background.
+ * .home-btn and .help-btn: the home and ? buttons in the TopBar.
+ * Styled as minimal icons — no border, no background.
  * Opacity fades in on hover (desktop only, see hover section below).
  */
-.menu-btn,
+.home-btn,
 .help-btn {
     display: flex;
     align-items: center;
@@ -121,6 +121,11 @@ html, body {
     transition: opacity 140ms ease;
     width: 32px;
     height: 32px;
+}
+
+.home-btn {
+    text-decoration: none;
+    color: inherit;
 }
 
 .help-btn {
@@ -455,7 +460,7 @@ html, body {
     .btn-primary,
     .btn-secondary,
     .nav-arrow,
-    .menu-btn,
+    .home-btn,
     .help-btn {
         transition:
             transform 0.08s ease,
@@ -485,7 +490,7 @@ html, body {
         opacity: 0.75;
     }
 
-    .menu-btn:hover,
+    .home-btn:hover,
     .help-btn:hover {
         opacity: 1;
     }

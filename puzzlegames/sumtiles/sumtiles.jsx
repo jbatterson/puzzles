@@ -461,7 +461,11 @@ export default function SumTiles() {
                 </div>
             ) : (
                 <div className="level-nav">
-                    <div></div>
+                    <div className="left-spacer">
+                        <button className="skip-link" onClick={() => { setMode('tutorial'); setTutorialIdx(0) }}>
+                            Play Tutorial
+                        </button>
+                    </div>
                     <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
                         <div className="level-label" style={{ textAlign: 'center' }}>
                             <span className="sub">{dateLabel}</span>

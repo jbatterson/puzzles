@@ -12,8 +12,27 @@ function getDailyKey() {
     return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
 }
 
+function getDateKey(dayOffset) {
+    const d = new Date()
+    d.setDate(d.getDate() - dayOffset)
+    const pst = new Date(d.getTime() - 8 * 60 * 60 * 1000)
+    return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
+}
+
 function loadCompletions(gameKey, dateKey) {
     return [0, 1, 2].map(i => localStorage.getItem(`${gameKey}:${dateKey}:${i}`) === '1')
+}
+
+const MAX_STREAK_DAYS = 365
+
+function getStreak(gameKey) {
+    let count = 0
+    for (let dayOffset = 1; dayOffset <= MAX_STREAK_DAYS; dayOffset++) {
+        const dateKey = getDateKey(dayOffset)
+        if (loadCompletions(gameKey, dateKey).some(Boolean)) count++
+        else break
+    }
+    return count
 }
 
 function PuzzleBoxes({ completions }) {
@@ -59,6 +78,9 @@ export default function Home() {
     const completions = useMemo(() =>
         Object.fromEntries(GAMES.map(g => [g.key, loadCompletions(g.key, dateKey)])),
     [dateKey])
+    const streaks = useMemo(() =>
+        Object.fromEntries(GAMES.map(g => [g.key, getStreak(g.key)])),
+    [])
 
     return (
         <>
@@ -212,7 +234,14 @@ export default function Home() {
                             <div className="hp-meta">
                                 <div className="hp-cardTitle">{title}</div>
                                 <div className="hp-desc">{desc}</div>
-                                <PuzzleBoxes completions={completions[key]} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <PuzzleBoxes completions={completions[key]} />
+                                    {streaks[key] > 0 && (
+                                        <span style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: 1.35 }}>
+                                            Streak: {streaks[key]}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </a>
                     ))}
