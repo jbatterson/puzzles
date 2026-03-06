@@ -789,7 +789,7 @@ const Factorfall = () => {
             ) : primaryLabel ? (
                 <button className="btn-primary" onClick={handlePrimaryClick}>{primaryLabel}</button>
             ) : (
-                <div className="goal-text">Drop Factors · Clear the Board</div>
+                <div className="goal-text">Match the Target Product · Clear the Board</div>
             )}
 
             {/* ── Instructions overlay ── */}
@@ -805,23 +805,14 @@ const Factorfall = () => {
                                 that <b>multiply</b> to the target are cleared from the board.
                                 <br /><br />
                                 Clear the entire board to solve the puzzle.
+                                <br /><br />
+                                Only adjacent balls of the <b>same color</b> form groups.
+                                A group's product must equal the target to be cleared.
+                                <br /><br />
+                                One ball can be part of multiple groups.
+                                All matching groups are cleared simultaneously.
+                                <br /><br />
                             </p>
-                            <div style={{ margin: '1.5rem 0', textAlign: 'left', padding: '0 10px' }}>
-                                <div style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '6px' }}>
-                                    Color &amp; Connection
-                                </div>
-                                <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#555' }}>
-                                    Only adjacent balls of the <b>same color</b> form groups.
-                                    A group's product must equal the target to be cleared.
-                                </p>
-                                <div style={{ fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '6px', marginTop: '16px' }}>
-                                    Multi-Groups
-                                </div>
-                                <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#555' }}>
-                                    One ball can be part of multiple groups.
-                                    All matching groups are cleared simultaneously.
-                                </p>
-                            </div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <button className="btn-primary" onClick={() => { setMode('daily'); setDailyIdx(0); setShowInstructions(false) }}>

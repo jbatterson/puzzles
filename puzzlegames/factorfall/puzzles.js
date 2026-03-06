@@ -1,7 +1,7 @@
 // ── Factorfall puzzle data ────────────────────────────────────────────────────
 // Colors
-const R = '#ff5f5f'
-const B = '#3273dc'
+const R = '#dc2626'
+const B = '#1e3a8a'
 
 export default {
     //tutorial
