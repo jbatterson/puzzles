@@ -789,7 +789,7 @@ const Factorfall = () => {
             ) : primaryLabel ? (
                 <button className="btn-primary" onClick={handlePrimaryClick}>{primaryLabel}</button>
             ) : (
-                <div className="goal-text">Match the Target Product · Clear the Board</div>
+                <div className="goal-text">Clear the Board</div>
             )}
 
             {/* ── Instructions overlay ── */}
