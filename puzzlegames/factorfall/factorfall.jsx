@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
+import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const COLS = 5, ROWS = 5
@@ -800,14 +801,14 @@ const Factorfall = () => {
                             style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '22px', fontWeight: 900, cursor: 'pointer' }}>✕</button>
                         <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Factorfall</h1>
                         <div style={{ flex: 1, textAlign: 'center' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                                <FactorfallIcon size={80} />
+                            </div>
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
                                 Drop factors into the grid. Groups of the same color
                                 that <b>multiply</b> to the target are cleared from the board.
                                 <br /><br />
                                 Clear the entire board to solve the puzzle.
-                                <br /><br />
-                                Only adjacent balls of the <b>same color</b> form groups.
-                                A group's product must equal the target to be cleared.
                                 <br /><br />
                                 One ball can be part of multiple groups.
                                 All matching groups are cleared simultaneously.
