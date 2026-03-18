@@ -39,12 +39,28 @@ function loadMoveCounts(gameKey, dateKey) {
 }
 
 // ── Single-puzzle games (1 per day) ──────────────────────────────────────────
+// Clueless uses bestAttempts (1..5) and failed; others use '1'/'2'.
+
+function loadSingleBestAttempts(gameKey, dateKey) {
+    if (gameKey !== 'clueless') return null
+    const v = localStorage.getItem(`clueless:${dateKey}:bestAttempts`)
+    if (v == null) return null
+    const n = parseInt(v, 10)
+    return (n >= 1 && n <= 5) ? n : null
+}
+
+function loadSingleFailed(gameKey, dateKey) {
+    if (gameKey !== 'clueless') return false
+    return localStorage.getItem(`clueless:${dateKey}:failed`) === '1'
+}
 
 function loadSingleCompletion(gameKey, dateKey) {
+    if (gameKey === 'clueless') return loadSingleBestAttempts(gameKey, dateKey) != null
     return ['1', '2'].includes(localStorage.getItem(`${gameKey}:${dateKey}`))
 }
 
 function loadSinglePerfect(gameKey, dateKey) {
+    if (gameKey === 'clueless') return loadSingleBestAttempts(gameKey, dateKey) === 1
     return localStorage.getItem(`${gameKey}:${dateKey}`) === '2'
 }
 
@@ -109,15 +125,22 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
 }
 
 // ── SinglePuzzleBox (one-per-day games like Clueless) ────────────────────────
+// attempts (1..5) + failed for Clueless; completed + perfect for others.
 
-function SinglePuzzleBox({ completed, perfect }) {
+function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
+    const useAttempts = attempts != null || failed
+    const done = useAttempts ? (attempts != null) : completed
+    const bg = failed ? '#374151' : (done ? '#22c55e' : '#d1d5db')
+    const content = useAttempts
+        ? (failed ? '•' : (attempts === 1 ? '★' : String(attempts)))
+        : (completed ? (perfect ? '★' : '✓') : '1')
     return (
         <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
             <div style={{
                 width: '28px',
                 height: '28px',
                 borderRadius: '6px',
-                background: completed ? '#22c55e' : '#d1d5db',
+                background: bg,
                 color: '#fff',
                 fontWeight: 900,
                 fontSize: '0.85rem',
@@ -126,7 +149,7 @@ function SinglePuzzleBox({ completed, perfect }) {
                 justifyContent: 'center',
                 transition: 'background 0.2s',
             }}>
-                {completed ? (perfect ? '★' : '✓') : '1'}
+                {content}
             </div>
         </div>
     )
@@ -212,6 +235,12 @@ export default function Home() {
     [dateKey])
     const singlePerfects = useMemo(() =>
         Object.fromEntries(GAMES.filter(g => g.single).map(g => [g.key, loadSinglePerfect(g.key, dateKey)])),
+    [dateKey])
+    const singleAttempts = useMemo(() =>
+        Object.fromEntries(GAMES.filter(g => g.single).map(g => [g.key, loadSingleBestAttempts(g.key, dateKey)])),
+    [dateKey])
+    const singleFailed = useMemo(() =>
+        Object.fromEntries(GAMES.filter(g => g.single).map(g => [g.key, loadSingleFailed(g.key, dateKey)])),
     [dateKey])
 
     const streaks = useMemo(() =>
@@ -529,6 +558,8 @@ export default function Home() {
                                             <SinglePuzzleBox
                                                 completed={singleCompletions[key]}
                                                 perfect={singlePerfects[key]}
+                                                attempts={singleAttempts[key]}
+                                                failed={singleFailed[key]}
                                             />
                                         ) : (
                                             <PuzzleBoxes

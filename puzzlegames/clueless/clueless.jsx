@@ -30,19 +30,33 @@ function getDailyPuzzle() {
 }
 
 // ── Completion tracking ──────────────────────────────────────────────────────
+// bestAttempts: 1..5 (fewest CHECKs used to solve). failed: "1" = ran out of guesses (no replay).
 
-function loadCompletion(dateKey) {
-    return ['1', '2'].includes(localStorage.getItem(`clueless:${dateKey}`))
+function loadBestAttempts(dateKey) {
+    const v = localStorage.getItem(`clueless:${dateKey}:bestAttempts`)
+    if (v != null) {
+        const n = parseInt(v, 10)
+        if (n >= 1 && n <= 5) return n
+    }
+    // Migrate old schema: '2' = perfect (1 attempt), '1' = completed (treat as 2 attempts)
+    const legacy = localStorage.getItem(`clueless:${dateKey}`)
+    if (legacy === '2') return 1
+    if (legacy === '1') return 2
+    return null
 }
 
-function loadPerfect(dateKey) {
-    return localStorage.getItem(`clueless:${dateKey}`) === '2'
+function loadFailed(dateKey) {
+    return localStorage.getItem(`clueless:${dateKey}:failed`) === '1'
 }
 
-function markComplete(dateKey, isPerfect) {
-    const existing = localStorage.getItem(`clueless:${dateKey}`)
-    if (existing === '1' || existing === '2') return
-    localStorage.setItem(`clueless:${dateKey}`, isPerfect ? '2' : '1')
+function markComplete(dateKey, attemptsUsed) {
+    const existing = loadBestAttempts(dateKey)
+    if (existing != null && attemptsUsed >= existing) return
+    localStorage.setItem(`clueless:${dateKey}:bestAttempts`, String(attemptsUsed))
+}
+
+function markFailed(dateKey) {
+    localStorage.setItem(`clueless:${dateKey}:failed`, '1')
 }
 
 // ── Grid geometry ────────────────────────────────────────────────────────────
@@ -116,10 +130,22 @@ export default function CluelessGame() {
     const [guessesLeft, setGuessesLeft] = useState(5)
     const [solved, setSolved] = useState(false)
     const [statusMsg, setStatusMsg] = useState('')
+    const [selectionHighlighted, setSelectionHighlighted] = useState(true) // false after CHECK until user clicks a cell
 
-    // Completion
-    const [completed, setCompleted] = useState(() => loadCompletion(daily.key))
-    const [perfect, setPerfect] = useState(() => loadPerfect(daily.key))
+    // Completion: bestAttempts 1..5 (null = not solved), failedLocked = ran out of guesses (no replay)
+    const [bestAttempts, setBestAttempts] = useState(() => loadBestAttempts(daily.key))
+    const [failedLocked, setFailedLocked] = useState(() => loadFailed(daily.key))
+
+    // When page loads with failed lock, reveal the solution and end the game
+    useEffect(() => {
+        if (!failedLocked || !Object.keys(answers).length) return
+        const revealed = {}
+        for (const { r, c } of INPUT_ORDER) revealed[`${r},${c}`] = answers[`${r},${c}`]
+        setGuesses(revealed)
+        setLocked(new Set(INPUT_ORDER.map(({ r, c }) => `${r},${c}`)))
+        setSolved(true)
+        setGuessesLeft(0)
+    }, [failedLocked]) // eslint-disable-line react-hooks/exhaustive-deps -- only run when failedLocked from load; answers is stable
 
     // UI
     const [showInstructions, setShowInstructions] = useState(
@@ -174,11 +200,19 @@ export default function CluelessGame() {
             const pos = INPUT_ORDER[selected]
             const k = `${pos.r},${pos.c}`
             if (locked.has(k)) return
-            setGuesses(prev => ({ ...prev, [k]: key.toLowerCase() }))
-            setWrongCells(prev => { const s = new Set(prev); s.delete(k); return s })
+            const letter = key.toLowerCase()
+            const triedInCell = triedLettersByCell[k] || []
+            const isKnownWrong = triedInCell.includes(letter)
+            setGuesses(prev => ({ ...prev, [k]: letter }))
+            setWrongCells(prev => {
+                const s = new Set(prev)
+                if (isKnownWrong) s.add(k)
+                else s.delete(k)
+                return s
+            })
             advanceSelection(selected)
         }
-    }, [solved, guessesLeft, selected, guesses, locked, advanceSelection])
+    }, [solved, guessesLeft, selected, guesses, locked, advanceSelection, triedLettersByCell])
 
     // Physical keyboard
     useEffect(() => {
@@ -228,14 +262,15 @@ export default function CluelessGame() {
 
         if (newWrong.length === 0) {
             // All correct!
+            const attemptsUsed = 5 - newGuessesLeft
+            markComplete(daily.key, attemptsUsed)
+            setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
             setSolved(true)
             setStatusMsg('')
-            const isPerfect = !usedHintRef.current
-            markComplete(daily.key, isPerfect)
-            setCompleted(true)
-            setPerfect(isPerfect)
         } else if (newGuessesLeft <= 0) {
-            // Out of guesses — reveal
+            // Out of guesses — reveal and lock (no replay)
+            markFailed(daily.key)
+            setFailedLocked(true)
             setSolved(true)
             setStatusMsg('')
             // Fill all remaining cells with correct answers
@@ -275,6 +310,7 @@ export default function CluelessGame() {
         if (solved && guessesLeft > 0) return
         const { r, c } = INPUT_ORDER[idx]
         if (locked.has(`${r},${c}`)) return
+        setSelectionHighlighted(true)
         setSelected(idx)
     }, [solved, guessesLeft, locked])
 
@@ -338,14 +374,17 @@ export default function CluelessGame() {
             let bg = '#fff'
             let color = '#000'
             if (isLocked) { bg = '#c6f6d5'; color = '#15803d' }
-            else if (isSelected) bg = 'var(--yellow)'
             else if (isWrong) { bg = '#fed7d7'; color = '#b91c1c' }
+
+            const showActiveOutline = isSelected && selectionHighlighted
 
             cells.push(
                 <div key={key}
                     onClick={() => selectCell(idx)}
                     style={{
                         border: '1px solid #000',
+                        outline: showActiveOutline ? '4px solid #6366f1' : 'none',
+                        outlineOffset: showActiveOutline ? '-4px' : undefined,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -374,14 +413,21 @@ export default function CluelessGame() {
             {/* INFO BAR */}
             <div className="level-nav">
                 <div className="left-spacer">
-                    {completed && (
-                        <span style={{
-                            fontSize: '1.4rem',
+                    {(bestAttempts != null || failedLocked) && (
+                        <div style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            background: failedLocked ? '#374151' : '#22c55e',
+                            color: '#fff',
                             fontWeight: 900,
-                            color: perfect ? '#f59e0b' : '#22c55e',
+                            fontSize: '0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                         }}>
-                            {perfect ? '★' : '✓'}
-                        </span>
+                            {failedLocked ? '•' : bestAttempts === 1 ? '★' : String(bestAttempts)}
+                        </div>
                     )}
                 </div>
                 <div style={{ textAlign: 'center' }}>
@@ -488,7 +534,9 @@ export default function CluelessGame() {
                             return (
                                 <button
                                     key={ch}
-                                    onClick={() => handleKey(ch)}
+                                    type="button"
+                                    disabled={isTried}
+                                    onClick={() => { if (!isTried) handleKey(ch) }}
                                     style={{
                                         minWidth: 'clamp(24px, 7vw, 36px)',
                                         height: 'clamp(32px, 7vh, 50px)',
@@ -500,7 +548,7 @@ export default function CluelessGame() {
                                         fontWeight: 700,
                                         fontSize: 'clamp(0.7rem, 2.5vw, 1rem)',
                                         textTransform: 'uppercase',
-                                        cursor: 'pointer',
+                                        cursor: isTried ? 'not-allowed' : 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
