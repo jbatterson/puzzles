@@ -223,6 +223,28 @@ html, body {
 }
 
 /* =============================================================================
+   CLUELESS-SPECIFIC
+   Tighter spacing above board; larger reservation below so stage shrinks on
+   short viewports (keyboard + buttons + "All Puzzles" fit).
+   ============================================================================= */
+
+.game-container.clueless {
+    --max-stage-size: calc(100dvh - 540px);
+}
+@supports not (height: 100dvh) {
+    .game-container.clueless {
+        --max-stage-size: calc(100vh - 540px);
+    }
+}
+.game-container.clueless .level-nav {
+    margin-bottom: 0.5rem;
+}
+.game-container.clueless .clueless-status {
+    min-height: 1em;
+    margin-bottom: 0.25rem;
+}
+
+/* =============================================================================
    SCURRY-SPECIFIC
    Grid cells and bug layer positioning.
    ============================================================================= */

@@ -111,6 +111,7 @@ export default function CluelessGame() {
     const [guesses, setGuesses] = useState({})   // "r,c" → letter
     const [locked, setLocked] = useState(new Set())   // confirmed correct cells
     const [wrongCells, setWrongCells] = useState(new Set())
+    const [triedLettersByCell, setTriedLettersByCell] = useState({})  // "r,c" → array of letters tried (wrong) in that cell
     const [selected, setSelected] = useState(0)  // index into INPUT_ORDER
     const [guessesLeft, setGuessesLeft] = useState(5)
     const [solved, setSolved] = useState(false)
@@ -247,6 +248,19 @@ export default function CluelessGame() {
             setWrongCells(new Set())
         } else {
             setStatusMsg('Not quite — try again')
+            // Record wrong letters per cell for keyboard highlighting
+            setTriedLettersByCell(prev => {
+                const next = { ...prev }
+                for (const k of newWrong) {
+                    const letter = guesses[k]
+                    if (letter) {
+                        const arr = next[k] ? [...next[k]] : []
+                        if (!arr.includes(letter)) arr.push(letter)
+                        next[k] = arr
+                    }
+                }
+                return next
+            })
             // Move selection to first wrong cell
             const firstWrongIdx = INPUT_ORDER.findIndex(({ r, c }) => newWrong.includes(`${r},${c}`))
             if (firstWrongIdx >= 0) setSelected(firstWrongIdx)
@@ -254,19 +268,6 @@ export default function CluelessGame() {
     }, [solved, guessesLeft, guesses, locked, answers, daily.key])
 
     checkAnswerRef.current = checkAnswer
-
-    // ── Clear ──────────────────────────────────────────────────────────────
-
-    const clearGuesses = useCallback(() => {
-        usedHintRef.current = true
-        setGuesses({})
-        setLocked(new Set())
-        setWrongCells(new Set())
-        setSolved(false)
-        setSelected(0)
-        setGuessesLeft(5)
-        setStatusMsg('')
-    }, [])
 
     // ── Cell click ─────────────────────────────────────────────────────────
 
@@ -285,6 +286,12 @@ export default function CluelessGame() {
     })
 
     const base = import.meta.env.BASE_URL
+
+    // Letters already tried (wrong) in the selected cell, for keyboard highlighting
+    const selectedKey = !solved && selected >= 0 && selected < INPUT_ORDER.length
+        ? `${INPUT_ORDER[selected].r},${INPUT_ORDER[selected].c}`
+        : null
+    const triedInSelected = selectedKey ? (triedLettersByCell[selectedKey] || []) : []
 
     // ── Grid cells ─────────────────────────────────────────────────────────
 
@@ -331,8 +338,8 @@ export default function CluelessGame() {
             let bg = '#fff'
             let color = '#000'
             if (isLocked) { bg = '#c6f6d5'; color = '#15803d' }
-            else if (isWrong) { bg = '#fed7d7'; color = '#b91c1c' }
             else if (isSelected) bg = 'var(--yellow)'
+            else if (isWrong) { bg = '#fed7d7'; color = '#b91c1c' }
 
             cells.push(
                 <div key={key}
@@ -361,7 +368,7 @@ export default function CluelessGame() {
     // ── Render ─────────────────────────────────────────────────────────────
 
     return (
-        <div className="game-container">
+        <div className="game-container clueless">
             <TopBar title="Clueless" onHelp={() => setShowInstructions(true)} />
 
             {/* INFO BAR */}
@@ -387,14 +394,12 @@ export default function CluelessGame() {
             </div>
 
             {/* STATUS MESSAGE */}
-            <div style={{
+            <div className="clueless-status" style={{
                 textAlign: 'center',
                 fontWeight: 700,
                 fontSize: '0.85rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
-                minHeight: '1.4em',
-                marginBottom: '0.5rem',
                 color: solved && guessesLeft > 0 ? '#15803d' : '#000',
             }}>
                 {solved && guessesLeft > 0
@@ -419,7 +424,7 @@ export default function CluelessGame() {
                 </div>
             </div>
 
-            {/* ON-SCREEN KEYBOARD */}
+            {/* KEYBOARD when playing; ALL PUZZLES when solved */}
             <div style={{
                 marginTop: '1rem',
                 display: 'flex',
@@ -429,6 +434,13 @@ export default function CluelessGame() {
                 maxWidth: '400px',
                 alignSelf: 'center',
             }}>
+                {solved ? (
+                    <a href={base} className="btn-primary"
+                        style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        All Puzzles
+                    </a>
+                ) : (
+                <>
                 {KB_ROWS.map((row, ri) => (
                     <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
                         {ri === 2 && (
@@ -449,72 +461,63 @@ export default function CluelessGame() {
                                 }}
                             >←</button>
                         )}
-                        {[...row].map(ch => (
-                            <button
-                                key={ch}
-                                onClick={() => handleKey(ch)}
-                                style={{
-                                    minWidth: 'clamp(24px, 7vw, 36px)',
-                                    height: 'clamp(36px, 9vw, 50px)',
-                                    border: '2px solid #000',
-                                    borderRadius: '4px',
-                                    background: '#fff',
-                                    fontFamily: 'Outfit, sans-serif',
-                                    fontWeight: 700,
-                                    fontSize: 'clamp(0.7rem, 2.5vw, 1rem)',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                {ch}
-                            </button>
-                        ))}
-                        {ri === 2 && (
-                            <button
-                                onClick={checkAnswerRef.current}
-                                style={{
-                                    minWidth: 'clamp(36px, 9vw, 52px)',
-                                    height: 'clamp(36px, 9vw, 50px)',
-                                    border: '2px solid #000',
-                                    borderRadius: '4px',
-                                    background: '#000',
-                                    color: '#fff',
-                                    fontWeight: 700,
-                                    fontSize: 'clamp(0.55rem, 1.8vw, 0.75rem)',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >Enter</button>
-                        )}
+                        {[...row].map(ch => {
+                            const isTried = triedInSelected.includes(ch.toLowerCase())
+                            return (
+                                <button
+                                    key={ch}
+                                    onClick={() => handleKey(ch)}
+                                    style={{
+                                        minWidth: 'clamp(24px, 7vw, 36px)',
+                                        height: 'clamp(36px, 9vw, 50px)',
+                                        border: '2px solid #000',
+                                        borderRadius: '4px',
+                                        background: isTried ? '#fed7d7' : '#fff',
+                                        color: isTried ? '#b91c1c' : '#000',
+                                        fontFamily: 'Outfit, sans-serif',
+                                        fontWeight: 700,
+                                        fontSize: 'clamp(0.7rem, 2.5vw, 1rem)',
+                                        textTransform: 'uppercase',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    {ch}
+                                </button>
+                            )
+                        })}
+                        {ri === 2 && (() => {
+                            const checkActive = allFilled && !solved && guessesLeft > 0
+                            return (
+                                <button
+                                    onClick={checkActive ? checkAnswerRef.current : undefined}
+                                    disabled={!checkActive}
+                                    style={{
+                                        minWidth: 'clamp(36px, 9vw, 52px)',
+                                        height: 'clamp(36px, 9vw, 50px)',
+                                        border: '2px solid #000',
+                                        borderRadius: '4px',
+                                        background: checkActive ? '#000' : '#ccc',
+                                        color: checkActive ? '#fff' : '#666',
+                                        fontWeight: 700,
+                                        fontSize: 'clamp(0.55rem, 1.8vw, 0.75rem)',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em',
+                                        cursor: checkActive ? 'pointer' : 'not-allowed',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >CHECK</button>
+                            )
+                        })()}
                     </div>
                 ))}
+                </>
+                )}
             </div>
-
-            {/* ACTION BUTTONS */}
-            <div className="button-tray" style={{ marginTop: '1rem' }}>
-                <button className="btn-secondary" onClick={clearGuesses}
-                    disabled={solved}>
-                    Clear
-                </button>
-                <button className="btn-primary" onClick={checkAnswerRef.current}
-                    disabled={solved || !allFilled}>
-                    Submit
-                </button>
-            </div>
-
-            {solved && (
-                <a href={base} className="btn-primary"
-                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    All Puzzles
-                </a>
-            )}
 
             {/* INSTRUCTIONS OVERLAY */}
             {showInstructions && (
