@@ -410,8 +410,29 @@ export default function CluelessGame() {
             </div>
 
             {/* GAME BOARD */}
-            <div className="game-stage">
-                <div id="canvas-wrapper">
+            {/*
+              * Size the grid to fit whatever vertical space is left after the
+              * fixed chrome (header ~60px, nav ~60px, status ~24px, keyboard
+              * ~170px, bottom padding ~32px = ~346px total).  We also cap it
+              * at the viewport width so it stays square on wide screens.
+              * flex-shrink:0 on the outer div prevents the flex column from
+              * squashing the board when the keyboard rows are tall.
+              */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: '6px 0',
+                flexShrink: 0,
+            }}>
+                <div style={{
+                    width: 'min(calc(100vw - 40px), calc(100dvh - 346px), 460px)',
+                    aspectRatio: '1 / 1',
+                    position: 'relative',
+                    background: '#fff',
+                    border: '2px solid #000',
+                    minWidth: '200px',
+                }}>
                     <div style={{
                         display: 'grid',
                         gridTemplateColumns: 'repeat(5, 1fr)',
@@ -426,13 +447,14 @@ export default function CluelessGame() {
 
             {/* KEYBOARD when playing; ALL PUZZLES when solved */}
             <div style={{
-                marginTop: '1rem',
+                marginTop: '0.5rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '6px',
+                gap: '4px',
                 width: '100%',
                 maxWidth: '400px',
                 alignSelf: 'center',
+                flexShrink: 0,
             }}>
                 {solved ? (
                     <a href={base} className="btn-primary"
@@ -448,7 +470,7 @@ export default function CluelessGame() {
                                 onClick={() => handleKey('Backspace')}
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
-                                    height: 'clamp(36px, 9vw, 50px)',
+                                    height: 'clamp(32px, 7vh, 50px)',
                                     border: '2px solid #000',
                                     borderRadius: '4px',
                                     background: '#fff',
@@ -469,7 +491,7 @@ export default function CluelessGame() {
                                     onClick={() => handleKey(ch)}
                                     style={{
                                         minWidth: 'clamp(24px, 7vw, 36px)',
-                                        height: 'clamp(36px, 9vw, 50px)',
+                                        height: 'clamp(32px, 7vh, 50px)',
                                         border: '2px solid #000',
                                         borderRadius: '4px',
                                         background: isTried ? '#fed7d7' : '#fff',
@@ -496,7 +518,7 @@ export default function CluelessGame() {
                                     disabled={!checkActive}
                                     style={{
                                         minWidth: 'clamp(36px, 9vw, 52px)',
-                                        height: 'clamp(36px, 9vw, 50px)',
+                                        height: 'clamp(32px, 7vh, 50px)',
                                         border: '2px solid #000',
                                         borderRadius: '4px',
                                         background: checkActive ? '#000' : '#ccc',
