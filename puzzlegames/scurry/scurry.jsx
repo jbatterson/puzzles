@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
+import DiceFace from '../../src/shared/DiceFace.jsx'
 import BugIcon from '../../src/shared/icons/BugIcon.jsx'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
@@ -65,25 +66,26 @@ const Bug = ({ isMoving, isFalling, isCelebrating, size = 42 }) => (
 // ── Puzzle number boxes ──────────────────────────────────────────────────────
 function PuzzleBoxes({ current, completions, perfects, onChange }) {
     return (
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
             {[0, 1, 2].map(i => (
                 <button
                     key={i}
                     onClick={() => onChange(i)}
                     style={{
-                        width: '32px',
-                        height: '32px',
+                        width: '28px',
+                        height: '28px',
                         borderRadius: '6px',
                         border: 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: completions[i] ? '#22c55e' : current === i ? '#000' : '#d1d5db',
                         color: '#fff',
                         fontWeight: 900,
-                        fontSize: '0.85rem',
+                        fontSize: '1.06rem',
                         cursor: 'pointer',
                         transition: 'all 0.2s',
                     }}
                 >
-                    {completions[i] ? (perfects && perfects[i] ? '★' : '✓') : i + 1}
+                    {completions[i] ? (perfects && perfects[i] ? '★' : '✓') : <DiceFace count={i + 1} size={20} />}
                 </button>
             ))}
         </div>

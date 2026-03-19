@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import puzzles from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
+import DiceFace from '../../src/shared/DiceFace.jsx'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
 
@@ -591,7 +592,7 @@ export default function CluelessGame() {
                             const isActive = i === difficultyIdx
                             const a = attemptsByDiff[i]
                             const done = a != null
-                            const content = done ? (a === 1 ? '★' : String(Math.min(a, 99))) : String(i + 1)
+                            const content = done ? (a === 1 ? '★' : String(Math.min(a, 99))) : <DiceFace count={i + 1} size={20} />
                             return (
                                 <button
                                     key={label}
@@ -601,15 +602,16 @@ export default function CluelessGame() {
                                         width: '28px',
                                         height: '28px',
                                         borderRadius: '6px',
-                                        border: '2px solid #000',
-                                        background: done ? '#22c55e' : (isActive ? '#000' : '#fff'),
-                                        color: done ? '#fff' : (isActive ? '#fff' : '#000'),
+                                        border: 'none',
+                                        background: done ? '#22c55e' : (isActive ? '#000' : '#d1d5db'),
+                                        color: '#fff',
                                         fontWeight: 900,
-                                        fontSize: '0.75rem',
+                                        fontSize: '0.94rem',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
+                                        transition: 'all 0.2s',
                                     }}
                                     aria-label={`Select ${label}`}
                                 >

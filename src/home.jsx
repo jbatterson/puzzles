@@ -5,6 +5,7 @@ import ProductilesIcon from './shared/icons/ProductilesIcon.jsx'
 import SumTilesIcon from './shared/icons/SumTilesIcon.jsx'
 import FactorfallIcon from './shared/icons/FactorfallIcon.jsx'
 import CluelessIcon from './shared/icons/CluelessIcon.jsx'
+import DiceFace from './shared/DiceFace.jsx'
 
 const base = import.meta.env.BASE_URL
 
@@ -119,7 +120,7 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
                 const perfect = perfects && perfects[i]
                 const moves = moveCounts && moveCounts[i] != null ? moveCounts[i] : null
                 const content = !done
-                    ? i + 1
+                    ? <DiceFace count={i + 1} size={20} />
                     : isTileGame
                         ? (moves != null ? String(Math.min(moves, 99)) : '✓')
                         : (perfect ? '★' : '✓')
@@ -133,7 +134,7 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
                             background: done ? '#22c55e' : '#d1d5db',
                             color: '#fff',
                             fontWeight: 900,
-                            fontSize: '0.8rem',
+                            fontSize: '1rem',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -169,7 +170,7 @@ function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
                 background: bg,
                 color: '#fff',
                 fontWeight: 900,
-                fontSize: '0.85rem',
+                fontSize: '1.06rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -187,7 +188,7 @@ function CluelessBoxes({ attempts }) {
             {[0, 1, 2].map(i => {
                 const a = attempts?.[i] ?? null
                 const done = a != null
-                const content = !done ? String(i + 1) : (a === 1 ? '★' : String(Math.min(a, 99)))
+                const content = !done ? <DiceFace count={i + 1} size={20} /> : (a === 1 ? '★' : String(Math.min(a, 99)))
                 return (
                     <div
                         key={i}
@@ -198,7 +199,7 @@ function CluelessBoxes({ attempts }) {
                             background: done ? '#22c55e' : '#d1d5db',
                             color: '#fff',
                             fontWeight: 900,
-                            fontSize: '0.8rem',
+                            fontSize: '1rem',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',

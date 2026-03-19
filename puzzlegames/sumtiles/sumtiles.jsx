@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
+import DiceFace from '../../src/shared/DiceFace.jsx'
 import SumTilesIcon from '../../src/shared/icons/SumTilesIcon.jsx'
 
 const SNAP_SPEED = 0.25
@@ -82,6 +83,60 @@ function loadMoveCounts(dateKey) {
     })
 }
 
+// ── In-progress game state (save/restore) ─────────────────────────────────────
+const GAME_STATE_VERSION = 1
+
+function storageKeyGameState(dateKey, puzzleIndex) {
+    return `sumtiles:${dateKey}:${puzzleIndex}:gameState`
+}
+
+function loadGameState(dateKey, puzzleIndex, data) {
+    try {
+        const raw = localStorage.getItem(storageKeyGameState(dateKey, puzzleIndex))
+        if (!raw) return null
+        const parsed = JSON.parse(raw)
+        if (!parsed || parsed.version !== GAME_STATE_VERSION) return null
+        if (parsed.size !== data.s) return null
+        if (!parsed.targets || parsed.targets.rows?.length !== data.t.rows?.length || parsed.targets.cols?.length !== data.t.cols?.length) return null
+        if (data.t.rows?.some((v, i) => parsed.targets.rows[i] !== v) || data.t.cols?.some((v, i) => parsed.targets.cols[i] !== v)) return null
+        if (!Array.isArray(parsed.tiles) || parsed.tiles.length !== data.b.length) return null
+        for (let i = 0; i < data.b.length; i++) {
+            const rawTile = data.b[i]
+            const t = parsed.tiles[i]
+            if (!t || t.id !== i + 1 || t.w !== rawTile[2] || t.h !== rawTile[3]) return null
+            if (!Array.isArray(t.vals) || t.vals.length !== t.w * t.h) return null
+        }
+        if (!Array.isArray(parsed.moveHistory)) return null
+        return { size: parsed.size, targets: parsed.targets, tiles: parsed.tiles, moveHistory: parsed.moveHistory }
+    } catch {
+        return null
+    }
+}
+
+function saveGameState(dateKey, puzzleIndex, state) {
+    try {
+        if (!state || !state.tiles) return
+        const payload = {
+            version: GAME_STATE_VERSION,
+            size: state.size,
+            targets: state.targets,
+            tiles: state.tiles.map(t => ({ id: t.id, r: t.r, c: t.c, w: t.w, h: t.h, vals: t.vals })),
+            moveHistory: state.moveHistory || [],
+        }
+        localStorage.setItem(storageKeyGameState(dateKey, puzzleIndex), JSON.stringify(payload))
+    } catch {
+        // ignore
+    }
+}
+
+function clearGameState(dateKey, puzzleIndex) {
+    try {
+        localStorage.removeItem(storageKeyGameState(dateKey, puzzleIndex))
+    } catch {
+        // ignore
+    }
+}
+
 // ── Canvas helpers ───────────────────────────────────────────────────────────
 function installRoundRect() {
     if (CanvasRenderingContext2D.prototype.roundRect) return
@@ -148,14 +203,15 @@ function computeSums(tiles, size) {
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
 function PuzzleBoxes({ current, completions, perfects, moveCounts, onChange }) {
     return (
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
             {[0, 1, 2].map(i => (
                 <button key={i} onClick={() => onChange(i)} style={{
-                    width: '32px', height: '32px', borderRadius: '6px', border: 'none',
+                    width: '28px', height: '28px', borderRadius: '6px', border: 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: completions[i] ? '#22c55e' : current === i ? '#000' : '#d1d5db',
-                    color: '#fff', fontWeight: 900, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s',
+                    color: '#fff', fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer', transition: 'all 0.2s',
                 }}>
-                    {completions[i] ? (moveCounts && moveCounts[i] != null ? String(Math.min(moveCounts[i], MAX_MOVE_DISPLAY)) : '✓') : i + 1}
+                    {completions[i] ? (moveCounts && moveCounts[i] != null ? String(Math.min(moveCounts[i], MAX_MOVE_DISPLAY)) : '✓') : <DiceFace count={i + 1} size={20} />}
                 </button>
             ))}
         </div>
@@ -173,10 +229,16 @@ export default function SumTiles() {
     const rafRef     = useRef(null)
     const dragRef    = useRef({ active: null, axis: null, lastX: 0, lastY: 0 })
     const usedUndoOrResetRef = useRef(false)
+    const dailyKeyRef = useRef(daily.key)
+    const dailyIdxRef = useRef(0)
+    const modeRef = useRef('daily')
 
     const [mode, setMode]               = useState('daily')
     const [tutorialIdx, setTutorialIdx] = useState(0)
     const [dailyIdx, setDailyIdx]       = useState(0)
+    dailyKeyRef.current = daily.key
+    dailyIdxRef.current = dailyIdx
+    modeRef.current = mode
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects]       = useState(() => loadPerfects(daily.key))
     const [moveCounts, setMoveCounts]   = useState(() => loadMoveCounts(daily.key))
@@ -268,15 +330,44 @@ export default function SumTiles() {
 
     useEffect(() => {
         if (!wrapperRef.current) return
-        const data = currentPuzzleData; if (!data) return
+        const data = currentPuzzleData
+        if (!data) return
         const labelCol = 52
         const boardPx = wrapperRef.current.getBoundingClientRect().width - labelCol
         const gs = Math.min(72, Math.max(20, Math.floor(boardPx / data.s)))
+        if (mode === 'daily') {
+            const saved = loadGameState(daily.key, dailyIdx, data)
+            if (saved) {
+                const tiles = saved.tiles.map(t => ({
+                    ...t,
+                    x: t.c * gs + (t.w * gs) / 2,
+                    y: t.r * gs + (t.h * gs) / 2,
+                }))
+                const initialTiles = data.b.map((raw, i) => parseTile(raw, i + 1, gs))
+                stateRef.current = {
+                    size: saved.size,
+                    targets: saved.targets,
+                    tiles,
+                    originalScramble: JSON.parse(JSON.stringify(initialTiles)),
+                    moveHistory: saved.moveHistory,
+                    solveAnim: null,
+                    gridSize: gs,
+                }
+                setHistoryLen(saved.moveHistory.length)
+                const { curR, curC } = computeSums(tiles, saved.size)
+                const alreadyWon = saved.targets.rows.every((v, i) => curR[i] === v) && saved.targets.cols.every((v, i) => curC[i] === v)
+                setIsSolved(!!alreadyWon)
+                resizeBoard()
+                usedUndoOrResetRef.current = false
+                setMoveCounts(loadMoveCounts(daily.key))
+                return
+            }
+        }
         loadPuzzle(data, gs)
         resizeBoard()
         usedUndoOrResetRef.current = false
         if (mode === 'daily') setMoveCounts(loadMoveCounts(daily.key))
-    }, [currentPuzzleData])
+    }, [currentPuzzleData, daily.key, dailyIdx, mode])
 
     useEffect(() => {
         if (isSolved && mode === 'daily') {
@@ -366,6 +457,7 @@ export default function SumTiles() {
             if (hit) {
                 s.moveHistory.push(JSON.stringify(s.tiles.map(t=>({id:t.id,r:t.r,c:t.c}))))
                 setHistoryLen(s.moveHistory.length)
+                if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
                 dragRef.current = { active:hit, axis:null, lastX:mx, lastY:my }
                 canvas.setPointerCapture?.(e.pointerId)
             }
@@ -427,6 +519,7 @@ export default function SumTiles() {
                 const won = s.targets.rows.every((v,i)=>curR[i]===v) && s.targets.cols.every((v,i)=>curC[i]===v)
                 if (won) { s.solveAnim = { phase:'rows', startTime:performance.now() }; setIsSolved(true) }
             }
+            if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
             dragRef.current = { active:null, axis:null, lastX:0, lastY:0 }
         }
         canvas.addEventListener('pointerdown', onDown, { passive:false })
@@ -447,6 +540,7 @@ export default function SumTiles() {
         const state = JSON.parse(s.moveHistory.pop())
         for (const sv of state) { const t=s.tiles.find(t=>t.id===sv.id); if (t){t.r=sv.r;t.c=sv.c} }
         setHistoryLen(s.moveHistory.length)
+        if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
     }
 
     const handleReset = () => {
@@ -463,6 +557,7 @@ export default function SumTiles() {
             if (rEl) rEl.style.transform='scale(1)'; if (cEl) cEl.style.transform='scale(1)'
         }
         setIsSolved(false); setHistoryLen(0)
+        if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
     }
 
     const handlePrimary = () => {
