@@ -14,6 +14,7 @@ const pts = (r, c) => {
         : `${x},${y} ${x + S},${y} ${x + S / 2},${y + H}`
 }
 const easeIO = (t) => (t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2)
+const BROWN = '#653700'
 
 const HEX_POLY = (() => {
     const L = N * S, V0 = { x: PAD + S / 2, y: PAD }, V1 = { x: V0.x + L, y: V0.y }, V2 = { x: V1.x + L / 2, y: V1.y + N * H }
@@ -175,8 +176,6 @@ const App = () => {
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
     const [pendingFoldLine, setPendingFoldLine] = useState(null)
-    const [invalidLines, setInvalidLines] = useState({})
-    const [toast, setToast] = useState(null)
     const t0 = useRef(0)
     const hoverDelayRef = useRef(null)
     const ignoreBoardPointerUntilRef = useRef(0)
@@ -205,7 +204,6 @@ const App = () => {
         setHistory([puzzle.start])
         setFolds(puzzle.folds)
         setAnim(null)
-        setInvalidLines({})
         setPendingFoldLine(null)
         usedUndoOrResetRef.current = false
     }, [puzzle])
@@ -244,29 +242,20 @@ const App = () => {
             const [nr, nc] = snap(nx, ny)
             const sp = cent(nr, nc)
             const dist2 = (sp.x - nx) ** 2 + (sp.y - ny) ** 2
-            if (!isInsideHex(nr, nc) || dist2 > SNAP_TOL) return { ok: false, reason: 'offboard' }
+            if (!isInsideHex(nr, nc) || dist2 > SNAP_TOL) continue
             const destKey = `${nr},${nc}`
-            if (board[destKey] && board[destKey] !== color) return { ok: false, reason: 'color' }
+            // Color overlaps are allowed; conflicts will become brown in the fold application.
         }
         return { ok: true, reason: null }
-    }
-
-    const maybeShowToast = (reason) => {
-        const key = reason === 'offboard' ? 'folds_hide_offboard_toast' : 'folds_hide_color_toast'
-        if (localStorage.getItem(key) === '1') return
-        setToast(reason)
     }
 
     const handleFold = (lineKey) => {
         if (folds <= 0 || anim || isWon) return
         const result = validateFold(lineKey)
-        if (!result.ok) {
-            setInvalidLines(prev => ({ ...prev, [lineKey]: true }))
-            maybeShowToast(result.reason)
-            return
-        }
+        if (!result.ok) return
         const line = ALL_LINES.find(l => l.lineKey === lineKey)
         const next = { ...board }
+        const lostKeys = {}
         const c2 = Math.cos(2 * line.theta), s2 = Math.sin(2 * line.theta)
         for (const [key, color] of Object.entries(board)) {
             const [r, c] = key.split(',').map(Number)
@@ -276,10 +265,17 @@ const App = () => {
             const [nr, nc] = snap(nx, ny)
             const sp = cent(nr, nc)
             const dist2 = (sp.x - nx) ** 2 + (sp.y - ny) ** 2
-            if (isInsideHex(nr, nc) && dist2 <= SNAP_TOL) next[`${nr},${nc}`] = color
+            if (isInsideHex(nr, nc) && dist2 <= SNAP_TOL) {
+                const destKey = `${nr},${nc}`
+                const prev = next[destKey]
+                if (prev === undefined || prev === color) next[destKey] = color
+                else next[destKey] = BROWN
+            } else {
+                lostKeys[key] = true
+            }
         }
         t0.current = performance.now()
-        setAnim({ line, startBoard: { ...board }, finalBoard: next, rawT: 0 })
+        setAnim({ line, startBoard: { ...board }, finalBoard: next, lostKeys, rawT: 0 })
         setFolds(f => f - 1)
     }
 
@@ -296,7 +292,7 @@ const App = () => {
 
     const getLineStroke = (lineKey) => {
         const highlighted = hoverLine === lineKey || pendingFoldLine === lineKey
-        if (highlighted) return invalidLines[lineKey] ? '#ef4444' : '#6366f1'
+        if (highlighted) return '#6366f1'
         if (tapFlash === lineKey) return '#6366f1'
         return '#cbd5e1'
     }
@@ -396,7 +392,10 @@ const App = () => {
                                 <g transform={`matrix(${1 + easeIO(anim.rawT) * (Math.cos(2 * anim.line.theta) - 1)} ${easeIO(anim.rawT) * Math.sin(2 * anim.line.theta)} ${easeIO(anim.rawT) * Math.sin(2 * anim.line.theta)} ${1 - easeIO(anim.rawT) * (1 + Math.cos(2 * anim.line.theta))} ${easeIO(anim.rawT) * (anim.line.px * (1 - Math.cos(2 * anim.line.theta)) - anim.line.py * Math.sin(2 * anim.line.theta))} ${easeIO(anim.rawT) * (anim.line.py * (1 + Math.cos(2 * anim.line.theta)) - anim.line.px * Math.sin(2 * anim.line.theta))})`}>
                                     {Object.entries(anim.startBoard).map(([key, col]) => {
                                         const [r, c] = key.split(',').map(Number)
-                                        return <polygon key={`a-${key}`} points={pts(r, c)} fill={col} opacity={0.5} />
+                                        const fadeT = easeIO(anim.rawT)
+                                        const isLost = !!anim.lostKeys?.[key]
+                                        const opacity = isLost ? 0.5 * (1 - fadeT) : 0.5
+                                        return <polygon key={`a-${key}`} points={pts(r, c)} fill={col} opacity={opacity} />
                                     })}
                                 </g>
                             )}
@@ -466,30 +465,6 @@ const App = () => {
                 </div>
             </div>
 
-            {toast && (
-                <div className="toast toast-panel">
-                    <div className="toast-row">
-                        <div className="toast-text">
-                            {toast === 'offboard'
-                                ? 'Reflections that place a triangle off the board are not allowed.'
-                                : 'Reflections that place a triangle of one color onto a triangle of a different color are not allowed.'}
-                        </div>
-                        <button onClick={() => setToast(null)} className="toast-close" aria-label="Dismiss">
-                            <span style={{ display: 'inline-block', transform: 'translateY(-0.5px)' }}>✕</span>
-                        </button>
-                    </div>
-                    <label className="toast-checkbox">
-                        <input type="checkbox" onChange={(e) => {
-                            if (e.target.checked) {
-                                const key = toast === 'offboard' ? 'folds_hide_offboard_toast' : 'folds_hide_color_toast'
-                                localStorage.setItem(key, '1')
-                            }
-                        }} />
-                        <span>Do not show again.</span>
-                    </label>
-                </div>
-            )}
-
             <div className="button-tray">
                 <button
                     onClick={() => {
@@ -538,7 +513,8 @@ const App = () => {
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
                                 Fold the shapes along the grid lines to match the <b>target pattern</b>.
                                 <br />
-                                Reflections that place a triangle off the board or onto a triangle of a different color are not allowed.
+                                Reflections that place triangles off the board will cause those triangles to disappear.
+                                Reflections that place a triangle of one color onto a triangle of a different color will create a brown triangle.
                             </p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
