@@ -280,7 +280,7 @@ function ShareIcon({ size = 18 }) {
 
 const GAMES = [
     { key: 'scurry',      href: `${base}puzzlegames/scurry/`,      Icon: BugIcon,         title: 'Scurry',      desc: 'Place bugs to fill every highlighted square.' },
-    { key: 'clueless',    href: `${base}puzzlegames/clueless/`,     Icon: CluelessIcon,    title: 'Clueless',    desc: 'Fill in the missing letters to complete six crossing words (Easy/Med/Hard).', single: false },
+    { key: 'clueless',    href: `${base}puzzlegames/clueless/`,     Icon: CluelessIcon,    title: 'Clueless',    desc: 'Fill in the missing letters to complete six crossing words.', single: false },
     { key: 'folds',       href: `${base}puzzlegames/folds/`,       Icon: FoldsIcon,       title: 'Folds',       desc: 'Reflect triangles to match the target pattern.' },
     { key: 'factorfall',  href: `${base}puzzlegames/factorfall/`,  Icon: FactorfallIcon,  title: 'Factorfall',  desc: 'Drop factors into the grid. Clear same-color groups that multiply to the target.' },
     { key: 'sumtiles',    href: `${base}puzzlegames/sumtiles/`,    Icon: SumTilesIcon,    title: 'Sum Tiles',   desc: 'Slide tiles so every row and column hits its sum.' },

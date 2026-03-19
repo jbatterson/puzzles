@@ -788,10 +788,6 @@ export default function CluelessGame() {
                         <p style={{ fontSize: '1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
                             Six five-letter words fill the grid — three across and three down.
                         </p>
-                        <p style={{ fontSize: '1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                            The <strong>2nd and 4th letters</strong> of every word are given as clues.
-                            Fill in the <strong>1st, 3rd, and 5th letters</strong> — the 9 highlighted cells.
-                        </p>
                         <p style={{ fontSize: '1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
                             Each yellow cell is shared by one across word and one down word. Use <strong>CHECK</strong> to lock in correct letters after each submit. Try to complete in as few checks as possible — your check count is saved when you finish.
                         </p>
