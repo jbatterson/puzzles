@@ -72,7 +72,16 @@ function loadGameState(dateKey) {
         for (const k of data.locked) {
             if (!inputKeys.has(k)) return null
         }
-        return data
+        // Optional: letters tried (wrong) per cell for keyboard highlighting
+        let triedLettersByCell = {}
+        if (data.triedLettersByCell != null && typeof data.triedLettersByCell === 'object') {
+            for (const [cellKey, arr] of Object.entries(data.triedLettersByCell)) {
+                if (Array.isArray(arr) && arr.every(c => typeof c === 'string' && c.length === 1)) {
+                    triedLettersByCell[cellKey] = arr
+                }
+            }
+        }
+        return { ...data, triedLettersByCell }
     } catch {
         return null
     }
@@ -85,6 +94,7 @@ function saveGameState(dateKey, state) {
             locked: [...state.locked],
             guessCount: state.guessCount,
             solved: state.solved,
+            triedLettersByCell: state.triedLettersByCell || {},
         }
         localStorage.setItem(GAME_STATE_KEY(dateKey), JSON.stringify(payload))
     } catch {
@@ -164,6 +174,7 @@ export default function CluelessGame() {
                 locked: new Set(saved.locked),
                 guessCount: saved.guessCount,
                 solved: saved.solved,
+                triedLettersByCell: saved.triedLettersByCell || {},
                 bestAttempts: loadBestAttempts(daily.key),
             }
         } else {
@@ -184,6 +195,7 @@ export default function CluelessGame() {
                     locked: new Set(),
                     guessCount: 0,
                     solved: false,
+                    triedLettersByCell: {},
                     bestAttempts: null,
                 }
             }
@@ -195,7 +207,7 @@ export default function CluelessGame() {
     const [guesses, setGuesses] = useState(initial.guesses)
     const [locked, setLocked] = useState(initial.locked)
     const [wrongCells, setWrongCells] = useState(new Set())
-    const [triedLettersByCell, setTriedLettersByCell] = useState({})
+    const [triedLettersByCell, setTriedLettersByCell] = useState(initial.triedLettersByCell ?? {})
     const [selected, setSelected] = useState(0)
     const [guessCount, setGuessCount] = useState(initial.guessCount)
     const [solved, setSolved] = useState(initial.solved)
@@ -210,8 +222,9 @@ export default function CluelessGame() {
             locked,
             guessCount,
             solved,
+            triedLettersByCell,
         })
-    }, [daily.key, guesses, locked, guessCount, solved])
+    }, [daily.key, guesses, locked, guessCount, solved, triedLettersByCell])
 
     // UI
     const [showInstructions, setShowInstructions] = useState(
