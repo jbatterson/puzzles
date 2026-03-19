@@ -43,6 +43,15 @@ const isInsideHex = (r, c) => {
     return inside
 }
 
+const isPointInsideHex = (x, y) => {
+    let inside = false
+    for (let i = 0, j = HEX_POLY.length - 1; i < HEX_POLY.length; j = i++) {
+        const xi = HEX_POLY[i].x, yi = HEX_POLY[i].y, xj = HEX_POLY[j].x, yj = HEX_POLY[j].y
+        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi)) inside = !inside
+    }
+    return inside
+}
+
 const snap = (px, py) => {
     const re = Math.round((py - PAD) / H), ce = Math.round(2 * (px - PAD) / S) - 1
     let best = Infinity, br = 0, bc = 0
@@ -59,6 +68,73 @@ const ALL_TRIANGLES = (() => {
     for (let r = 0; r <= 8; r++) for (let c = -5; c <= 18; c++) if (isInsideHex(r, c)) tris.push({ r, c, key: `${r},${c}` })
     return tris
 })()
+
+const triangleVertices = (r, c) => {
+    const s = pts(r, c)
+    return s.split(' ').map(p => { const [x, y] = p.split(',').map(Number); return { x, y } })
+}
+
+function pointToSegmentDistSq(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1
+    const len2 = dx * dx + dy * dy
+    if (len2 < 1e-12) return (px - x1) ** 2 + (py - y1) ** 2
+    let t = ((px - x1) * dx + (py - y1) * dy) / len2
+    t = Math.max(0, Math.min(1, t))
+    const qx = x1 + t * dx, qy = y1 + t * dy
+    return (px - qx) ** 2 + (py - qy) ** 2
+}
+
+function getFoldButtonPosition(line, anchor) {
+    const midX = (line.x1 + line.x2) / 2, midY = (line.y1 + line.y2) / 2
+    if (!anchor || typeof anchor.x !== 'number' || typeof anchor.y !== 'number') return { cx: midX, cy: midY }
+    const ax = anchor.x, ay = anchor.y
+    const a = -Math.sin(line.theta), b = Math.cos(line.theta), c = a * line.px + b * line.py
+    const onLine = (x, y) => Math.abs(a * x + b * y - c) < 1e-6
+    const lineLen2 = (line.x2 - line.x1) ** 2 + (line.y2 - line.y1) ** 2
+
+    let bestDist2 = Infinity, bestCx = midX, bestCy = midY
+
+    const [r0, c0] = snap(ax, ay)
+    const candidates = []
+    if (isInsideHex(r0, c0)) candidates.push([r0, c0])
+    const re = Math.round((ay - PAD) / H), ce = Math.round(2 * (ax - PAD) / S) - 1
+    for (let r = Math.max(0, re - 3); r <= Math.min(10, re + 3); r++)
+        for (let col = Math.max(-6, ce - 4); col <= Math.min(20, ce + 4); col++) {
+            if (!isInsideHex(r, col)) continue
+            if (candidates.some(([rr, cc]) => rr === r && cc === col)) continue
+            candidates.push([r, col])
+        }
+
+    for (const [r, col] of candidates) {
+        const verts = triangleVertices(r, col)
+        for (let i = 0; i < 3; i++) {
+            const v0 = verts[i], v1 = verts[(i + 1) % 3]
+            if (!onLine(v0.x, v0.y) || !onLine(v1.x, v1.y)) continue
+            const dist2 = pointToSegmentDistSq(ax, ay, v0.x, v0.y, v1.x, v1.y)
+            if (dist2 < bestDist2) {
+                bestDist2 = dist2
+                bestCx = (v0.x + v1.x) / 2
+                bestCy = (v0.y + v1.y) / 2
+            }
+        }
+    }
+
+    if (bestDist2 < Infinity) return { cx: bestCx, cy: bestCy }
+
+    if (lineLen2 >= 1e-12) {
+        const dx = line.x2 - line.x1, dy = line.y2 - line.y1
+        let t = ((ax - line.x1) * dx + (ay - line.y1) * dy) / lineLen2
+        t = Math.max(0, Math.min(1, t))
+        let px = line.x1 + t * dx, py = line.y1 + t * dy
+        const vEps = 8
+        if ((px - line.x1) ** 2 + (py - line.y1) ** 2 < vEps * vEps) t = Math.min(1, vEps / Math.sqrt(lineLen2))
+        else if ((px - line.x2) ** 2 + (py - line.y2) ** 2 < vEps * vEps) t = Math.max(0, 1 - vEps / Math.sqrt(lineLen2))
+        px = line.x1 + t * dx
+        py = line.y1 + t * dy
+        return { cx: px, cy: py }
+    }
+    return { cx: midX, cy: midY }
+}
 
 const ALL_LINES = (() => {
     const seen = {}, lines = []
@@ -176,15 +252,33 @@ const App = () => {
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
     const [pendingFoldLine, setPendingFoldLine] = useState(null)
+    const [pendingFoldAnchor, setPendingFoldAnchor] = useState(null)
+    const svgRef = useRef(null)
     const t0 = useRef(0)
     const hoverDelayRef = useRef(null)
     const ignoreBoardPointerUntilRef = useRef(0)
+
+    const clientToGrid = useCallback((clientX, clientY) => {
+        const svg = svgRef.current
+        if (!svg || !svg.createSVGPoint) return null
+        const pt = svg.createSVGPoint()
+        pt.x = clientX
+        pt.y = clientY
+        const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse())
+        const cx = HEX_BOUNDS.minX + HEX_BOUNDS.width / 2
+        const cy = HEX_BOUNDS.minY + HEX_BOUNDS.height / 2
+        const angle = -Math.PI / 6
+        const cos = Math.cos(angle), sin = Math.sin(angle)
+        const rx = svgPt.x - cx, ry = svgPt.y - cy
+        return { x: cx + rx * cos - ry * sin, y: cy + rx * sin + ry * cos }
+    }, [])
 
     const closeInstructions = useCallback(() => {
         localStorage.setItem('folds:hasSeenInstructions', '1')
         setHasSeenInstructions(true)
         setHoverLine(null)
         setPendingFoldLine(null)
+        setPendingFoldAnchor(null)
         ignoreBoardPointerUntilRef.current = Date.now() + 400
         setShowInstructions(false)
     }, [])
@@ -205,6 +299,7 @@ const App = () => {
         setFolds(puzzle.folds)
         setAnim(null)
         setPendingFoldLine(null)
+        setPendingFoldAnchor(null)
         usedUndoOrResetRef.current = false
     }, [puzzle])
 
@@ -265,7 +360,7 @@ const App = () => {
             const [nr, nc] = snap(nx, ny)
             const sp = cent(nr, nc)
             const dist2 = (sp.x - nx) ** 2 + (sp.y - ny) ** 2
-            if (isInsideHex(nr, nc) && dist2 <= SNAP_TOL) {
+            if (isPointInsideHex(nx, ny) && isInsideHex(nr, nc) && dist2 <= SNAP_TOL) {
                 const destKey = `${nr},${nc}`
                 const prev = next[destKey]
                 if (prev === undefined || prev === color) next[destKey] = color
@@ -374,6 +469,7 @@ const App = () => {
             <div className="game-stage" style={{ border: 'none', boxShadow: 'none', outline: 'none', background: 'transparent' }}>
                 <div id="canvas-wrapper" style={{ border: 'none', outline: 'none', boxShadow: 'none' }}>
                     <svg
+                        ref={svgRef}
                         viewBox={`${HEX_VIEWBOX.x} ${HEX_VIEWBOX.y} ${HEX_VIEWBOX.w} ${HEX_VIEWBOX.h}`}
                         preserveAspectRatio="xMidYMid meet"
                         style={{ width: '100%', height: '100%', display: 'block' }}
@@ -424,13 +520,17 @@ const App = () => {
                                             return
                                         }
                                         if (e.pointerType === 'touch') {
+                                            const grid = clientToGrid(e.clientX, e.clientY)
                                             if (pendingFoldLine === null) {
                                                 setPendingFoldLine(l.lineKey)
+                                                setPendingFoldAnchor(grid || null)
                                             } else if (pendingFoldLine === l.lineKey) {
                                                 setPendingFoldLine(null)
+                                                setPendingFoldAnchor(null)
                                                 handleFold(l.lineKey)
                                             } else {
                                                 setPendingFoldLine(l.lineKey)
+                                                setPendingFoldAnchor(grid || null)
                                             }
                                         }
                                     }}
@@ -442,12 +542,13 @@ const App = () => {
                             {pendingFoldLine && (() => {
                                 const l = ALL_LINES.find(ln => ln.lineKey === pendingFoldLine)
                                 if (!l) return null
-                                const cx = (l.x1 + l.x2) / 2, cy = (l.y1 + l.y2) / 2
+                                const { cx, cy } = getFoldButtonPosition(l, pendingFoldAnchor)
                                 const confirmFold = (e) => {
                                     if (Date.now() < ignoreBoardPointerUntilRef.current) return
                                     e.stopPropagation()
                                     e.preventDefault()
                                     setPendingFoldLine(null)
+                                    setPendingFoldAnchor(null)
                                     handleFold(l.lineKey)
                                 }
                                 return (
