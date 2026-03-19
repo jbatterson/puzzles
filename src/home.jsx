@@ -64,6 +64,28 @@ function loadSinglePerfect(gameKey, dateKey) {
     return localStorage.getItem(`${gameKey}:${dateKey}`) === '2'
 }
 
+// ── Clueless difficulties (Easy/Med/Hard) ────────────────────────────────────
+
+const CLUELESS_DIFFS = ['easy', 'medium', 'hard']
+
+function loadCluelessAttempt(dateKey, diff) {
+    const v = localStorage.getItem(`clueless:${dateKey}:${diff}:bestAttempts`)
+    if (v != null) {
+        const n = parseInt(v, 10)
+        if (n >= 1 && n <= 99) return n
+    }
+    // Legacy (pre-difficulty) progress is treated as Medium
+    if (diff === 'medium') {
+        const legacy = loadSingleBestAttempts('clueless', dateKey)
+        if (legacy != null) return legacy
+    }
+    return null
+}
+
+function loadCluelessAttempts(dateKey) {
+    return CLUELESS_DIFFS.map(diff => loadCluelessAttempt(dateKey, diff))
+}
+
 // ── Streaks ───────────────────────────────────────────────────────────────────
 
 const MAX_STREAK_DAYS = 365
@@ -72,9 +94,11 @@ function getStreak(gameKey, single = false) {
     let count = 0
     for (let dayOffset = 1; dayOffset <= MAX_STREAK_DAYS; dayOffset++) {
         const dateKey = getDateKey(dayOffset)
-        const hasCompletion = single
-            ? loadSingleCompletion(gameKey, dateKey)
-            : loadCompletions(gameKey, dateKey).some(Boolean)
+        const hasCompletion = gameKey === 'clueless'
+            ? loadCluelessAttempts(dateKey).some(a => a != null)
+            : single
+                ? loadSingleCompletion(gameKey, dateKey)
+                : loadCompletions(gameKey, dateKey).some(Boolean)
         if (hasCompletion) count++
         else break
     }
@@ -157,6 +181,38 @@ function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
     )
 }
 
+function CluelessBoxes({ attempts }) {
+    return (
+        <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+            {[0, 1, 2].map(i => {
+                const a = attempts?.[i] ?? null
+                const done = a != null
+                const content = !done ? String(i + 1) : (a === 1 ? '★' : String(Math.min(a, 99)))
+                return (
+                    <div
+                        key={i}
+                        style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            background: done ? '#22c55e' : '#d1d5db',
+                            color: '#fff',
+                            fontWeight: 900,
+                            fontSize: '0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'background 0.2s',
+                        }}
+                    >
+                        {content}
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
 // ── Share text builders ───────────────────────────────────────────────────────
 
 function buildShareText(key, title, href, completions, perfects, moveCounts) {
@@ -190,6 +246,23 @@ function buildSingleShareText(title, href, completed, perfect) {
     return out
 }
 
+function buildCluelessShareText(title, href, attempts) {
+    const playUrl = new URL(href, window.location.origin).href
+    const labels = ['Easy', 'Med', 'Hard']
+    let out = title.toUpperCase() + '\n'
+    for (let i = 0; i < 3; i++) {
+        const a = attempts?.[i] ?? null
+        if (a != null) {
+            const score = a === 1 ? '★' : String(Math.min(a, 99))
+            out += `${labels[i]}   🟩 ${score}\n`
+        } else {
+            out += `${labels[i]}   ⬜\n`
+        }
+    }
+    out += 'Play at ' + playUrl
+    return out
+}
+
 function ShareIcon({ size = 18 }) {
     return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -206,7 +279,7 @@ function ShareIcon({ size = 18 }) {
 
 const GAMES = [
     { key: 'scurry',      href: `${base}puzzlegames/scurry/`,      Icon: BugIcon,         title: 'Scurry',      desc: 'Place bugs to fill every highlighted square.' },
-    { key: 'clueless',    href: `${base}puzzlegames/clueless/`,     Icon: CluelessIcon,    title: 'Clueless',    desc: 'Fill in the missing letters to complete six crossing words.', single: true },
+    { key: 'clueless',    href: `${base}puzzlegames/clueless/`,     Icon: CluelessIcon,    title: 'Clueless',    desc: 'Fill in the missing letters to complete six crossing words (Easy/Med/Hard).', single: false },
     { key: 'folds',       href: `${base}puzzlegames/folds/`,       Icon: FoldsIcon,       title: 'Folds',       desc: 'Reflect triangles to match the target pattern.' },
     { key: 'factorfall',  href: `${base}puzzlegames/factorfall/`,  Icon: FactorfallIcon,  title: 'Factorfall',  desc: 'Drop factors into the grid. Clear same-color groups that multiply to the target.' },
     { key: 'sumtiles',    href: `${base}puzzlegames/sumtiles/`,    Icon: SumTilesIcon,    title: 'Sum Tiles',   desc: 'Slide tiles so every row and column hits its sum.' },
@@ -223,14 +296,16 @@ export default function Home() {
     const dateKey = useMemo(() => getDailyKey(), [])
 
     const completions = useMemo(() =>
-        Object.fromEntries(GAMES.filter(g => !g.single).map(g => [g.key, loadCompletions(g.key, dateKey)])),
+        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless').map(g => [g.key, loadCompletions(g.key, dateKey)])),
     [dateKey])
     const perfects = useMemo(() =>
-        Object.fromEntries(GAMES.filter(g => !g.single).map(g => [g.key, loadPerfects(g.key, dateKey)])),
+        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless').map(g => [g.key, loadPerfects(g.key, dateKey)])),
     [dateKey])
     const moveCounts = useMemo(() =>
-        Object.fromEntries(GAMES.filter(g => !g.single).map(g => [g.key, loadMoveCounts(g.key, dateKey)])),
+        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless').map(g => [g.key, loadMoveCounts(g.key, dateKey)])),
     [dateKey])
+
+    const cluelessAttempts = useMemo(() => loadCluelessAttempts(dateKey), [dateKey])
 
     const singleCompletions = useMemo(() =>
         Object.fromEntries(GAMES.filter(g => g.single).map(g => [g.key, loadSingleCompletion(g.key, dateKey)])),
@@ -261,9 +336,11 @@ export default function Home() {
         e.stopPropagation()
         const game = GAMES.find(g => g.key === key)
         if (!game) return
-        const text = game.single
-            ? buildSingleShareText(game.title, game.href, singleCompletions[key], singlePerfects[key])
-            : buildShareText(key, game.title, game.href, completions[key], perfects[key], moveCounts[key])
+        const text = key === 'clueless'
+            ? buildCluelessShareText(game.title, game.href, cluelessAttempts)
+            : game.single
+                ? buildSingleShareText(game.title, game.href, singleCompletions[key], singlePerfects[key])
+                : buildShareText(key, game.title, game.href, completions[key], perfects[key], moveCounts[key])
         navigator.clipboard.writeText(text).then(() => {
             if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
             setShareToastKey(key)
@@ -272,12 +349,13 @@ export default function Home() {
                 toastTimeoutRef.current = null
             }, TOAST_MS)
         })
-    }, [completions, perfects, moveCounts, singleCompletions, singlePerfects])
+    }, [cluelessAttempts, completions, perfects, moveCounts, singleCompletions, singlePerfects])
 
     const hasAnyCompletion = useCallback((key, single) => {
+        if (key === 'clueless') return cluelessAttempts.some(a => a != null)
         if (single) return singleCompletions[key]
         return completions[key]?.some(Boolean)
-    }, [completions, singleCompletions])
+    }, [cluelessAttempts, completions, singleCompletions])
 
     return (
         <>
@@ -556,7 +634,9 @@ export default function Home() {
                                     <div className="hp-cardTitle">{title}</div>
                                     <div className="hp-desc">{desc}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                        {single ? (
+                                        {key === 'clueless' ? (
+                                            <CluelessBoxes attempts={cluelessAttempts} />
+                                        ) : single ? (
                                             <SinglePuzzleBox
                                                 completed={singleCompletions[key]}
                                                 perfect={singlePerfects[key]}

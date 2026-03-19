@@ -23,22 +23,61 @@ function getDayIndex(key) {
     return Math.floor((date - epoch) / 86400000)
 }
 
-function getDailyPuzzle() {
+const DIFFS = ['easy', 'medium', 'hard']
+
+function getDailyPuzzle(difficulty) {
     const key = getDailyKey()
-    const idx = getDayIndex(key) % puzzles.length
-    return { puzzle: puzzles[idx], key }
+    const dayIndex = getDayIndex(key)
+
+    // Pools:
+    // - easy/medium: first 240, staggered by 120
+    // - hard: remaining (240+)
+    const EASY_LEN_RAW = 240
+    const MED_OFFSET = 120
+    const EASY_LEN = Math.min(EASY_LEN_RAW, puzzles.length)
+    const HARD_START = Math.min(EASY_LEN_RAW, puzzles.length)
+    const HARD_LEN = Math.max(0, puzzles.length - HARD_START)
+
+    let idx = 0
+    if (difficulty === 'easy') {
+        idx = EASY_LEN > 0 ? (dayIndex % EASY_LEN) : 0
+    } else if (difficulty === 'medium') {
+        idx = EASY_LEN > 0 ? ((dayIndex + MED_OFFSET) % EASY_LEN) : 0
+    } else {
+        idx = HARD_LEN > 0 ? (HARD_START + (dayIndex % HARD_LEN)) : (EASY_LEN > 0 ? (dayIndex % EASY_LEN) : 0)
+    }
+
+    return { puzzle: puzzles[idx], key, idx }
 }
 
 // ── Completion tracking ──────────────────────────────────────────────────────
 // bestAttempts: 1..99 (number of CHECKs used to complete). Legacy: failed, 1..5.
 
-function loadBestAttempts(dateKey) {
-    const v = localStorage.getItem(`clueless:${dateKey}:bestAttempts`)
+function storageKeyBestAttempts(dateKey, difficulty) {
+    return `clueless:${dateKey}:${difficulty}:bestAttempts`
+}
+
+function storageKeyLegacyBestAttempts(dateKey) {
+    return `clueless:${dateKey}:bestAttempts`
+}
+
+function loadBestAttempts(dateKey, difficulty) {
+    const v = localStorage.getItem(storageKeyBestAttempts(dateKey, difficulty))
     if (v != null) {
         const n = parseInt(v, 10)
         if (n >= 1 && n <= 99) return n
     }
-    // Migrate old schema: '2' = perfect (1 attempt), '1' = completed (treat as 2 attempts)
+
+    // Legacy (pre-difficulty) keys: treat as MEDIUM.
+    if (difficulty === 'medium') {
+        const legacyV = localStorage.getItem(storageKeyLegacyBestAttempts(dateKey))
+        if (legacyV != null) {
+            const n = parseInt(legacyV, 10)
+            if (n >= 1 && n <= 99) return n
+        }
+    }
+
+    // Migrate very old schema: '2' = perfect (1 attempt), '1' = completed (treat as 2 attempts)
     const legacy = localStorage.getItem(`clueless:${dateKey}`)
     if (legacy === '2') return 1
     if (legacy === '1') return 2
@@ -49,28 +88,34 @@ function loadFailed(dateKey) {
     return localStorage.getItem(`clueless:${dateKey}:failed`) === '1'
 }
 
-function markComplete(dateKey, attemptsUsed) {
-    const existing = loadBestAttempts(dateKey)
+function markComplete(dateKey, difficulty, attemptsUsed) {
+    const existing = loadBestAttempts(dateKey, difficulty)
     if (existing != null && attemptsUsed >= existing) return
     const value = Math.min(Math.max(1, attemptsUsed), 99)
-    localStorage.setItem(`clueless:${dateKey}:bestAttempts`, String(value))
+    localStorage.setItem(storageKeyBestAttempts(dateKey, difficulty), String(value))
 }
 
 // ── Game state persist/restore ──────────────────────────────────────────────
 
-const GAME_STATE_KEY = (dateKey) => `clueless:${dateKey}:gameState`
+function storageKeyGameState(dateKey, difficulty) {
+    return `clueless:${dateKey}:${difficulty}:gameState`
+}
 
-function loadGameState(dateKey) {
+function storageKeyLegacyGameState(dateKey) {
+    return `clueless:${dateKey}:gameState`
+}
+
+function loadGameState(dateKey, difficulty, validCellKeys) {
     try {
-        const raw = localStorage.getItem(GAME_STATE_KEY(dateKey))
+        const raw = localStorage.getItem(storageKeyGameState(dateKey, difficulty))
+            || (difficulty === 'medium' ? localStorage.getItem(storageKeyLegacyGameState(dateKey)) : null)
         if (!raw) return null
         const data = JSON.parse(raw)
         if (!data || typeof data.guesses !== 'object' || !Array.isArray(data.locked) ||
             typeof data.guessCount !== 'number' || typeof data.solved !== 'boolean') return null
         if (data.guessCount < 0) return null
-        const inputKeys = new Set(INPUT_ORDER.map(({ r, c }) => `${r},${c}`))
         for (const k of data.locked) {
-            if (!inputKeys.has(k)) return null
+            if (!validCellKeys.has(k)) return null
         }
         // Optional: letters tried (wrong) per cell for keyboard highlighting
         let triedLettersByCell = {}
@@ -87,7 +132,7 @@ function loadGameState(dateKey) {
     }
 }
 
-function saveGameState(dateKey, state) {
+function saveGameState(dateKey, difficulty, state) {
     try {
         const payload = {
             guesses: state.guesses,
@@ -96,7 +141,7 @@ function saveGameState(dateKey, state) {
             solved: state.solved,
             triedLettersByCell: state.triedLettersByCell || {},
         }
-        localStorage.setItem(GAME_STATE_KEY(dateKey), JSON.stringify(payload))
+        localStorage.setItem(storageKeyGameState(dateKey, difficulty), JSON.stringify(payload))
     } catch {
         // ignore
     }
@@ -109,44 +154,61 @@ function saveGameState(dateKey, state) {
 
 const BLOCKED = new Set(['1,1', '1,3', '3,1', '3,3'])
 
-const INPUT_ORDER = [] // [{r, c}] — the 9 yellow cells, left-to-right top-to-bottom
-const CLUE_CELLS = new Set()
+const ALL_PLAYABLE_KEYS = new Set()
 
 for (let r = 0; r < 5; r++) {
     for (let c = 0; c < 5; c++) {
         const key = `${r},${c}`
         if (BLOCKED.has(key)) continue
-        if (r % 2 === 0 && c % 2 === 0) INPUT_ORDER.push({ r, c })
-        else CLUE_CELLS.add(key)
+        ALL_PLAYABLE_KEYS.add(key)
     }
 }
 
 // ── Extract clue/answer letters from a puzzle object ────────────────────────
 
-function getPuzzleData(p) {
+function getPuzzleData(p, difficulty) {
     const clues = {}
     const answers = {}
 
     // Horizontal words fill rows 0, 2, 4
     const hWords = [p.h1, p.h2, p.h3]
-    ;[0, 2, 4].forEach((r, i) => {
-        const w = hWords[i]
+    const vWords = [p.v1, p.v2, p.v3]
+
+    for (let r = 0; r < 5; r++) {
         for (let c = 0; c < 5; c++) {
             const key = `${r},${c}`
-            if (c % 2 === 0) answers[key] = w[c]
-            else clues[key] = w[c]
-        }
-    })
+            if (BLOCKED.has(key)) continue
 
-    // Vertical words fill cols 0, 2, 4
-    const vWords = [p.v1, p.v2, p.v3]
-    ;[0, 2, 4].forEach((c, i) => {
-        const w = vWords[i]
-        for (let r = 0; r < 5; r++) {
-            const key = `${r},${c}`
-            if (r % 2 !== 0) clues[key] = w[r] // odd rows only; even rows already set by answers
+            let letter = null
+            if (r % 2 === 0) {
+                const w = hWords[r / 2]
+                letter = w[c]
+            }
+            if (c % 2 === 0) {
+                const w = vWords[c / 2]
+                const vLetter = w[r]
+                if (letter == null) letter = vLetter
+            }
+
+            // Medium/Hard: clues at positions 2 and 4 (indices 1 and 3), inputs at 1/3/5 (indices 0/2/4).
+            // Easy: only the middle letter (position 3 / index 2) is an input; everything else is a clue.
+            let isClue = true
+            if (difficulty === 'easy') {
+                const isAcrossMiddle = (r % 2 === 0) && (c === 2)
+                const isDownMiddle = (c % 2 === 0) && (r === 2)
+                isClue = !(isAcrossMiddle || isDownMiddle)
+            } else {
+                // Determine clue vs input based on index parity within the word.
+                // For row words (r even) index is c; for col words (c even) index is r.
+                const indexParity = (r % 2 === 0) ? (c % 2) : (r % 2)
+                isClue = (indexParity === 1)
+            }
+            // Medium bonus hints: give the top-left and bottom-right corner letters.
+            if (difficulty === 'medium' && (key === '0,0' || key === '4,4')) isClue = true
+            if (isClue) clues[key] = letter
+            else answers[key] = letter
         }
-    })
+    }
 
     return { clues, answers }
 }
@@ -158,73 +220,113 @@ const KB_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm']
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function CluelessGame() {
-    const daily = useMemo(() => getDailyPuzzle(), [])
+    // #region agent log
+    fetch('http://127.0.0.1:7789/ingest/c63c0e1a-4721-4866-a60f-d01a6afe7afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b390e2'},body:JSON.stringify({sessionId:'b390e2',runId:'pre-fix',hypothesisId:'H1',location:'clueless.jsx:CluelessGame(entry)',message:'CluelessGame render entry',data:{},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    const [difficultyIdx, setDifficultyIdx] = useState(0)
+    const difficulty = DIFFS[difficultyIdx] || 'easy'
+
+    const daily = useMemo(() => getDailyPuzzle(difficulty), [difficulty])
     const dateLabel = useMemo(() => getDateLabel(), [])
-    const { clues, answers } = useMemo(() => getPuzzleData(daily.puzzle), [daily])
+    const { clues, answers } = useMemo(() => getPuzzleData(daily.puzzle, difficulty), [daily, difficulty])
 
     const usedHintRef = useRef(false)
 
-    // Initial state: restore from gameState, or completed view if already done, or fresh
-    const initialRef = useRef(undefined)
-    if (initialRef.current === undefined) {
-        const saved = loadGameState(daily.key)
-        if (saved) {
-            initialRef.current = {
-                guesses: saved.guesses,
-                locked: new Set(saved.locked),
-                guessCount: saved.guessCount,
-                solved: saved.solved,
-                triedLettersByCell: saved.triedLettersByCell || {},
-                bestAttempts: loadBestAttempts(daily.key),
-            }
-        } else {
-            const best = loadBestAttempts(daily.key)
-            if (best != null) {
-                const revealed = {}
-                for (const { r, c } of INPUT_ORDER) revealed[`${r},${c}`] = answers[`${r},${c}`]
-                initialRef.current = {
-                    guesses: revealed,
-                    locked: new Set(INPUT_ORDER.map(({ r, c }) => `${r},${c}`)),
-                    guessCount: best,
-                    solved: true,
-                    bestAttempts: best,
+    const geometry = useMemo(() => {
+        const clueCells = new Set()
+        const inputOrder = []
+        
+        for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+                const key = `${r},${c}`
+                if (BLOCKED.has(key)) continue
+                let isClue = true
+                if (difficulty === 'easy') {
+                    const isAcrossMiddle = (r % 2 === 0) && (c === 2)
+                    const isDownMiddle = (c % 2 === 0) && (r === 2)
+                    isClue = !(isAcrossMiddle || isDownMiddle)
+                } else {
+                    const indexParity = (r % 2 === 0) ? (c % 2) : (r % 2)
+                    isClue = (indexParity === 1)
                 }
-            } else {
-                initialRef.current = {
-                    guesses: {},
-                    locked: new Set(),
-                    guessCount: 0,
-                    solved: false,
-                    triedLettersByCell: {},
-                    bestAttempts: null,
-                }
+                // Medium bonus hints: give the top-left and bottom-right corner letters.
+                if (difficulty === 'medium' && (key === '0,0' || key === '4,4')) isClue = true
+                if (isClue) clueCells.add(key)
+                else inputOrder.push({ r, c })
             }
         }
-    }
-    const initial = initialRef.current
+        return { clueCells, inputOrder }
+    }, [difficulty])
 
-    // Puzzle state
-    const [guesses, setGuesses] = useState(initial.guesses)
-    const [locked, setLocked] = useState(initial.locked)
+    // Puzzle state (loaded per difficulty via effect below)
+    const [guesses, setGuesses] = useState({})
+    const [locked, setLocked] = useState(new Set())
     const [wrongCells, setWrongCells] = useState(new Set())
-    const [triedLettersByCell, setTriedLettersByCell] = useState(initial.triedLettersByCell ?? {})
+    const [triedLettersByCell, setTriedLettersByCell] = useState({})
     const [selected, setSelected] = useState(0)
-    const [guessCount, setGuessCount] = useState(initial.guessCount)
-    const [solved, setSolved] = useState(initial.solved)
+    const [guessCount, setGuessCount] = useState(0)
+    const [solved, setSolved] = useState(false)
     const [statusMsg, setStatusMsg] = useState('')
     const [selectionHighlighted, setSelectionHighlighted] = useState(true)
-    const [bestAttempts, setBestAttempts] = useState(initial.bestAttempts)
+    const [bestAttempts, setBestAttempts] = useState(null)
+
+    const attemptsByDiff = useMemo(() => {
+        const arr = DIFFS.map(d => (d === difficulty ? bestAttempts : loadBestAttempts(daily.key, d)))
+        // #region agent log
+        fetch('http://127.0.0.1:7789/ingest/c63c0e1a-4721-4866-a60f-d01a6afe7afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b390e2'},body:JSON.stringify({sessionId:'b390e2',runId:'pre-fix',hypothesisId:'H1',location:'clueless.jsx:attemptsByDiff',message:'Computed attemptsByDiff',data:{difficulty,dailyKey:daily.key,bestAttempts,attemptsByDiff:arr},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        return arr
+    }, [daily.key, difficulty, bestAttempts])
+
+    // Load/restore state whenever difficulty changes
+    useEffect(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7789/ingest/c63c0e1a-4721-4866-a60f-d01a6afe7afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b390e2'},body:JSON.stringify({sessionId:'b390e2',runId:'pre-fix',hypothesisId:'H2',location:'clueless.jsx:loadEffect',message:'Loading/restoring state for difficulty',data:{difficulty,dailyKey:daily.key,inputCount:geometry.inputOrder.length},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        const saved = loadGameState(daily.key, difficulty, ALL_PLAYABLE_KEYS)
+        const best = loadBestAttempts(daily.key, difficulty)
+
+        if (saved) {
+            setGuesses(saved.guesses || {})
+            setLocked(new Set(saved.locked || []))
+            setGuessCount(typeof saved.guessCount === 'number' ? saved.guessCount : 0)
+            setSolved(!!saved.solved)
+            setTriedLettersByCell(saved.triedLettersByCell || {})
+            setBestAttempts(best)
+        } else if (best != null) {
+            const revealed = {}
+            for (const { r, c } of geometry.inputOrder) revealed[`${r},${c}`] = answers[`${r},${c}`]
+            setGuesses(revealed)
+            setLocked(new Set(geometry.inputOrder.map(({ r, c }) => `${r},${c}`)))
+            setGuessCount(best)
+            setSolved(true)
+            setTriedLettersByCell({})
+            setBestAttempts(best)
+        } else {
+            setGuesses({})
+            setLocked(new Set())
+            setGuessCount(0)
+            setSolved(false)
+            setTriedLettersByCell({})
+            setBestAttempts(null)
+        }
+
+        setWrongCells(new Set())
+        setSelected(0)
+        setSelectionHighlighted(true)
+        setStatusMsg('')
+    }, [daily.key, difficulty, geometry.inputOrder, answers])
 
     // Persist game state when it changes
     useEffect(() => {
-        saveGameState(daily.key, {
+        saveGameState(daily.key, difficulty, {
             guesses,
             locked,
             guessCount,
             solved,
             triedLettersByCell,
         })
-    }, [daily.key, guesses, locked, guessCount, solved, triedLettersByCell])
+    }, [daily.key, difficulty, guesses, locked, guessCount, solved, triedLettersByCell])
 
     // UI
     const [showInstructions, setShowInstructions] = useState(
@@ -240,23 +342,23 @@ export default function CluelessGame() {
 
     const advanceSelection = useCallback((fromIdx) => {
         let next = fromIdx + 1
-        while (next < INPUT_ORDER.length) {
-            const { r, c } = INPUT_ORDER[next]
+        while (next < geometry.inputOrder.length) {
+            const { r, c } = geometry.inputOrder[next]
             if (!locked.has(`${r},${c}`)) { setSelected(next); return }
             next++
         }
         // wrap to first unlocked
-        for (let i = 0; i < INPUT_ORDER.length; i++) {
-            const { r, c } = INPUT_ORDER[i]
+        for (let i = 0; i < geometry.inputOrder.length; i++) {
+            const { r, c } = geometry.inputOrder[i]
             if (!locked.has(`${r},${c}`)) { setSelected(i); return }
         }
-    }, [locked])
+    }, [geometry.inputOrder, locked])
 
     const handleKey = useCallback((key) => {
         if (solved) return
 
         if (key === 'Backspace') {
-            const pos = INPUT_ORDER[selected]
+            const pos = geometry.inputOrder[selected]
             const k = `${pos.r},${pos.c}`
             if (locked.has(k)) return
             if (guesses[k]) {
@@ -264,10 +366,10 @@ export default function CluelessGame() {
                 setWrongCells(prev => { const s = new Set(prev); s.delete(k); return s })
             } else if (selected > 0) {
                 let prev = selected - 1
-                while (prev >= 0 && locked.has(`${INPUT_ORDER[prev].r},${INPUT_ORDER[prev].c}`)) prev--
+                while (prev >= 0 && locked.has(`${geometry.inputOrder[prev].r},${geometry.inputOrder[prev].c}`)) prev--
                 if (prev >= 0) {
                     setSelected(prev)
-                    const pk = `${INPUT_ORDER[prev].r},${INPUT_ORDER[prev].c}`
+                    const pk = `${geometry.inputOrder[prev].r},${geometry.inputOrder[prev].c}`
                     setGuesses(g => { const ng = { ...g }; delete ng[pk]; return ng })
                     setWrongCells(s => { const ns = new Set(s); ns.delete(pk); return ns })
                 }
@@ -276,7 +378,7 @@ export default function CluelessGame() {
         }
 
         if (/^[a-zA-Z]$/.test(key)) {
-            const pos = INPUT_ORDER[selected]
+            const pos = geometry.inputOrder[selected]
             const k = `${pos.r},${pos.c}`
             if (locked.has(k)) return
             const letter = key.toLowerCase()
@@ -291,7 +393,7 @@ export default function CluelessGame() {
             })
             advanceSelection(selected)
         }
-    }, [solved, selected, guesses, locked, advanceSelection, triedLettersByCell])
+    }, [solved, geometry.inputOrder, selected, guesses, locked, advanceSelection, triedLettersByCell])
 
     // Physical keyboard
     useEffect(() => {
@@ -317,7 +419,7 @@ export default function CluelessGame() {
         const newWrong = []
         let allFilled = true
 
-        for (const { r, c } of INPUT_ORDER) {
+        for (const { r, c } of geometry.inputOrder) {
             const k = `${r},${c}`
             if (locked.has(k)) continue
             const guess = guesses[k]
@@ -342,7 +444,7 @@ export default function CluelessGame() {
         if (newWrong.length === 0) {
             // All correct!
             const attemptsUsed = Math.min(nextGuessCount, 99)
-            markComplete(daily.key, attemptsUsed)
+            markComplete(daily.key, difficulty, attemptsUsed)
             setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
             setSolved(true)
             setStatusMsg('')
@@ -362,10 +464,10 @@ export default function CluelessGame() {
                 return next
             })
             // Move selection to first wrong cell
-            const firstWrongIdx = INPUT_ORDER.findIndex(({ r, c }) => newWrong.includes(`${r},${c}`))
+            const firstWrongIdx = geometry.inputOrder.findIndex(({ r, c }) => newWrong.includes(`${r},${c}`))
             if (firstWrongIdx >= 0) setSelected(firstWrongIdx)
         }
-    }, [solved, guessCount, guesses, locked, answers, daily.key])
+    }, [solved, geometry.inputOrder, guessCount, guesses, locked, answers, daily.key, difficulty])
 
     checkAnswerRef.current = checkAnswer
 
@@ -373,15 +475,15 @@ export default function CluelessGame() {
 
     const selectCell = useCallback((idx) => {
         if (solved) return
-        const { r, c } = INPUT_ORDER[idx]
+        const { r, c } = geometry.inputOrder[idx]
         if (locked.has(`${r},${c}`)) return
         setSelectionHighlighted(true)
         setSelected(idx)
-    }, [solved, locked])
+    }, [solved, geometry.inputOrder, locked])
 
     // ── Render helpers ─────────────────────────────────────────────────────
 
-    const allFilled = INPUT_ORDER.every(({ r, c }) => {
+    const allFilled = geometry.inputOrder.every(({ r, c }) => {
         const k = `${r},${c}`
         return locked.has(k) || !!guesses[k]
     })
@@ -389,8 +491,8 @@ export default function CluelessGame() {
     const base = import.meta.env.BASE_URL
 
     // Letters already tried (wrong) in the selected cell, for keyboard highlighting
-    const selectedKey = !solved && selected >= 0 && selected < INPUT_ORDER.length
-        ? `${INPUT_ORDER[selected].r},${INPUT_ORDER[selected].c}`
+    const selectedKey = !solved && selected >= 0 && selected < geometry.inputOrder.length
+        ? `${geometry.inputOrder[selected].r},${geometry.inputOrder[selected].c}`
         : null
     const triedInSelected = selectedKey ? (triedLettersByCell[selectedKey] || []) : []
 
@@ -411,7 +513,7 @@ export default function CluelessGame() {
                 continue
             }
 
-            if (CLUE_CELLS.has(key)) {
+            if (geometry.clueCells.has(key)) {
                 cells.push(
                     <div key={key} style={{
                         border: '1px solid #000',
@@ -430,7 +532,7 @@ export default function CluelessGame() {
             }
 
             // Input cell
-            const idx = INPUT_ORDER.findIndex(p => p.r === r && p.c === c)
+            const idx = geometry.inputOrder.findIndex(p => p.r === r && p.c === c)
             const isSelected = idx === selected && !solved
             const isLocked = locked.has(key)
             const isWrong = wrongCells.has(key)
@@ -478,25 +580,44 @@ export default function CluelessGame() {
             {/* INFO BAR */}
             <div className="level-nav">
                 <div className="left-spacer">
-                    {bestAttempts != null && (
-                        <div style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '6px',
-                            background: '#22c55e',
-                            color: '#fff',
-                            fontWeight: 900,
-                            fontSize: '0.85rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}>
-                            {bestAttempts === 1 ? '★' : String(Math.min(bestAttempts, 99))}
-                        </div>
-                    )}
+                    {/* (badge removed) */}
                 </div>
-                <div style={{ textAlign: 'center' }}>
-                    <span className="stats-label">{dateLabel}</span>
+                <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
+                    <div className="level-label" style={{ textAlign: 'center' }}>
+                        <span className="sub">{dateLabel}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                        {['Easy', 'Med', 'Hard'].map((label, i) => {
+                            const isActive = i === difficultyIdx
+                            const a = attemptsByDiff[i]
+                            const done = a != null
+                            const content = done ? (a === 1 ? '★' : String(Math.min(a, 99))) : String(i + 1)
+                            return (
+                                <button
+                                    key={label}
+                                    type="button"
+                                    onClick={() => setDifficultyIdx(i)}
+                                    style={{
+                                        width: '28px',
+                                        height: '28px',
+                                        borderRadius: '6px',
+                                        border: '2px solid #000',
+                                        background: done ? '#22c55e' : (isActive ? '#000' : '#fff'),
+                                        color: done ? '#fff' : (isActive ? '#fff' : '#000'),
+                                        fontWeight: 900,
+                                        fontSize: '0.75rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                    aria-label={`Select ${label}`}
+                                >
+                                    {content}
+                                </button>
+                            )
+                        })}
+                    </div>
                 </div>
                 <div className="stats-group">
                     <span className="stats-label">Guesses</span>
