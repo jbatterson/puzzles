@@ -30,13 +30,13 @@ function getDailyPuzzle() {
 }
 
 // ── Completion tracking ──────────────────────────────────────────────────────
-// bestAttempts: 1..5 (fewest CHECKs used to solve). failed: "1" = ran out of guesses (no replay).
+// bestAttempts: 1..99 (number of CHECKs used to complete). Legacy: failed, 1..5.
 
 function loadBestAttempts(dateKey) {
     const v = localStorage.getItem(`clueless:${dateKey}:bestAttempts`)
     if (v != null) {
         const n = parseInt(v, 10)
-        if (n >= 1 && n <= 5) return n
+        if (n >= 1 && n <= 99) return n
     }
     // Migrate old schema: '2' = perfect (1 attempt), '1' = completed (treat as 2 attempts)
     const legacy = localStorage.getItem(`clueless:${dateKey}`)
@@ -52,11 +52,44 @@ function loadFailed(dateKey) {
 function markComplete(dateKey, attemptsUsed) {
     const existing = loadBestAttempts(dateKey)
     if (existing != null && attemptsUsed >= existing) return
-    localStorage.setItem(`clueless:${dateKey}:bestAttempts`, String(attemptsUsed))
+    const value = Math.min(Math.max(1, attemptsUsed), 99)
+    localStorage.setItem(`clueless:${dateKey}:bestAttempts`, String(value))
 }
 
-function markFailed(dateKey) {
-    localStorage.setItem(`clueless:${dateKey}:failed`, '1')
+// ── Game state persist/restore ──────────────────────────────────────────────
+
+const GAME_STATE_KEY = (dateKey) => `clueless:${dateKey}:gameState`
+
+function loadGameState(dateKey) {
+    try {
+        const raw = localStorage.getItem(GAME_STATE_KEY(dateKey))
+        if (!raw) return null
+        const data = JSON.parse(raw)
+        if (!data || typeof data.guesses !== 'object' || !Array.isArray(data.locked) ||
+            typeof data.guessCount !== 'number' || typeof data.solved !== 'boolean') return null
+        if (data.guessCount < 0) return null
+        const inputKeys = new Set(INPUT_ORDER.map(({ r, c }) => `${r},${c}`))
+        for (const k of data.locked) {
+            if (!inputKeys.has(k)) return null
+        }
+        return data
+    } catch {
+        return null
+    }
+}
+
+function saveGameState(dateKey, state) {
+    try {
+        const payload = {
+            guesses: state.guesses,
+            locked: [...state.locked],
+            guessCount: state.guessCount,
+            solved: state.solved,
+        }
+        localStorage.setItem(GAME_STATE_KEY(dateKey), JSON.stringify(payload))
+    } catch {
+        // ignore
+    }
 }
 
 // ── Grid geometry ────────────────────────────────────────────────────────────
@@ -121,31 +154,64 @@ export default function CluelessGame() {
 
     const usedHintRef = useRef(false)
 
+    // Initial state: restore from gameState, or completed view if already done, or fresh
+    const initialRef = useRef(undefined)
+    if (initialRef.current === undefined) {
+        const saved = loadGameState(daily.key)
+        if (saved) {
+            initialRef.current = {
+                guesses: saved.guesses,
+                locked: new Set(saved.locked),
+                guessCount: saved.guessCount,
+                solved: saved.solved,
+                bestAttempts: loadBestAttempts(daily.key),
+            }
+        } else {
+            const best = loadBestAttempts(daily.key)
+            if (best != null) {
+                const revealed = {}
+                for (const { r, c } of INPUT_ORDER) revealed[`${r},${c}`] = answers[`${r},${c}`]
+                initialRef.current = {
+                    guesses: revealed,
+                    locked: new Set(INPUT_ORDER.map(({ r, c }) => `${r},${c}`)),
+                    guessCount: best,
+                    solved: true,
+                    bestAttempts: best,
+                }
+            } else {
+                initialRef.current = {
+                    guesses: {},
+                    locked: new Set(),
+                    guessCount: 0,
+                    solved: false,
+                    bestAttempts: null,
+                }
+            }
+        }
+    }
+    const initial = initialRef.current
+
     // Puzzle state
-    const [guesses, setGuesses] = useState({})   // "r,c" → letter
-    const [locked, setLocked] = useState(new Set())   // confirmed correct cells
+    const [guesses, setGuesses] = useState(initial.guesses)
+    const [locked, setLocked] = useState(initial.locked)
     const [wrongCells, setWrongCells] = useState(new Set())
-    const [triedLettersByCell, setTriedLettersByCell] = useState({})  // "r,c" → array of letters tried (wrong) in that cell
-    const [selected, setSelected] = useState(0)  // index into INPUT_ORDER
-    const [guessesLeft, setGuessesLeft] = useState(5)
-    const [solved, setSolved] = useState(false)
+    const [triedLettersByCell, setTriedLettersByCell] = useState({})
+    const [selected, setSelected] = useState(0)
+    const [guessCount, setGuessCount] = useState(initial.guessCount)
+    const [solved, setSolved] = useState(initial.solved)
     const [statusMsg, setStatusMsg] = useState('')
-    const [selectionHighlighted, setSelectionHighlighted] = useState(true) // false after CHECK until user clicks a cell
+    const [selectionHighlighted, setSelectionHighlighted] = useState(true)
+    const [bestAttempts, setBestAttempts] = useState(initial.bestAttempts)
 
-    // Completion: bestAttempts 1..5 (null = not solved), failedLocked = ran out of guesses (no replay)
-    const [bestAttempts, setBestAttempts] = useState(() => loadBestAttempts(daily.key))
-    const [failedLocked, setFailedLocked] = useState(() => loadFailed(daily.key))
-
-    // When page loads with failed lock, reveal the solution and end the game
+    // Persist game state when it changes
     useEffect(() => {
-        if (!failedLocked || !Object.keys(answers).length) return
-        const revealed = {}
-        for (const { r, c } of INPUT_ORDER) revealed[`${r},${c}`] = answers[`${r},${c}`]
-        setGuesses(revealed)
-        setLocked(new Set(INPUT_ORDER.map(({ r, c }) => `${r},${c}`)))
-        setSolved(true)
-        setGuessesLeft(0)
-    }, [failedLocked]) // eslint-disable-line react-hooks/exhaustive-deps -- only run when failedLocked from load; answers is stable
+        saveGameState(daily.key, {
+            guesses,
+            locked,
+            guessCount,
+            solved,
+        })
+    }, [daily.key, guesses, locked, guessCount, solved])
 
     // UI
     const [showInstructions, setShowInstructions] = useState(
@@ -174,7 +240,7 @@ export default function CluelessGame() {
     }, [locked])
 
     const handleKey = useCallback((key) => {
-        if (solved || guessesLeft <= 0) return
+        if (solved) return
 
         if (key === 'Backspace') {
             const pos = INPUT_ORDER[selected]
@@ -212,7 +278,7 @@ export default function CluelessGame() {
             })
             advanceSelection(selected)
         }
-    }, [solved, guessesLeft, selected, guesses, locked, advanceSelection, triedLettersByCell])
+    }, [solved, selected, guesses, locked, advanceSelection, triedLettersByCell])
 
     // Physical keyboard
     useEffect(() => {
@@ -232,7 +298,7 @@ export default function CluelessGame() {
     const checkAnswerRef = useRef(null)
 
     const checkAnswer = useCallback(() => {
-        if (solved || guessesLeft <= 0) return
+        if (solved) return
 
         const newCorrect = []
         const newWrong = []
@@ -253,8 +319,8 @@ export default function CluelessGame() {
             return
         }
 
-        const newGuessesLeft = guessesLeft - 1
-        setGuessesLeft(newGuessesLeft)
+        const nextGuessCount = guessCount + 1
+        setGuessCount(nextGuessCount)
 
         const newLocked = new Set([...locked, ...newCorrect])
         setLocked(newLocked)
@@ -262,25 +328,11 @@ export default function CluelessGame() {
 
         if (newWrong.length === 0) {
             // All correct!
-            const attemptsUsed = 5 - newGuessesLeft
+            const attemptsUsed = Math.min(nextGuessCount, 99)
             markComplete(daily.key, attemptsUsed)
             setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
             setSolved(true)
             setStatusMsg('')
-        } else if (newGuessesLeft <= 0) {
-            // Out of guesses — reveal and lock (no replay)
-            markFailed(daily.key)
-            setFailedLocked(true)
-            setSolved(true)
-            setStatusMsg('')
-            // Fill all remaining cells with correct answers
-            const revealed = { ...guesses }
-            for (const { r, c } of INPUT_ORDER) {
-                revealed[`${r},${c}`] = answers[`${r},${c}`]
-            }
-            setGuesses(revealed)
-            setLocked(new Set(INPUT_ORDER.map(({ r, c }) => `${r},${c}`)))
-            setWrongCells(new Set())
         } else {
             setStatusMsg('Not quite — try again')
             // Record wrong letters per cell for keyboard highlighting
@@ -300,19 +352,19 @@ export default function CluelessGame() {
             const firstWrongIdx = INPUT_ORDER.findIndex(({ r, c }) => newWrong.includes(`${r},${c}`))
             if (firstWrongIdx >= 0) setSelected(firstWrongIdx)
         }
-    }, [solved, guessesLeft, guesses, locked, answers, daily.key])
+    }, [solved, guessCount, guesses, locked, answers, daily.key])
 
     checkAnswerRef.current = checkAnswer
 
     // ── Cell click ─────────────────────────────────────────────────────────
 
     const selectCell = useCallback((idx) => {
-        if (solved && guessesLeft > 0) return
+        if (solved) return
         const { r, c } = INPUT_ORDER[idx]
         if (locked.has(`${r},${c}`)) return
         setSelectionHighlighted(true)
         setSelected(idx)
-    }, [solved, guessesLeft, locked])
+    }, [solved, locked])
 
     // ── Render helpers ─────────────────────────────────────────────────────
 
@@ -413,12 +465,12 @@ export default function CluelessGame() {
             {/* INFO BAR */}
             <div className="level-nav">
                 <div className="left-spacer">
-                    {(bestAttempts != null || failedLocked) && (
+                    {bestAttempts != null && (
                         <div style={{
                             width: '28px',
                             height: '28px',
                             borderRadius: '6px',
-                            background: failedLocked ? '#374151' : '#22c55e',
+                            background: '#22c55e',
                             color: '#fff',
                             fontWeight: 900,
                             fontSize: '0.85rem',
@@ -426,7 +478,7 @@ export default function CluelessGame() {
                             alignItems: 'center',
                             justifyContent: 'center',
                         }}>
-                            {failedLocked ? '•' : bestAttempts === 1 ? '★' : String(bestAttempts)}
+                            {bestAttempts === 1 ? '★' : String(Math.min(bestAttempts, 99))}
                         </div>
                     )}
                 </div>
@@ -435,7 +487,7 @@ export default function CluelessGame() {
                 </div>
                 <div className="stats-group">
                     <span className="stats-label">Guesses</span>
-                    <span className="stats-num">{guessesLeft}</span>
+                    <span className="stats-num">{Math.min(guessCount, 99)}</span>
                 </div>
             </div>
 
@@ -446,13 +498,9 @@ export default function CluelessGame() {
                 fontSize: '0.85rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
-                color: solved && guessesLeft > 0 ? '#15803d' : '#000',
+                color: solved ? '#15803d' : '#000',
             }}>
-                {solved && guessesLeft > 0
-                    ? 'Solved!'
-                    : solved
-                    ? 'Better luck tomorrow'
-                    : statusMsg}
+                {solved ? 'Solved!' : statusMsg}
             </div>
 
             {/* GAME BOARD */}
@@ -559,7 +607,7 @@ export default function CluelessGame() {
                             )
                         })}
                         {ri === 2 && (() => {
-                            const checkActive = allFilled && !solved && guessesLeft > 0
+                            const checkActive = allFilled && !solved
                             return (
                                 <button
                                     onClick={checkActive ? checkAnswerRef.current : undefined}
@@ -609,7 +657,7 @@ export default function CluelessGame() {
                             Fill in the <strong>1st, 3rd, and 5th letters</strong> — the 9 highlighted cells.
                         </p>
                         <p style={{ fontSize: '1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                            Each yellow cell is shared by one across word and one down word. You have <strong>5 guesses</strong>. Correct letters lock in green after each submit.
+                            Each yellow cell is shared by one across word and one down word. Use <strong>CHECK</strong> to lock in correct letters after each submit. Try to complete in as few checks as possible — your check count is saved when you finish.
                         </p>
 
                         {/* Mini grid example */}

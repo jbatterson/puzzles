@@ -39,14 +39,14 @@ function loadMoveCounts(gameKey, dateKey) {
 }
 
 // ── Single-puzzle games (1 per day) ──────────────────────────────────────────
-// Clueless uses bestAttempts (1..5) and failed; others use '1'/'2'.
+// Clueless uses bestAttempts (1..99 = CHECKs to complete) and legacy failed; others use '1'/'2'.
 
 function loadSingleBestAttempts(gameKey, dateKey) {
     if (gameKey !== 'clueless') return null
     const v = localStorage.getItem(`clueless:${dateKey}:bestAttempts`)
     if (v == null) return null
     const n = parseInt(v, 10)
-    return (n >= 1 && n <= 5) ? n : null
+    return (n >= 1 && n <= 99) ? n : null
 }
 
 function loadSingleFailed(gameKey, dateKey) {
@@ -125,14 +125,16 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
 }
 
 // ── SinglePuzzleBox (one-per-day games like Clueless) ────────────────────────
-// attempts (1..5) + failed for Clueless; completed + perfect for others.
+// Clueless: attempts (1..99) = CHECKs to complete; legacy failed. Others: completed + perfect.
 
 function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
     const useAttempts = attempts != null || failed
     const done = useAttempts ? (attempts != null) : completed
-    const bg = failed ? '#374151' : (done ? '#22c55e' : '#d1d5db')
+    const showSuccess = useAttempts && attempts != null
+    const showFailed = useAttempts && failed && attempts == null
+    const bg = showSuccess ? '#22c55e' : (showFailed ? '#374151' : (done ? '#22c55e' : '#d1d5db'))
     const content = useAttempts
-        ? (failed ? '•' : (attempts === 1 ? '★' : String(attempts)))
+        ? (attempts != null ? (attempts === 1 ? '★' : String(Math.min(attempts, 99))) : (failed ? '•' : '1'))
         : (completed ? (perfect ? '★' : '✓') : '1')
     return (
         <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
