@@ -1,24 +1,43 @@
 import React from 'react'
 
-export default function FoldsIcon({ size = 28 }) {
+export default function Icon({ size = 28, className = '' }) {
     return (
-        <svg width={size} height={size} viewBox="0 0 28 28">
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 150 150"
+            className={className}
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <g opacity="0.2">
+                <polygon fill="#33658a" points="79.3 5.25 134.03 36.85 79.3 68.45 79.3 5.25"/>
+                <path d="M81.8,9.58l47.23,27.27-47.23,27.27V9.58M76.8.92v71.86l62.23-35.93L76.8.92h0Z"/>
+            </g>
 
-            {/* Fold line — vertical through center */}
-            <line x1="14" y1="2" x2="14" y2="26" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2" />
+            <g>
+                <polygon fill="#f26419" points="79.3 81.55 134.03 113.15 79.3 144.75 79.3 81.55"/>
+                <path d="M81.8,85.88l47.23,27.27-47.23,27.27v-54.54M76.8,77.22v71.86l62.23-35.93-62.23-35.93h0Z"/>
+            </g>
 
-            {/* Left pair — original triangles */}
-            <polygon points="2,22 10,6 10,22"  fill="#6366f1" opacity="1" />
-            <polygon points="2,22 10,22 6,28"  fill="#818cf8" opacity="1" />
+            <g>
+                <polygon fill="#33658a" points="82.66 75 137.4 43.4 137.4 106.6 82.66 75"/>
+                <path d="M134.9,47.73v54.54l-47.23-27.27,47.23-27.27M139.9,39.07l-62.23,35.93,62.23,35.93V39.07h0Z"/>
+            </g>
 
-            {/* Ghost mid-reflection — halfway between left and right */}
-            <polygon points="8,22 16,6 16,22"  fill="#6366f1" opacity="0.2" />
-            <polygon points="8,22 16,22 12,28" fill="#818cf8" opacity="0.2" />
+            <g opacity="0.2">
+                <polygon fill="#f26419" points="16.71 36.85 71.44 5.25 71.44 68.45 16.71 36.85"/>
+                <path d="M68.94,9.58v54.54l-47.23-27.27,47.23-27.27M73.94.92L11.71,36.85l62.23,35.93V.92h0Z"/>
+            </g>
 
-            {/* Right pair — reflected triangles */}
-            <polygon points="26,22 18,6 18,22"  fill="#6366f1" opacity="1" />
-            <polygon points="26,22 18,22 22,28" fill="#818cf8" opacity="1" />
+            <g>
+                <polygon fill="#f26419" points="16.71 113.15 71.44 81.55 71.44 144.75 16.71 113.15"/>
+                <path d="M68.94,85.88v54.54l-47.23-27.27,47.23-27.27M73.94,77.22L11.71,113.15l62.23,35.93v-71.86h0Z"/>
+            </g>
 
+            <g opacity="0.2">
+                <polygon fill="#f26419" points="12.6 43.4 67.34 75 12.6 106.6 12.6 43.4"/>
+                <path d="M15.1,47.73l47.23,27.27-47.23,27.27v-54.54M10.1,39.07v71.86l62.23-35.93L10.1,39.07h0Z"/>
+            </g>
         </svg>
     )
 }

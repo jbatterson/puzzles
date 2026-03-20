@@ -1,35 +1,73 @@
 import React from 'react'
 
-export default function CluelessIcon({ size = 28 }) {
+export default function Icon({ size = 28, className = '' }) {
     return (
-        <svg width={size} height={size} viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
-            {/* Grid background */}
-            <rect width="150" height="150" fill="#ffffff" />
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 150 150"
+            className={className}
+            xmlns="http://www.w3.org/2000/svg"
+        >
+            <rect
+                x="12.6"
+                y="12.08"
+                width="41.36"
+                height="41.36"
+                transform="translate(66.04 -.52) rotate(90)"
+                fill="#f6ae2d"
+                stroke="#000"
+                strokeWidth="5"
+                strokeMiterlimit="3"
+            />
 
-            {/* Blocked cells (black) — corners of the inner 2-step grid */}
-            <rect x="50" y="50" width="50" height="50" fill="#111111" />
+            <rect
+                x="96.04"
+                y="12.08"
+                width="41.36"
+                height="41.36"
+                transform="translate(149.48 -83.96) rotate(90)"
+                fill="#f6ae2d"
+                stroke="#000"
+                strokeWidth="5"
+                strokeMiterlimit="3"
+            />
 
-            {/* Clue cells (light gray) — even/odd positions */}
-            {/* Row 0 */}
-            <rect x="50"  y="0"   width="50" height="50" fill="#e5e5e5" />
-            {/* Row 2 */}
-            <rect x="50"  y="100" width="50" height="50" fill="#e5e5e5" />
-            {/* Col 0 */}
-            <rect x="0"   y="50"  width="50" height="50" fill="#e5e5e5" />
-            {/* Col 2 */}
-            <rect x="100" y="50"  width="50" height="50" fill="#e5e5e5" />
+            {/* center square (black via default fill) */}
+            <rect
+                x="54.32"
+                y="53.8"
+                width="41.36"
+                height="41.36"
+                transform="translate(149.48 -.52) rotate(90)"
+                stroke="#000"
+                strokeWidth="5"
+                strokeMiterlimit="3"
+            />
 
-            {/* Input cells (yellow) — the 4 corners */}
-            <rect x="0"   y="0"   width="50" height="50" fill="#FFD600" />
-            <rect x="100" y="0"   width="50" height="50" fill="#FFD600" />
-            <rect x="0"   y="100" width="50" height="50" fill="#FFD600" />
-            <rect x="100" y="100" width="50" height="50" fill="#FFD600" />
+            <rect
+                x="12.6"
+                y="95.51"
+                width="41.36"
+                height="41.36"
+                transform="translate(149.48 82.91) rotate(90)"
+                fill="#f6ae2d"
+                stroke="#000"
+                strokeWidth="5"
+                strokeMiterlimit="3"
+            />
 
-            {/* Grid lines */}
-            <line x1="50"  y1="0"   x2="50"  y2="150" stroke="#111" strokeWidth="4" />
-            <line x1="100" y1="0"   x2="100" y2="150" stroke="#111" strokeWidth="4" />
-            <line x1="0"   y1="50"  x2="150" y2="50"  stroke="#111" strokeWidth="4" />
-            <line x1="0"   y1="100" x2="150" y2="100" stroke="#111" strokeWidth="4" />
+            <rect
+                x="96.04"
+                y="95.51"
+                width="41.36"
+                height="41.36"
+                transform="translate(232.91 -.52) rotate(90)"
+                fill="#f6ae2d"
+                stroke="#000"
+                strokeWidth="5"
+                strokeMiterlimit="3"
+            />
         </svg>
     )
 }
