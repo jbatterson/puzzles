@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import puzzles from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
+import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
 
@@ -783,40 +784,23 @@ export default function CluelessGame() {
                             fontSize: '22px', fontWeight: 900, cursor: 'pointer',
                         }}>✕</button>
 
-                        <h1 className="title" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Clueless</h1>
-
-                        <p style={{ fontSize: '1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                            Six five-letter words fill the grid — three across and three down.
-                        </p>
-                        <p style={{ fontSize: '1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                            Each yellow cell is shared by one across word and one down word. Use <strong>CHECK</strong> to lock in correct letters after each submit. Try to complete in as few checks as possible — your check count is saved when you finish.
-                        </p>
-
-                        {/* Mini grid example */}
-                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(5, 28px)',
-                                gridTemplateRows: 'repeat(5, 28px)',
-                                boxShadow: '0 0 0 2px #000',
-                                borderRadius: '2px',
-                            }}>
-                                {Array.from({ length: 25 }, (_, i) => {
-                                    const r = Math.floor(i / 5), c = i % 5
-                                    const key = `${r},${c}`
-                                    let bg = '#f5f5f5', content = '·'
-                                    if (BLOCKED.has(key)) { bg = '#000'; content = '' }
-                                    else if (r % 2 === 0 && c % 2 === 0) { bg = 'var(--yellow)'; content = '?' }
-                                    return (
-                                        <div key={key} style={{
-                                            border: '1px solid #000',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            background: bg,
-                                            fontSize: '11px', fontWeight: 900,
-                                        }}>{content}</div>
-                                    )
-                                })}
+                        <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Clueless</h1>
+                        <div style={{ flex: 1, textAlign: 'center' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                                <CluelessIcon size={80} />
                             </div>
+                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
+                                Six <strong>common</strong> five-letter words fill each grid — three across and three down.
+                            </p>
+                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
+                                Fill every blank to guess each word. You may use letters that do not create real words in your guesses to gain information.
+                            </p>
+                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
+                                When every blank is filled, use the <strong>CHECK</strong> button to reveal which letters are correct.
+                            </p>
+                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+                                Some puzzles have shared letters that can be completed in more than one way. In each case, the puzzle uses the letter that creates the most commonly used words.
+                            </p>
                         </div>
 
                         <button className="btn-primary" onClick={closeInstructions}>Play</button>

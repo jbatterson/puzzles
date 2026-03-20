@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import puzzleData from './puzzles.js'
+import { fillColor } from './palette.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import FoldsIcon from '../../src/shared/icons/FoldsIcon.jsx'
@@ -480,11 +481,12 @@ const App = () => {
                             {ALL_TRIANGLES.map(t => <polygon key={t.key} points={pts(t.r, t.c)} fill="none" stroke="#f1f5f9" strokeWidth="1.5" />)}
                             {Object.entries(puzzle.target).map(([k, col]) => {
                                 const [r, c] = k.split(',').map(Number)
-                                return <polygon key={`t-${k}`} points={pts(r, c)} fill={col} opacity="0.1" stroke={col} strokeWidth="2" />
+                                const hex = fillColor(col)
+                                return <polygon key={`t-${k}`} points={pts(r, c)} fill={hex} opacity="0.1" stroke={hex} strokeWidth="2" />
                             })}
                             {Object.entries(board).map(([k, col]) => {
                                 const [r, c] = k.split(',').map(Number)
-                                return <polygon key={`b-${k}`} points={pts(r, c)} fill={col} className={isWon ? 'pulse-win' : ''} style={{ transformOrigin: `${cent(r,c).x}px ${cent(r,c).y}px` }} />
+                                return <polygon key={`b-${k}`} points={pts(r, c)} fill={fillColor(col)} className={isWon ? 'pulse-win' : ''} style={{ transformOrigin: `${cent(r,c).x}px ${cent(r,c).y}px` }} />
                             })}
                             {anim && (
                                 <g transform={`matrix(${1 + easeIO(anim.rawT) * (Math.cos(2 * anim.line.theta) - 1)} ${easeIO(anim.rawT) * Math.sin(2 * anim.line.theta)} ${easeIO(anim.rawT) * Math.sin(2 * anim.line.theta)} ${1 - easeIO(anim.rawT) * (1 + Math.cos(2 * anim.line.theta))} ${easeIO(anim.rawT) * (anim.line.px * (1 - Math.cos(2 * anim.line.theta)) - anim.line.py * Math.sin(2 * anim.line.theta))} ${easeIO(anim.rawT) * (anim.line.py * (1 + Math.cos(2 * anim.line.theta)) - anim.line.px * Math.sin(2 * anim.line.theta))})`}>
@@ -493,7 +495,7 @@ const App = () => {
                                         const fadeT = easeIO(anim.rawT)
                                         const isLost = !!anim.lostKeys?.[key]
                                         const opacity = isLost ? 0.5 * (1 - fadeT) : 0.5
-                                        return <polygon key={`a-${key}`} points={pts(r, c)} fill={col} opacity={opacity} />
+                                        return <polygon key={`a-${key}`} points={pts(r, c)} fill={fillColor(col)} opacity={opacity} />
                                     })}
                                 </g>
                             )}

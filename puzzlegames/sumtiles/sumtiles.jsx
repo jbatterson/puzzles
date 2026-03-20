@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
+import { tileGameFillColor } from '../../src/shared/tileGamePalette.js'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SumTilesIcon from '../../src/shared/icons/SumTilesIcon.jsx'
 
@@ -160,15 +161,6 @@ function allowedAxes(t) {
     if (t.w > t.h) return { h: true, v: false }
     if (t.h > t.w) return { h: false, v: true }
     return { h: true, v: true }
-}
-
-function tileColor(t) {
-    if (t.w === 2 && t.h === 2) return '#1e3a8a'
-    if (t.w === 3 && t.h === 1) return '#16a34a'
-    if (t.w === 1 && t.h === 3) return '#dc2626'
-    if (t.w === 2 && t.h === 1) return '#f59e0b'
-    if (t.w === 1 && t.h === 2) return '#8b5cf6'
-    return '#3b82f6'
 }
 
 function parseTile(raw, id, gridSize) {
@@ -428,7 +420,7 @@ export default function SumTiles() {
                     const tx = t.c*gs+(t.w*gs)/2, ty = t.r*gs+(t.h*gs)/2
                     t.x += (tx-t.x)*SNAP_SPEED; t.y += (ty-t.y)*SNAP_SPEED
                 }
-                ctx.fillStyle = tileColor(t)
+                ctx.fillStyle = tileGameFillColor(t)
                 ctx.beginPath()
                 ctx.roundRect(t.x-(t.w*gs-8)/2, t.y-(t.h*gs-8)/2, t.w*gs-8, t.h*gs-8, 6)
                 ctx.fill()

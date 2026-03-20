@@ -37,7 +37,7 @@ export default function Icon({ size = 28, className = '' }) {
                     y="10.73"
                     width="128.99"
                     height="58.3"
-                    fill="#f6ae2d"
+                    fill="#f26419"
                 />
                 <path d="M136.99,13.23v53.3H13.01V13.23h123.99M141.99,8.23H8.01v63.3h133.99V8.23h0Z"/>
             </g>
