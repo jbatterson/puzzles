@@ -219,6 +219,152 @@ function getPuzzleData(p, difficulty) {
 
 const KB_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm']
 
+/** Red cell when current guess is a letter already ruled wrong for this cell (persists with triedLettersByCell). */
+function cellGuessShowsWrong(cellKey, locked, guesses, triedLettersByCell) {
+    if (locked.has(cellKey)) return false
+    const g = guesses[cellKey]
+    if (!g) return false
+    return (triedLettersByCell[cellKey] || []).includes(g)
+}
+
+function firstUnlockedInputIndex(inputOrder, locked) {
+    for (let i = 0; i < inputOrder.length; i++) {
+        const { r, c } = inputOrder[i]
+        if (!locked.has(`${r},${c}`)) return i
+    }
+    return -1
+}
+
+/** Clue letters outside the active row/column band. */
+const CLUELESS_CLUE_FONT = 'clamp(1rem, 4vw, 1.5rem)'
+/** Matches input cells; active-band clues use this so they read at the same scale. */
+const CLUELESS_INPUT_FONT = 'clamp(1.2rem, 5vw, 2rem)'
+
+/** Next/prev typeable cell index in `inputOrder`, wrapping; +1 forward, -1 back. */
+function nextUnlockedNavIndex(inputOrder, locked, fromIdx, delta) {
+    const unlocked = []
+    for (let i = 0; i < inputOrder.length; i++) {
+        const { r, c } = inputOrder[i]
+        if (!locked.has(`${r},${c}`)) unlocked.push(i)
+    }
+    if (unlocked.length === 0) return null
+    const pos = unlocked.indexOf(fromIdx)
+    if (pos < 0) return unlocked[delta > 0 ? 0 : unlocked.length - 1]
+    const nextPos = (pos + delta + unlocked.length) % unlocked.length
+    return unlocked[nextPos]
+}
+
+const GRID_LINES = [0, 2, 4]
+
+function inputIndicesInRow(inputOrder, r) {
+    return inputOrder
+        .map((p, i) => ({ ...p, i }))
+        .filter(p => p.r === r)
+        .sort((a, b) => a.c - b.c)
+        .map(p => p.i)
+}
+
+function inputIndicesInCol(inputOrder, c) {
+    return inputOrder
+        .map((p, i) => ({ ...p, i }))
+        .filter(p => p.c === c)
+        .sort((a, b) => a.r - b.r)
+        .map(p => p.i)
+}
+
+function nextLineRow(r) {
+    const idx = GRID_LINES.indexOf(r)
+    const i = idx >= 0 ? idx : 0
+    return GRID_LINES[(i + 1) % GRID_LINES.length]
+}
+
+function prevLineRow(r) {
+    const idx = GRID_LINES.indexOf(r)
+    const i = idx >= 0 ? idx : 0
+    return GRID_LINES[(i - 1 + GRID_LINES.length) % GRID_LINES.length]
+}
+
+function nextLineCol(c) {
+    return nextLineRow(c)
+}
+
+function prevLineCol(c) {
+    return prevLineRow(c)
+}
+
+function cellUnlocked(inputOrder, idx, locked) {
+    const { r, c } = inputOrder[idx]
+    return !locked.has(`${r},${c}`)
+}
+
+/** Next unlocked cell: along row/col, then first unlocked of next grid line (0→2→4→0). */
+function advanceAlongAxis(fromIdx, axisMode, inputOrder, locked) {
+    if (fromIdx < 0 || fromIdx >= inputOrder.length) return fromIdx
+
+    if (axisMode === 'row') {
+        const { r } = inputOrder[fromIdx]
+        const sameRow = inputIndicesInRow(inputOrder, r).filter(i => cellUnlocked(inputOrder, i, locked))
+        const pos = sameRow.indexOf(fromIdx)
+        if (pos >= 0 && pos + 1 < sameRow.length) return sameRow[pos + 1]
+        if (pos < 0 && sameRow.length > 0) return sameRow[0]
+
+        let lineR = r
+        for (let step = 0; step < GRID_LINES.length; step++) {
+            lineR = nextLineRow(lineR)
+            const chain = inputIndicesInRow(inputOrder, lineR).filter(i => cellUnlocked(inputOrder, i, locked))
+            if (chain.length > 0) return chain[0]
+        }
+        return fromIdx
+    }
+
+    const { c } = inputOrder[fromIdx]
+    const sameCol = inputIndicesInCol(inputOrder, c).filter(i => cellUnlocked(inputOrder, i, locked))
+    const posC = sameCol.indexOf(fromIdx)
+    if (posC >= 0 && posC + 1 < sameCol.length) return sameCol[posC + 1]
+    if (posC < 0 && sameCol.length > 0) return sameCol[0]
+
+    let lineC = c
+    for (let step = 0; step < GRID_LINES.length; step++) {
+        lineC = nextLineCol(lineC)
+        const chain = inputIndicesInCol(inputOrder, lineC).filter(i => cellUnlocked(inputOrder, i, locked))
+        if (chain.length > 0) return chain[0]
+    }
+    return fromIdx
+}
+
+/** Previous unlocked along axis; previous grid line’s last unlocked when at start of line. */
+function retreatAlongAxis(fromIdx, axisMode, inputOrder, locked) {
+    if (fromIdx < 0 || fromIdx >= inputOrder.length) return null
+
+    if (axisMode === 'row') {
+        const { r } = inputOrder[fromIdx]
+        const sameRow = inputIndicesInRow(inputOrder, r).filter(i => cellUnlocked(inputOrder, i, locked))
+        const pos = sameRow.indexOf(fromIdx)
+        if (pos > 0) return sameRow[pos - 1]
+
+        let lineR = r
+        for (let step = 0; step < GRID_LINES.length; step++) {
+            lineR = prevLineRow(lineR)
+            const chain = inputIndicesInRow(inputOrder, lineR).filter(i => cellUnlocked(inputOrder, i, locked))
+            if (chain.length > 0) return chain[chain.length - 1]
+        }
+        return null
+    }
+
+    const { c } = inputOrder[fromIdx]
+    const sameCol = inputIndicesInCol(inputOrder, c).filter(i => cellUnlocked(inputOrder, i, locked))
+    const posC = sameCol.indexOf(fromIdx)
+    if (posC > 0) return sameCol[posC - 1]
+
+    let lineC = c
+    for (let step = 0; step < GRID_LINES.length; step++) {
+        lineC = prevLineCol(lineC)
+        const chain = inputIndicesInCol(inputOrder, lineC).filter(i => cellUnlocked(inputOrder, i, locked))
+        if (chain.length > 0) return chain[chain.length - 1]
+    }
+    return null
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function CluelessGame() {
@@ -233,6 +379,7 @@ export default function CluelessGame() {
     const { clues, answers } = useMemo(() => getPuzzleData(daily.puzzle, difficulty), [daily, difficulty])
 
     const usedHintRef = useRef(false)
+    const selectedRef = useRef(-1)
 
     const geometry = useMemo(() => {
         const clueCells = new Set()
@@ -263,14 +410,16 @@ export default function CluelessGame() {
     // Puzzle state (loaded per difficulty via effect below)
     const [guesses, setGuesses] = useState({})
     const [locked, setLocked] = useState(new Set())
-    const [wrongCells, setWrongCells] = useState(new Set())
     const [triedLettersByCell, setTriedLettersByCell] = useState({})
-    const [selected, setSelected] = useState(0)
+    const [selected, setSelected] = useState(-1)
     const [guessCount, setGuessCount] = useState(0)
     const [solved, setSolved] = useState(false)
     const [statusMsg, setStatusMsg] = useState('')
     const [selectionHighlighted, setSelectionHighlighted] = useState(true)
+    const [axisMode, setAxisMode] = useState('row')
     const [bestAttempts, setBestAttempts] = useState(null)
+
+    selectedRef.current = selected
 
     const attemptsByDiff = useMemo(() => {
         const arr = DIFFS.map(d => (d === difficulty ? bestAttempts : loadBestAttempts(daily.key, d)))
@@ -288,19 +437,26 @@ export default function CluelessGame() {
         const saved = loadGameState(daily.key, difficulty, ALL_PLAYABLE_KEYS)
         const best = loadBestAttempts(daily.key, difficulty)
 
+        let nextLocked = new Set()
+        let nextSolved = false
+
         if (saved) {
+            nextLocked = new Set(saved.locked || [])
             setGuesses(saved.guesses || {})
-            setLocked(new Set(saved.locked || []))
+            setLocked(nextLocked)
             setGuessCount(typeof saved.guessCount === 'number' ? saved.guessCount : 0)
-            setSolved(!!saved.solved)
+            nextSolved = !!saved.solved
+            setSolved(nextSolved)
             setTriedLettersByCell(saved.triedLettersByCell || {})
             setBestAttempts(best)
         } else if (best != null) {
             const revealed = {}
             for (const { r, c } of geometry.inputOrder) revealed[`${r},${c}`] = answers[`${r},${c}`]
+            nextLocked = new Set(geometry.inputOrder.map(({ r, c }) => `${r},${c}`))
             setGuesses(revealed)
-            setLocked(new Set(geometry.inputOrder.map(({ r, c }) => `${r},${c}`)))
+            setLocked(nextLocked)
             setGuessCount(best)
+            nextSolved = true
             setSolved(true)
             setTriedLettersByCell({})
             setBestAttempts(best)
@@ -313,8 +469,9 @@ export default function CluelessGame() {
             setBestAttempts(null)
         }
 
-        setWrongCells(new Set())
-        setSelected(0)
+        const nextSel = nextSolved ? -1 : firstUnlockedInputIndex(geometry.inputOrder, nextLocked)
+        setSelected(nextSel)
+        setAxisMode('row')
         setSelectionHighlighted(true)
         setStatusMsg('')
     }, [daily.key, difficulty, geometry.inputOrder, answers])
@@ -342,22 +499,22 @@ export default function CluelessGame() {
 
     // ── Input handling ─────────────────────────────────────────────────────
 
-    const advanceSelection = useCallback((fromIdx) => {
-        let next = fromIdx + 1
-        while (next < geometry.inputOrder.length) {
-            const { r, c } = geometry.inputOrder[next]
-            if (!locked.has(`${r},${c}`)) { setSelected(next); return }
-            next++
-        }
-        // wrap to first unlocked
-        for (let i = 0; i < geometry.inputOrder.length; i++) {
-            const { r, c } = geometry.inputOrder[i]
-            if (!locked.has(`${r},${c}`)) { setSelected(i); return }
-        }
-    }, [geometry.inputOrder, locked])
+    const advanceAfterType = useCallback((fromIdx) => {
+        setSelected(advanceAlongAxis(fromIdx, axisMode, geometry.inputOrder, locked))
+    }, [axisMode, geometry.inputOrder, locked])
+
+    const navigateUnlockedCell = useCallback((delta) => {
+        if (solved) return
+        const next = nextUnlockedNavIndex(geometry.inputOrder, locked, selected, delta)
+        if (next == null) return
+        if (next !== selected) setAxisMode('row')
+        setSelected(next)
+        setSelectionHighlighted(true)
+    }, [solved, geometry.inputOrder, locked, selected])
 
     const handleKey = useCallback((key) => {
         if (solved) return
+        if (selected < 0 || selected >= geometry.inputOrder.length) return
 
         if (key === 'Backspace') {
             const pos = geometry.inputOrder[selected]
@@ -365,15 +522,12 @@ export default function CluelessGame() {
             if (locked.has(k)) return
             if (guesses[k]) {
                 setGuesses(prev => { const g = { ...prev }; delete g[k]; return g })
-                setWrongCells(prev => { const s = new Set(prev); s.delete(k); return s })
-            } else if (selected > 0) {
-                let prev = selected - 1
-                while (prev >= 0 && locked.has(`${geometry.inputOrder[prev].r},${geometry.inputOrder[prev].c}`)) prev--
-                if (prev >= 0) {
-                    setSelected(prev)
-                    const pk = `${geometry.inputOrder[prev].r},${geometry.inputOrder[prev].c}`
+            } else {
+                const prevIdx = retreatAlongAxis(selected, axisMode, geometry.inputOrder, locked)
+                if (prevIdx != null) {
+                    setSelected(prevIdx)
+                    const pk = `${geometry.inputOrder[prevIdx].r},${geometry.inputOrder[prevIdx].c}`
                     setGuesses(g => { const ng = { ...g }; delete ng[pk]; return ng })
-                    setWrongCells(s => { const ns = new Set(s); ns.delete(pk); return ns })
                 }
             }
             return
@@ -384,30 +538,37 @@ export default function CluelessGame() {
             const k = `${pos.r},${pos.c}`
             if (locked.has(k)) return
             const letter = key.toLowerCase()
-            const triedInCell = triedLettersByCell[k] || []
-            const isKnownWrong = triedInCell.includes(letter)
             setGuesses(prev => ({ ...prev, [k]: letter }))
-            setWrongCells(prev => {
-                const s = new Set(prev)
-                if (isKnownWrong) s.add(k)
-                else s.delete(k)
-                return s
-            })
-            advanceSelection(selected)
+            advanceAfterType(selected)
         }
-    }, [solved, geometry.inputOrder, selected, guesses, locked, advanceSelection, triedLettersByCell])
+    }, [solved, geometry.inputOrder, selected, axisMode, guesses, locked, advanceAfterType, triedLettersByCell])
 
     // Physical keyboard
     useEffect(() => {
         if (showInstructions) return
         const handler = (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault()
+                navigateUnlockedCell(e.shiftKey ? -1 : 1)
+                return
+            }
+            if (e.key === 'ArrowRight') {
+                e.preventDefault()
+                navigateUnlockedCell(1)
+                return
+            }
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault()
+                navigateUnlockedCell(-1)
+                return
+            }
             if (e.key === 'Backspace') { e.preventDefault(); handleKey('Backspace') }
             else if (e.key === 'Enter') { e.preventDefault(); checkAnswer() }
             else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key)
         }
         window.addEventListener('keydown', handler)
         return () => window.removeEventListener('keydown', handler)
-    }, [showInstructions, handleKey])  // checkAnswer added via ref below
+    }, [showInstructions, handleKey, navigateUnlockedCell])  // checkAnswer added via ref below
 
     // ── Check answer ───────────────────────────────────────────────────────
 
@@ -441,7 +602,6 @@ export default function CluelessGame() {
 
         const newLocked = new Set([...locked, ...newCorrect])
         setLocked(newLocked)
-        setWrongCells(new Set(newWrong))
 
         if (newWrong.length === 0) {
             // All correct!
@@ -449,6 +609,7 @@ export default function CluelessGame() {
             markComplete(daily.key, difficulty, attemptsUsed)
             setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
             setSolved(true)
+            setSelected(-1)
             setStatusMsg('')
         } else {
             setStatusMsg('Not quite — try again')
@@ -467,7 +628,10 @@ export default function CluelessGame() {
             })
             // Move selection to first wrong cell
             const firstWrongIdx = geometry.inputOrder.findIndex(({ r, c }) => newWrong.includes(`${r},${c}`))
-            if (firstWrongIdx >= 0) setSelected(firstWrongIdx)
+            if (firstWrongIdx >= 0) {
+                setSelected(firstWrongIdx)
+                setAxisMode('row')
+            }
         }
     }, [solved, geometry.inputOrder, guessCount, guesses, locked, answers, daily.key, difficulty])
 
@@ -480,7 +644,12 @@ export default function CluelessGame() {
         const { r, c } = geometry.inputOrder[idx]
         if (locked.has(`${r},${c}`)) return
         setSelectionHighlighted(true)
-        setSelected(idx)
+        if (selectedRef.current === idx) {
+            setAxisMode(m => (m === 'row' ? 'col' : 'row'))
+        } else {
+            setAxisMode('row')
+            setSelected(idx)
+        }
     }, [solved, geometry.inputOrder, locked])
 
     // ── Render helpers ─────────────────────────────────────────────────────
@@ -498,12 +667,21 @@ export default function CluelessGame() {
         : null
     const triedInSelected = selectedKey ? (triedLettersByCell[selectedKey] || []) : []
 
+    const selPos = !solved && selected >= 0 && selected < geometry.inputOrder.length
+        ? geometry.inputOrder[selected]
+        : null
+
     // ── Grid cells ─────────────────────────────────────────────────────────
 
     const cells = []
     for (let r = 0; r < 5; r++) {
         for (let c = 0; c < 5; c++) {
             const key = `${r},${c}`
+
+            const inBand = selPos != null && (
+                (axisMode === 'row' && r === selPos.r) ||
+                (axisMode === 'col' && c === selPos.c)
+            )
 
             if (BLOCKED.has(key)) {
                 cells.push(
@@ -522,9 +700,11 @@ export default function CluelessGame() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: '#f5f5f5',
+                        background: '#E5E5E5',
+                        color: inBand ? '#000' : '#5c5c5c',
                         fontWeight: 900,
-                        fontSize: 'clamp(1rem, 4vw, 1.5rem)',
+                        fontSize: inBand ? CLUELESS_INPUT_FONT : CLUELESS_CLUE_FONT,
+                        transition: 'font-size 0.15s ease',
                         textTransform: 'uppercase',
                     }}>
                         {clues[key] || ''}
@@ -537,13 +717,14 @@ export default function CluelessGame() {
             const idx = geometry.inputOrder.findIndex(p => p.r === r && p.c === c)
             const isSelected = idx === selected && !solved
             const isLocked = locked.has(key)
-            const isWrong = wrongCells.has(key)
+            const isWrong = cellGuessShowsWrong(key, locked, guesses, triedLettersByCell)
             const letter = guesses[key] || ''
 
             let bg = '#fff'
             let color = '#000'
             if (isLocked) { bg = '#c6f6d5'; color = '#15803d' }
             else if (isWrong) { bg = '#fed7d7'; color = '#b91c1c' }
+            if (inBand) color = '#000'
 
             const showActiveOutline = isSelected && selectionHighlighted
 
@@ -552,15 +733,15 @@ export default function CluelessGame() {
                     onClick={() => selectCell(idx)}
                     style={{
                         border: '1px solid #000',
-                        outline: showActiveOutline ? '4px solid #6366f1' : 'none',
-                        outlineOffset: showActiveOutline ? '-4px' : undefined,
+                        outline: showActiveOutline ? '6px solid #f6ae2d' : 'none',
+                        outlineOffset: showActiveOutline ? '-6px' : undefined,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: bg,
                         color,
                         fontWeight: 900,
-                        fontSize: 'clamp(1.2rem, 5vw, 2rem)',
+                        fontSize: CLUELESS_INPUT_FONT,
                         textTransform: 'uppercase',
                         cursor: solved ? 'default' : 'pointer',
                         transition: 'background 0.15s',
