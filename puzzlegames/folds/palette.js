@@ -2,7 +2,7 @@
 export const FOLDS_PALETTE = {
     red: '#ff3b30',
     green: '#398a33',
-    blue: '#33658a',
+    dkblue: '#2f4858',
     purple: '#84338a',
     amber: '#f26419',
 }

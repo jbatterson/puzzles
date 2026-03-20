@@ -799,7 +799,7 @@ export default function CluelessGame() {
                                 When every blank is filled, use the <strong>CHECK</strong> button to reveal which letters are correct.
                             </p>
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                                Some puzzles have shared letters that can be completed in more than one way. In each case, the puzzle uses the letter that creates the most commonly used words.
+                                Some puzzles have shared letters that can be completed in more than one way. In each case, the puzzle uses the letter that creates the most common pair.
                             </p>
                         </div>
 

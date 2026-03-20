@@ -482,7 +482,7 @@ const App = () => {
                             {Object.entries(puzzle.target).map(([k, col]) => {
                                 const [r, c] = k.split(',').map(Number)
                                 const hex = fillColor(col)
-                                return <polygon key={`t-${k}`} points={pts(r, c)} fill={hex} opacity="0.1" stroke={hex} strokeWidth="2" />
+                                return <polygon key={`t-${k}`} points={pts(r, c)} fill={hex} opacity="0.15" stroke={hex} strokeWidth="2" />
                             })}
                             {Object.entries(board).map(([k, col]) => {
                                 const [r, c] = k.split(',').map(Number)
