@@ -13,15 +13,16 @@ export const TILE_GAME_PALETTE = {
     dkamber: '#C64D0C',
 
     red: '#ff3b30',
+    dkred: '#a30800',
 
 }
 
 const SHAPE_TO_TOKEN = {
-    '2,2': 'dkblue',
-    '3,1': 'purple',
+    '2,2': 'dkred',
+    '3,1': 'ltpurple',
     '1,3': 'ltpurple',
     '2,1': 'amber',
-    '1,2': 'dkamber',
+    '1,2': 'amber',
 }
 
 /** Resolve a palette token to hex (hex strings pass through). */
