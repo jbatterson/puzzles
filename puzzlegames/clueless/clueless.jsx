@@ -422,18 +422,11 @@ export default function CluelessGame() {
     selectedRef.current = selected
 
     const attemptsByDiff = useMemo(() => {
-        const arr = DIFFS.map(d => (d === difficulty ? bestAttempts : loadBestAttempts(daily.key, d)))
-        // #region agent log
-        fetch('http://127.0.0.1:7789/ingest/c63c0e1a-4721-4866-a60f-d01a6afe7afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b390e2'},body:JSON.stringify({sessionId:'b390e2',runId:'pre-fix',hypothesisId:'H1',location:'clueless.jsx:attemptsByDiff',message:'Computed attemptsByDiff',data:{difficulty,dailyKey:daily.key,bestAttempts,attemptsByDiff:arr},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        return arr
+        return DIFFS.map(d => (d === difficulty ? bestAttempts : loadBestAttempts(daily.key, d)))
     }, [daily.key, difficulty, bestAttempts])
 
     // Load/restore state whenever difficulty changes
     useEffect(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7789/ingest/c63c0e1a-4721-4866-a60f-d01a6afe7afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b390e2'},body:JSON.stringify({sessionId:'b390e2',runId:'pre-fix',hypothesisId:'H2',location:'clueless.jsx:loadEffect',message:'Loading/restoring state for difficulty',data:{difficulty,dailyKey:daily.key,inputCount:geometry.inputOrder.length},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         const saved = loadGameState(daily.key, difficulty, ALL_PLAYABLE_KEYS)
         const best = loadBestAttempts(daily.key, difficulty)
 
@@ -660,6 +653,7 @@ export default function CluelessGame() {
     })
 
     const base = import.meta.env.BASE_URL
+    const nextUnsolvedIdx = [0, 1, 2].find(i => i !== difficultyIdx && attemptsByDiff[i] == null)
 
     // Letters already tried (wrong) in the selected cell, for keyboard highlighting
     const selectedKey = !solved && selected >= 0 && selected < geometry.inputOrder.length
@@ -857,7 +851,7 @@ export default function CluelessGame() {
                 </div>
             </div>
 
-            {/* KEYBOARD when playing; ALL PUZZLES when solved */}
+            {/* KEYBOARD when playing; next puzzle / hub when solved */}
             <div style={{
                 marginTop: '0.5rem',
                 display: 'flex',
@@ -869,10 +863,16 @@ export default function CluelessGame() {
                 flexShrink: 0,
             }}>
                 {solved ? (
-                    <a href={base} className="btn-primary"
-                        style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        All Puzzles
-                    </a>
+                    nextUnsolvedIdx !== undefined ? (
+                        <button type="button" className="btn-primary" onClick={() => setDifficultyIdx(nextUnsolvedIdx)}>
+                            Next Puzzle
+                        </button>
+                    ) : (
+                        <a href={base} className="btn-primary"
+                            style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            All Puzzles
+                        </a>
+                    )
                 ) : (
                 <>
                 {KB_ROWS.map((row, ri) => (
