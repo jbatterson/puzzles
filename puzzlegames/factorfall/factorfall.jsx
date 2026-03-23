@@ -710,7 +710,7 @@ const Factorfall = () => {
                 }))
                 if (gs.gameState === 'ANIMATING' && !moving) {
                     gs.gameState = 'SETTLING'
-                    setTimeout(() => checkMatches(gs), 700)
+                    setTimeout(() => checkMatches(gs), 50)
                 }
             }
 
