@@ -14,7 +14,9 @@ const GRID_LINE_W = 1.5
 const BORDER_W = 2
 const BORDER_COLOR = 'rgba(0,0,0,0.9)'
 const HIGHLIGHT_COLOR = '#ffecb3'
-const GRAVITY = 1.8, TERMINAL_VEL = 32
+/** Same as Productiles/Sum Tiles `.target.solved` in shared/style.css */
+const MATCH_POPUP_COLOR = '#22c55e'
+const GRAVITY = 1.2, TERMINAL_VEL = 16
 const ENDLESS_ROUND_SIZE = 7
 
 const TARGET_CONFIGS = {
@@ -415,7 +417,7 @@ const Factorfall = () => {
 
     function runHighlights(gs) {
         if (gs.highlightQueue.length === 0) {
-            setTimeout(() => popBalls(gs), 100)
+            setTimeout(() => popBalls(gs), 400)
             return
         }
         gs.activeHighlight = gs.highlightQueue.shift()
@@ -430,9 +432,10 @@ const Factorfall = () => {
         gs.floatingScores.push({
             x: c * cs + cs / 2,
             y: canvasH - (r * cs + cs),
-            val: gs.turnPops, life: 50
+            label: '=' + gs.target,
+            life: 50,
         })
-        setTimeout(() => runHighlights(gs), 400)
+        setTimeout(() => runHighlights(gs), 700)
     }
 
     function popBalls(gs) {
@@ -674,10 +677,14 @@ const Factorfall = () => {
             gs.floatingScores.forEach(fs => {
                 ctx.save()
                 ctx.globalAlpha = fs.life / 50
-                ctx.fillStyle = '#444'
                 ctx.font = `900 ${Math.round(cs * 0.32)}px Outfit`
                 ctx.textAlign = 'center'
-                ctx.fillText('+' + fs.val, fs.x, fs.y)
+                ctx.lineJoin = 'round'
+                ctx.lineWidth = Math.max(1, Math.round(cs * 0.05))
+                ctx.strokeStyle = '#fff'
+                ctx.strokeText(fs.label, fs.x, fs.y)
+                ctx.fillStyle = MATCH_POPUP_COLOR
+                ctx.fillText(fs.label, fs.x, fs.y)
                 ctx.restore()
                 fs.y -= 1
                 fs.life--
@@ -703,7 +710,7 @@ const Factorfall = () => {
                 }))
                 if (gs.gameState === 'ANIMATING' && !moving) {
                     gs.gameState = 'SETTLING'
-                    setTimeout(() => checkMatches(gs), 150)
+                    setTimeout(() => checkMatches(gs), 200)
                 }
             }
 
