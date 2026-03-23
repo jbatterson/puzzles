@@ -91,16 +91,23 @@ function loadCluelessAttempts(dateKey) {
 
 const MAX_STREAK_DAYS = 365
 
+/** True if at least one puzzle of this type was completed on that calendar day (PST). */
+function dayHasCompletion(gameKey, single, dateKey) {
+    return gameKey === 'clueless'
+        ? loadCluelessAttempts(dateKey).some(a => a != null)
+        : single
+            ? loadSingleCompletion(gameKey, dateKey)
+            : loadCompletions(gameKey, dateKey).some(Boolean)
+}
+
+/** Consecutive days with a completion, counting backward from today. Includes today when played today. */
 function getStreak(gameKey, single = false) {
+    const hasToday = dayHasCompletion(gameKey, single, getDateKey(0))
+    const startOffset = hasToday ? 0 : 1
     let count = 0
-    for (let dayOffset = 1; dayOffset <= MAX_STREAK_DAYS; dayOffset++) {
+    for (let dayOffset = startOffset; dayOffset <= MAX_STREAK_DAYS; dayOffset++) {
         const dateKey = getDateKey(dayOffset)
-        const hasCompletion = gameKey === 'clueless'
-            ? loadCluelessAttempts(dateKey).some(a => a != null)
-            : single
-                ? loadSingleCompletion(gameKey, dateKey)
-                : loadCompletions(gameKey, dateKey).some(Boolean)
-        if (hasCompletion) count++
+        if (dayHasCompletion(gameKey, single, dateKey)) count++
         else break
     }
     return count
@@ -321,15 +328,34 @@ export default function Home() {
         Object.fromEntries(GAMES.filter(g => g.single).map(g => [g.key, loadSingleFailed(g.key, dateKey)])),
     [dateKey])
 
+    const [streakRefresh, setStreakRefresh] = useState(0)
     const streaks = useMemo(() =>
         Object.fromEntries(GAMES.map(g => [g.key, getStreak(g.key, !!g.single)])),
-    [])
+    [dateKey, streakRefresh])
 
     const [shareToastKey, setShareToastKey] = useState(null)
     const [showInstructions, setShowInstructions] = useState(false)
     const toastTimeoutRef = useRef(null)
     React.useEffect(() => () => {
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+    }, [])
+
+    React.useEffect(() => {
+        const bumpStreaks = () => setStreakRefresh(n => n + 1)
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') bumpStreaks()
+        }
+        const onPageShow = (e) => {
+            if (e.persisted) bumpStreaks()
+        }
+        document.addEventListener('visibilitychange', onVisible)
+        window.addEventListener('pageshow', onPageShow)
+        window.addEventListener('storage', bumpStreaks)
+        return () => {
+            document.removeEventListener('visibilitychange', onVisible)
+            window.removeEventListener('pageshow', onPageShow)
+            window.removeEventListener('storage', bumpStreaks)
+        }
     }, [])
 
     const handleShare = useCallback((e, key) => {
@@ -598,7 +624,15 @@ export default function Home() {
                     font-weight: 900;
                     cursor: pointer;
                 }
-                .hp-modal-title { margin-bottom: 1.5rem; text-align: center; }
+                .hp-modal-title { margin-bottom: 0.75rem; text-align: center; }
+                .hp-modal-icons {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 1.5rem;
+                    margin-bottom: 1.25rem;
+                    flex-wrap: wrap;
+                }
                 .hp-modal-body { font-size: 1rem; line-height: 1.6; }
                 .hp-modal-body p { margin: 0 0 1rem; }
                 .hp-modal-body ul { margin: 0 0 1rem; padding-left: 1.25rem; }
@@ -688,18 +722,21 @@ export default function Home() {
                     <div className="hp-modal-content">
                         <button type="button" className="hp-modal-close" onClick={() => setShowInstructions(false)} aria-label="Close">✕</button>
                         <h2 className="hp-modal-title" style={{ fontSize: '1.5rem', fontWeight: 900 }}>Puzzle Info</h2>
+                        <div className="hp-modal-icons" aria-hidden>
+                            <BugIcon size={48} />
+                            <FoldsIcon size={48} />
+                            <SumTilesIcon size={48} />
+                        </div>
                         <div className="hp-modal-body">
-                            <p><strong>Puzzle order</strong> — Each day has three puzzles of each type listed in order from easiest to hardest. Clueless has one puzzle per day.</p>
-                            <p><strong>Box colors</strong> — On each card, the boxes show how you did on today&apos;s puzzles:</p>
+                            <p>Each day has three puzzles of each type listed in order from easiest to hardest.</p>
+                            <p><strong>Progress</strong> boxes show how you did on today&apos;s puzzles:</p>
                             <ul>
-                                <li><strong>Green with star</strong> — You completed the puzzle on your first try without using Clear (Scurry, Folds, Factorfall, Clueless).</li>
-                                <li><strong>Green with check</strong> — You completed the puzzle.</li>
-                                <li><strong>Gray</strong> — Not yet completed.</li>
+                                <li><strong>Green</strong> indicates completed puzzles. </li>
+                                <li><strong>Stars</strong> indicate you did not use undo or reset.</li>
+                                <li><strong>Numbers</strong> in completed tiles puzzles indicate the number of moves used.</li>
                             </ul>
-                            <p><strong>Tile games (Sum Tiles, Productiles)</strong> — A completed box is always green and shows the number of moves you used. You can replay to try to lower your move count.</p>
-                            <p><strong>Share</strong> — Use the <strong>Share</strong> button on a card to copy your results for that game to the clipboard. The button only appears when you have at least one completion for that day.</p>
-                            <p><strong>Streak</strong> — If shown, your streak is the number of consecutive days on which you completed at least one puzzle of that type.</p>
-                            <p>Tap a card to play that game&apos;s daily puzzles.</p>
+                            <p><strong>Share</strong> copies your results to the clipboard.</p>
+                            <p><strong>Streaks</strong> for each puzzle type are maintained by completing at least one puzzle daily.</p>
                         </div>
                     </div>
                 </div>

@@ -417,7 +417,7 @@ const Factorfall = () => {
 
     function runHighlights(gs) {
         if (gs.highlightQueue.length === 0) {
-            setTimeout(() => popBalls(gs), 400)
+            setTimeout(() => popBalls(gs), 100)
             return
         }
         gs.activeHighlight = gs.highlightQueue.shift()
@@ -710,7 +710,7 @@ const Factorfall = () => {
                 }))
                 if (gs.gameState === 'ANIMATING' && !moving) {
                     gs.gameState = 'SETTLING'
-                    setTimeout(() => checkMatches(gs), 200)
+                    setTimeout(() => checkMatches(gs), 700)
                 }
             }
 

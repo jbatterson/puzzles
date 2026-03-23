@@ -971,16 +971,13 @@ export default function CluelessGame() {
                                 <CluelessIcon size={80} />
                             </div>
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                                Six <strong>common</strong> five-letter words fill each grid — three across and three down.
+                                Six common five-letter words fill each grid — no plurals, proper nouns, or controversial words.
                             </p>
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                                Fill every blank to guess each word. You may use letters that do not create real words in your guesses to gain information.
-                            </p>
-                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                                When every blank is filled, use the <strong>CHECK</strong> button to reveal which letters are correct.
+                                Fill every blank and use the <strong>CHECK</strong> button to reveal which letters are correct.
                             </p>
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                                Some puzzles have shared letters that can be completed in more than one way. In each case, the puzzle uses the letter that creates the most common pair.
+                                If multiple letters can fill a blank, the puzzle uses the one that creates the most common pair.
                             </p>
                         </div>
 
