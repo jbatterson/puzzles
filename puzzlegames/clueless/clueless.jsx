@@ -971,7 +971,7 @@ export default function CluelessGame() {
                                 <CluelessIcon size={80} />
                             </div>
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                                Six common five-letter words fill each grid — no plurals, proper nouns, or controversial words.
+                            Each puzzle uses six common five-letter, classroom-appropriate words — no plurals, proper nouns, abbreviations, or acronyms. The third puzzle may include some less familiar words.
                             </p>
                             <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
                                 Fill every blank and use the <strong>CHECK</strong> button to reveal which letters are correct.
