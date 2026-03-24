@@ -83,6 +83,146 @@ function markComplete(dateKey, idx, isPerfect) {
     localStorage.setItem(key, isPerfect ? '2' : '1')
 }
 
+// ── In-progress game state (daily only) ─────────────────────────────────────
+const GAME_STATE_VERSION = 1
+
+function storageKeyGameState(dateKey, puzzleIndex) {
+    return `factorfall:${dateKey}:${puzzleIndex}:gameState`
+}
+
+function puzzleFingerprint(p) {
+    const boardStr = p.board.map(col => col.map(b => `${b.v}:${b.c}`).join(',')).join('|')
+    const queueStr = p.queue.map(b => `${b.v}:${b.c}`).join(',')
+    return `${p.target}:${boardStr}:${queueStr}`
+}
+
+function slimGrid(grid) {
+    return grid.map(col => col.map(b => ({ v: b.val, c: b.color })))
+}
+
+function gridFromSlim(cols, cs) {
+    const canvasH = (ROWS + 1) * cs
+    return cols.map((col, c) =>
+        col.map((b, r) => ({
+            val: b.v,
+            color: b.c,
+            x: c * cs + cs / 2,
+            y: canvasH - (r * cs + cs / 2),
+            targetY: canvasH - (r * cs + cs / 2),
+            vy: 0,
+        }))
+    )
+}
+
+function relayoutBallPositions(gs) {
+    const cs = gs.cellSize
+    const canvasH = (ROWS + 1) * cs
+    for (let c = 0; c < COLS; c++) {
+        if (!Array.isArray(gs.grid[c])) continue
+        gs.grid[c].forEach((b, r) => {
+            b.x = c * cs + cs / 2
+            const ty = canvasH - (r * cs + cs / 2)
+            b.targetY = ty
+            b.y = ty
+            b.vy = 0
+        })
+    }
+    if (gs.pendingBall && gs.queue.length > 0 && gs.gameState === 'READY') {
+        const b = gs.queue[0]
+        gs.pendingBall.val = b.v
+        gs.pendingBall.color = b.c
+        gs.pendingBall.y = cs / 2
+        gs.pendingBall.vy = 0
+        gs.pendingBall.x = gs.mouseX || (COLS * cs / 2)
+        gs.pendingBall.targetY = 0
+    }
+    for (let c = 0; c < gs.shiftingNewRow.length; c++) {
+        const b = gs.shiftingNewRow[c]
+        b.x = c * cs + cs / 2
+        b.y = canvasH + cs / 2
+        b.targetY = 0
+    }
+}
+
+function clearGameState(dateKey, puzzleIndex) {
+    try {
+        localStorage.removeItem(storageKeyGameState(dateKey, puzzleIndex))
+    } catch {
+        // ignore
+    }
+}
+
+function saveGameState(dateKey, puzzleIndex, puzzle, gs, usedUndoOrReset, ui) {
+    try {
+        if (!puzzle || gs.isEndless) return
+        const payload = {
+            version: GAME_STATE_VERSION,
+            fingerprint: puzzleFingerprint(puzzle),
+            target: gs.target,
+            isEndless: false,
+            grid: slimGrid(gs.grid),
+            queue: gs.queue.map(b => ({ v: b.v, c: b.c })),
+            gameState: gs.gameState,
+            mouseX: gs.mouseX,
+            score: gs.score,
+            history: gs.history.map(h => ({
+                grid: slimGrid(h.grid),
+                queue: h.queue.map(b => ({ v: b.v, c: b.c })),
+                score: h.score,
+            })),
+            usedUndoOrReset,
+            ui: {
+                boardCleared: ui.boardCleared,
+                gridFull: ui.gridFull,
+                outOfBalls: ui.outOfBalls,
+            },
+        }
+        localStorage.setItem(storageKeyGameState(dateKey, puzzleIndex), JSON.stringify(payload))
+    } catch {
+        // ignore
+    }
+}
+
+function loadGameState(dateKey, puzzleIndex, puzzle) {
+    try {
+        const raw = localStorage.getItem(storageKeyGameState(dateKey, puzzleIndex))
+        if (!raw) return null
+        const d = JSON.parse(raw)
+        if (!d || d.version !== GAME_STATE_VERSION) return null
+        if (d.fingerprint !== puzzleFingerprint(puzzle) || d.target !== puzzle.target) return null
+        if (d.isEndless) return null
+        if (!Array.isArray(d.grid) || d.grid.length !== COLS) return null
+        for (let c = 0; c < COLS; c++) {
+            const col = d.grid[c]
+            if (!Array.isArray(col) || col.length > ROWS) return null
+            for (const b of col) {
+                if (typeof b?.v !== 'number' || typeof b?.c !== 'string') return null
+            }
+        }
+        if (!Array.isArray(d.queue) || !d.queue.every(b => typeof b?.v === 'number' && typeof b?.c === 'string')) return null
+        if (d.gameState !== 'READY' && d.gameState !== 'GAMEOVER') return null
+        if (!d.ui || typeof d.ui.boardCleared !== 'boolean' || typeof d.ui.gridFull !== 'boolean' || typeof d.ui.outOfBalls !== 'boolean') return null
+        if (!Array.isArray(d.history)) return null
+        for (const h of d.history) {
+            if (!Array.isArray(h.grid) || h.grid.length !== COLS) return null
+            for (let c = 0; c < COLS; c++) {
+                const col = h.grid[c]
+                if (!Array.isArray(col) || col.length > ROWS) return null
+                for (const b of col) {
+                    if (typeof b?.v !== 'number' || typeof b?.c !== 'string') return null
+                }
+            }
+            if (!Array.isArray(h.queue) || typeof h.score !== 'number') return null
+            for (const b of h.queue) {
+                if (typeof b?.v !== 'number' || typeof b?.c !== 'string') return null
+            }
+        }
+        return d
+    } catch {
+        return null
+    }
+}
+
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
 function PuzzleBoxes({ current, completions, perfects, onChange }) {
     return (
@@ -175,12 +315,16 @@ const Factorfall = () => {
     })
 
     const dailyStateRef = useRef({ key: daily.key, dailyIdx, mode })
+    const dailyRef = useRef(daily)
+    const uiSnapshotRef = useRef({ boardCleared: false, gridFull: false, outOfBalls: false })
+    const persistDailyGameStateRef = useRef(() => {})
+
     useEffect(() => {
         dailyStateRef.current = { key: daily.key, dailyIdx, mode }
     }, [daily.key, dailyIdx, mode])
     useEffect(() => {
-        usedUndoOrResetRef.current = false
-    }, [daily.key, dailyIdx, mode])
+        dailyRef.current = daily
+    }, [daily])
 
     const [uiQueue, setUiQueue] = useState([])
     const [uiScore, setUiScore] = useState(0)
@@ -191,6 +335,10 @@ const Factorfall = () => {
     const [boardCleared, setBoardCleared] = useState(false)
     const [gridFull, setGridFull] = useState(false)
     const [outOfBalls, setOutOfBalls] = useState(false)
+
+    useEffect(() => {
+        uiSnapshotRef.current = { boardCleared, gridFull, outOfBalls }
+    }, [boardCleared, gridFull, outOfBalls])
 
     const allDailyDone = completions.every(Boolean)
 
@@ -235,10 +383,11 @@ const Factorfall = () => {
     }, [cellSize])
 
     // ── Init level ───────────────────────────────────────────────────────────
-    const initLevel = useCallback((puzzle) => {
+    function initLevel(puzzle, cs) {
         if (!puzzle) return
         const gs = gsRef.current
-        const cs = gs.cellSize
+        usedUndoOrResetRef.current = false
+        gs.cellSize = cs
         gs.history = []
         gs.score = 0
         gs.target = puzzle.target
@@ -272,12 +421,39 @@ const Factorfall = () => {
         setBoardCleared(false)
         setGridFull(false)
         setOutOfBalls(false)
-    }, [])
+    }
 
     useEffect(() => {
         const p = getPuzzle()
-        if (p) initLevel(p)
-    }, [getPuzzle, initLevel, cellSize])
+        if (!p) return
+        const cs = gsRef.current.cellSize
+        if (mode === 'daily') {
+            const saved = loadGameState(daily.key, dailyIdx, p)
+            if (saved) {
+                hydrateFromSaved(saved, p, cs)
+                return
+            }
+            clearGameState(daily.key, dailyIdx)
+        }
+        initLevel(p, cs)
+    }, [getPuzzle, mode, dailyIdx, tutorialIdx, daily.key])
+
+    useEffect(() => {
+        gsRef.current.cellSize = cellSize
+        relayoutBallPositions(gsRef.current)
+        setUiQueue([...gsRef.current.queue])
+    }, [cellSize])
+
+    useEffect(() => {
+        const onVis = () => {
+            if (document.visibilityState !== 'hidden') return
+            const gs = gsRef.current
+            if (gs.gameState !== 'READY' && gs.gameState !== 'GAMEOVER') return
+            persistDailyGameStateRef.current()
+        }
+        document.addEventListener('visibilitychange', onVis)
+        return () => document.removeEventListener('visibilitychange', onVis)
+    }, [])
 
     // ── Queue helpers ────────────────────────────────────────────────────────
     function nextFromQueue(gs) {
@@ -290,6 +466,52 @@ const Factorfall = () => {
             if (gs.isEndless) initiateShift(gs)
         }
     }
+
+    function hydrateFromSaved(saved, puzzle, cs) {
+        const gs = gsRef.current
+        usedUndoOrResetRef.current = !!saved.usedUndoOrReset
+        gs.cellSize = cs
+        gs.target = saved.target
+        gs.isEndless = false
+        gs.turnPops = 0
+        gs.highlightQueue = []
+        gs.activeHighlight = null
+        gs.ballsToPopAtEnd = new Set()
+        gs.floatingScores = []
+        gs.shiftingNewRow = []
+        gs.shiftYOffset = 0
+        gs.grid = gridFromSlim(saved.grid, cs)
+        gs.queue = saved.queue.map(b => ({ v: b.v, c: b.c }))
+        gs.gameState = saved.gameState
+        gs.mouseX = typeof saved.mouseX === 'number' ? saved.mouseX : COLS * cs / 2
+        gs.score = typeof saved.score === 'number' ? saved.score : 0
+        gs.history = saved.history.map(h => ({
+            grid: gridFromSlim(h.grid, cs),
+            queue: h.queue.map(b => ({ v: b.v, c: b.c })),
+            score: h.score,
+        }))
+        if (saved.gameState === 'READY' && gs.queue.length > 0) {
+            nextFromQueue(gs)
+        } else {
+            gs.pendingBall = null
+        }
+        setUiQueue([...gs.queue])
+        setUiScore(gs.score)
+        setUiTarget(puzzle.target)
+        setUndoDisabled(gs.history.length === 0 || gs.isEndless)
+        setBoardCleared(saved.ui.boardCleared)
+        setGridFull(saved.ui.gridFull)
+        setOutOfBalls(saved.ui.outOfBalls)
+    }
+
+    function persistDaily(overrideUi) {
+        const { key, dailyIdx: idx, mode: m } = dailyStateRef.current
+        if (m !== 'daily') return
+        const p = dailyRef.current.puzzles[idx]
+        if (!p) return
+        saveGameState(key, idx, p, gsRef.current, usedUndoOrResetRef.current, overrideUi ?? uiSnapshotRef.current)
+    }
+    persistDailyGameStateRef.current = persistDaily
 
     function generateRandomBallData(gs) {
         const pool = TARGET_CONFIGS[String(gs.target)] || TARGET_CONFIGS["36"]
@@ -402,8 +624,10 @@ const Factorfall = () => {
                             setPerfects(loadPerfects(key))
                         }
                         setBoardCleared(true)
+                        persistDailyGameStateRef.current({ boardCleared: true, gridFull: false, outOfBalls: false })
                     } else {
                         setOutOfBalls(true)
+                        persistDailyGameStateRef.current({ boardCleared: false, gridFull: false, outOfBalls: true })
                     }
                 }, 300)
             } else if (gs.isEndless && gs.queue.length === 0) {
@@ -411,6 +635,7 @@ const Factorfall = () => {
             } else {
                 gs.gameState = 'READY'
                 nextFromQueue(gs)
+                persistDailyGameStateRef.current()
             }
         }
     }
@@ -469,11 +694,12 @@ const Factorfall = () => {
                 startFreePlay()
             } else {
                 usedUndoOrResetRef.current = true
+                if (mode === 'daily') clearGameState(daily.key, dailyIdx)
                 const p = getPuzzle()
-                if (p) initLevel(p)
+                if (p) initLevel(p, gsRef.current.cellSize)
             }
         }
-    }, [boardCleared, outOfBalls, gridFull, mode, tutorialIdx, dailyIdx, daily.key, getPuzzle, initLevel])
+    }, [boardCleared, outOfBalls, gridFull, mode, tutorialIdx, dailyIdx, daily.key, getPuzzle])
 
     const primaryLabel = useMemo(() => {
         if (boardCleared) {
@@ -522,6 +748,7 @@ const Factorfall = () => {
         setUiQueue([...gs.queue])
         nextFromQueue(gs)
         setUndoDisabled(gs.history.length === 0 || gs.isEndless)
+        persistDailyGameStateRef.current()
     }, [])
 
     const resetLevel = useCallback(() => {
@@ -529,10 +756,11 @@ const Factorfall = () => {
         if (mode === 'freeplay') {
             startFreePlay()
         } else {
+            if (mode === 'daily') clearGameState(daily.key, dailyIdx)
             const p = getPuzzle()
-            if (p) initLevel(p)
+            if (p) initLevel(p, gsRef.current.cellSize)
         }
-    }, [getPuzzle, initLevel, mode, startFreePlay])
+    }, [getPuzzle, mode, daily.key, dailyIdx, startFreePlay])
 
     // ── Canvas interaction ───────────────────────────────────────────────────
     const dropBallInColumn = useCallback((col) => {
@@ -542,6 +770,7 @@ const Factorfall = () => {
         if (gs.grid[col].length >= ROWS) {
             gs.gameState = 'GAMEOVER'
             setGridFull(true)
+            persistDailyGameStateRef.current({ boardCleared: false, gridFull: true, outOfBalls: false })
             return
         }
 

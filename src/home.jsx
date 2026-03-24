@@ -732,7 +732,7 @@ export default function Home() {
                             <p><strong>Progress</strong> boxes show how you did on today&apos;s puzzles:</p>
                             <ul>
                                 <li><strong>Green</strong> indicates completed puzzles. </li>
-                                <li><strong>Numbers</strong> in completed puzzles indicate moves or guesses used. Numbers in Clueless indicate guesses.</li>
+                                <li><strong>Numbers</strong> in completed puzzles indicate moves or guesses used.</li>
                                 <li><strong>Stars</strong> in unnumbered puzzles indicate solves made without using undo or reset.</li>
                             </ul>
                             <p><strong>Share</strong> copies your results to the clipboard.</p>
