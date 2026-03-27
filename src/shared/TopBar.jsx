@@ -88,6 +88,11 @@ const styles = {
         width: 'auto',
         display: 'block',
     },
+    /** Slightly larger than default FA icon scale — legible inside the 32px circles */
+    iconGlyph: {
+        fontSize: '1.2rem',
+        lineHeight: 1,
+    },
 }
 
 export default function TopBar({
@@ -126,7 +131,7 @@ export default function TopBar({
                             onClick={actions[HEADER_ACTIONS.HOME]}
                             aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HOME]}
                         >
-                            <i className="fa-solid fa-house fa-sm" aria-hidden="true" />
+                            <i className="fa-solid fa-puzzle-piece" style={styles.iconGlyph} aria-hidden="true" />
                         </button>
                     )}
                     <button
@@ -164,7 +169,7 @@ export default function TopBar({
                             onClick={actions[HEADER_ACTIONS.STATS]}
                             aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.STATS]}
                         >
-                            <i className="fas fa-chart-column" aria-hidden="true" />
+                            <i className="fas fa-chart-column" style={styles.iconGlyph} aria-hidden="true" />
                         </button>
                     )}
                     <button
@@ -173,7 +178,7 @@ export default function TopBar({
                         onClick={actions[HEADER_ACTIONS.HELP]}
                         aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HELP]}
                     >
-                        <i className="fas fa-question" aria-hidden="true" />
+                        <i className="fas fa-question" style={styles.iconGlyph} aria-hidden="true" />
                     </button>
                 </div>
             </div>

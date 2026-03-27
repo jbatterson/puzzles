@@ -35,7 +35,7 @@ try {
           title="All Ten"
           showStats
           onHome={() => {
-            window.location.href = '/puzzles/'
+            window.location.href = import.meta.env.BASE_URL
           }}
           onCube={() => appState.showLinks(true)}
           onStats={() => appState.showStats(true)}

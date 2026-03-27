@@ -14,6 +14,15 @@ import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../shared-con
 
 const base = import.meta.env.BASE_URL
 
+/** Avoid crashing the hub if localStorage is blocked (strict privacy / enterprise policy). */
+function lsGet(key) {
+    try {
+        return localStorage.getItem(key)
+    } catch {
+        return null
+    }
+}
+
 function getDailyKey() {
     const now = new Date()
     const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
@@ -30,16 +39,16 @@ function getDateKey(dayOffset) {
 // ── Multi-puzzle games (3 per day) ───────────────────────────────────────────
 
 function loadCompletions(gameKey, dateKey) {
-    return [0, 1, 2].map(i => ['1', '2'].includes(localStorage.getItem(`${gameKey}:${dateKey}:${i}`)))
+    return [0, 1, 2].map(i => ['1', '2'].includes(lsGet(`${gameKey}:${dateKey}:${i}`)))
 }
 
 function loadPerfects(gameKey, dateKey) {
-    return [0, 1, 2].map(i => localStorage.getItem(`${gameKey}:${dateKey}:${i}`) === '2')
+    return [0, 1, 2].map(i => lsGet(`${gameKey}:${dateKey}:${i}`) === '2')
 }
 
 function loadMoveCounts(gameKey, dateKey) {
     return [0, 1, 2].map(i => {
-        const v = localStorage.getItem(`${gameKey}:${dateKey}:${i}:moves`)
+        const v = lsGet(`${gameKey}:${dateKey}:${i}:moves`)
         return v != null ? parseInt(v, 10) : null
     })
 }
@@ -49,7 +58,7 @@ function loadMoveCounts(gameKey, dateKey) {
 
 function loadSingleBestAttempts(gameKey, dateKey) {
     if (gameKey !== 'clueless') return null
-    const v = localStorage.getItem(`clueless:${dateKey}:bestAttempts`)
+    const v = lsGet(`clueless:${dateKey}:bestAttempts`)
     if (v == null) return null
     const n = parseInt(v, 10)
     return (n >= 1 && n <= 99) ? n : null
@@ -57,17 +66,17 @@ function loadSingleBestAttempts(gameKey, dateKey) {
 
 function loadSingleFailed(gameKey, dateKey) {
     if (gameKey !== 'clueless') return false
-    return localStorage.getItem(`clueless:${dateKey}:failed`) === '1'
+    return lsGet(`clueless:${dateKey}:failed`) === '1'
 }
 
 function loadSingleCompletion(gameKey, dateKey) {
     if (gameKey === 'clueless') return loadSingleBestAttempts(gameKey, dateKey) != null
-    return ['1', '2'].includes(localStorage.getItem(`${gameKey}:${dateKey}`))
+    return ['1', '2'].includes(lsGet(`${gameKey}:${dateKey}`))
 }
 
 function loadSinglePerfect(gameKey, dateKey) {
     if (gameKey === 'clueless') return loadSingleBestAttempts(gameKey, dateKey) === 1
-    return localStorage.getItem(`${gameKey}:${dateKey}`) === '2'
+    return lsGet(`${gameKey}:${dateKey}`) === '2'
 }
 
 // ── Clueless difficulties (Easy/Med/Hard) ────────────────────────────────────
@@ -75,7 +84,7 @@ function loadSinglePerfect(gameKey, dateKey) {
 const CLUELESS_DIFFS = ['easy', 'medium', 'hard']
 
 function loadCluelessAttempt(dateKey, diff) {
-    const v = localStorage.getItem(`clueless:${dateKey}:${diff}:bestAttempts`)
+    const v = lsGet(`clueless:${dateKey}:${diff}:bestAttempts`)
     if (v != null) {
         const n = parseInt(v, 10)
         if (n >= 1 && n <= 99) return n
@@ -107,7 +116,7 @@ function loadAllTenSolvedCountForHubDateKey(dateKey) {
     const k = hubDateKeyToAllTenTargetsKey(dateKey)
     if (!k) return 0
     try {
-        const raw = localStorage.getItem(k)
+        const raw = lsGet(k)
         if (!raw) return 0
         const arr = JSON.parse(raw)
         if (!Array.isArray(arr)) return 0
@@ -156,12 +165,15 @@ const DIFF_LABELS = ['Easy', 'Med', 'Hard']
 
 function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
     const isTileGame = TILE_GAMES.has(gameKey)
+    const c = completions ?? [false, false, false]
+    const p = perfects ?? [false, false, false]
+    const mc = moveCounts ?? [null, null, null]
     return (
         <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
             {[0, 1, 2].map(i => {
-                const done = completions[i]
-                const perfect = perfects && perfects[i]
-                const moves = moveCounts && moveCounts[i] != null ? moveCounts[i] : null
+                const done = c[i]
+                const perfect = p[i]
+                const moves = mc[i] != null ? mc[i] : null
                 const content = !done
                     ? <DiceFace count={i + 1} size={20} />
                     : isTileGame
@@ -693,26 +705,28 @@ export default function Home() {
                                     <div className="hp-cardTitle">{title}</div>
                                     <div className="hp-desc">{desc}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                        {key === 'allten' && allTenTodayCount > 0 ? (
-                                            <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                                                <div
-                                                    style={{
-                                                        width: '28px',
-                                                        height: '28px',
-                                                        borderRadius: '6px',
-                                                        background: allTenTodayCount >= 10 ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
-                                                        color: allTenTodayCount >= 10 ? '#fff' : PUZZLE_SUITE_INK,
-                                                        fontWeight: 900,
-                                                        fontSize: '1rem',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                    }}
-                                                    aria-label={`${allTenTodayCount} of 10 targets solved`}
-                                                >
-                                                    {allTenTodayCount}
+                                        {key === 'allten' ? (
+                                            allTenTodayCount > 0 ? (
+                                                <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                                                    <div
+                                                        style={{
+                                                            width: '28px',
+                                                            height: '28px',
+                                                            borderRadius: '6px',
+                                                            background: allTenTodayCount >= 10 ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                                                            color: allTenTodayCount >= 10 ? '#fff' : PUZZLE_SUITE_INK,
+                                                            fontWeight: 900,
+                                                            fontSize: '1rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                        }}
+                                                        aria-label={`${allTenTodayCount} of 10 targets solved`}
+                                                    >
+                                                        {allTenTodayCount}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            ) : null
                                         ) : key === 'clueless' ? (
                                             <CluelessBoxes attempts={cluelessAttempts} />
                                         ) : single ? (

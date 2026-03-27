@@ -11,7 +11,7 @@
     "dev": "vite",
     "prebuild": "npm run check:allten-boundary",
     "build": "vite build",
-    "deploy": "npm run build && gh-pages -d dist",
+    "deploy": "npm run build && gh-pages -d dist --dotfiles",
     "lint": "eslint .",
     "preview": "vite preview"
   },

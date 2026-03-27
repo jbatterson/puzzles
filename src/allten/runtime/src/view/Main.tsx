@@ -35,6 +35,7 @@ import {
 	MEDIUM_KEYBOARD_BREAKPOINT,
 } from "./util/Constants";
 import StatsPage from "./StatsPage";
+import {CTA_LABELS} from "../../../../../shared-contracts/ctaLabels.js";
 
 export type Props = {
 	appState: AppState;
@@ -65,6 +66,9 @@ const ScreenContainer = styled("div", {
 				minHeight: 0,
 				height: "auto",
 				overflow: "hidden",
+				/* Match .level-nav margin-top below TopBar in other suite games */
+				paddingTop: "0.5rem",
+				boxSizing: "border-box",
 			},
 		},
 	},
@@ -265,11 +269,15 @@ const BodyContainer = styled("div", {
 	margin: "0 auto",
 });
 
-// used just to keep the keyboard together
+// used just to keep the keyboard together (width matches BodyContainer)
 const KeyboardContainer = styled("div", {
+	display: "flex",
+	flexDirection: "column",
+	alignItems: "stretch",
 	padding: `0 0 ${HALF_PADDING_UNIT}px 0`,
 	boxSizing: "border-box",
-	width: `min(95%, ${MAX_GAME_WIDTH}px)`,
+	width: `min(95vw, ${MAX_GAME_WIDTH}px)`,
+	margin: "0 auto",
 });
 
 const fakeAnimButtonClassName = css({
@@ -568,6 +576,36 @@ const Main: React.FC<Props> = function (props: Props) {
 				onBackspace={onBackspace}
 				size={keyboardSize}
 			/>
+			{appState.completed && (
+				<div
+					style={{
+						display: "flex",
+						justifyContent: "center",
+						alignItems: "center",
+						alignSelf: "stretch",
+						width: "100%",
+						padding: `${HALF_PADDING_UNIT}px 0 ${PADDING_UNIT}px`,
+						boxSizing: "border-box",
+					}}
+				>
+					<a
+						className="btn-primary"
+						href={`${import.meta.env.BASE_URL}`}
+						style={{
+							textAlign: "center",
+							textDecoration: "none",
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							width: "100%",
+							padding: "12px 20px",
+							boxSizing: "border-box",
+						}}
+					>
+						{CTA_LABELS.ALL_PUZZLES}
+					</a>
+				</div>
+			)}
 		</KeyboardContainer>
 	);
 

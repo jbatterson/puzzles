@@ -25,6 +25,7 @@ import StatsWidget from "./StatsWidget";
 import {isNowSchoolTime, pstStringify} from "../util/Dates";
 import {getPuzzleNumberAsString} from "../util/ProblemUtil";
 import ButtonLink from "./ButtonLink";
+import {CTA_LABELS} from "../../../../../shared-contracts/ctaLabels.js";
 
 export const RESULTS_CLIPBOARD_UUID = "3834033daa48";
 export const HTML_TAG_REGEX = /<[\s\S\n]*?>/;
@@ -224,6 +225,24 @@ const Results: React.FC<Props> = function (props: Props) {
 				{(appState.hasSharedToday || appState.completed) && (
 					<PlayAgainTimer today={pstStringify(appState.problemDate)} />
 				)}
+				<Space small />
+				<Centered>
+					<a
+						className="btn-primary"
+						href={`${import.meta.env.BASE_URL}`}
+						style={{
+							textAlign: "center",
+							textDecoration: "none",
+							display: "inline-flex",
+							alignItems: "center",
+							justifyContent: "center",
+							padding: "12px 24px",
+							marginTop: "4px",
+						}}
+					>
+						{CTA_LABELS.ALL_PUZZLES}
+					</a>
+				</Centered>
 				{resultsForMobileSharing}
 			</Container>
 		</Modal>
