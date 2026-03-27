@@ -4,6 +4,11 @@ import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
+import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
+import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
+import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
+import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
+import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -233,8 +238,9 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: completions[i] ? '#22c55e' : current === i ? '#000' : '#d1d5db',
-                    color: '#fff', fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer',
+                    background: completions[i] ? '#22c55e' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                    color: completions[i] || current === i ? '#fff' : PUZZLE_SUITE_INK,
+                    fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer',
                     transition: 'all 0.2s',
                 }}>
                     {completions[i] ? (perfects && perfects[i] ? '★' : '✓') : <DiceFace count={i + 1} size={20} />}
@@ -274,6 +280,7 @@ function QueuePreview({ queue }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 const Factorfall = () => {
+    const chrome = getGameChrome(GAME_KEYS.FACTORFALL)
     const daily = useMemo(() => getDailyPuzzles(), [])
     const dateLabel = useMemo(() => getDateLabel(), [])
 
@@ -283,15 +290,13 @@ const Factorfall = () => {
     const [dailyIdx, setDailyIdx] = useState(0)
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
-    const [showInstructions, setShowInstructions] = useState(true)
+    const {
+        hasSeenInstructions,
+        showInstructions,
+        setShowInstructions,
+        closeInstructions,
+    } = useInstructionsGate('factorfall:hasSeenInstructions', { openOnMount: true })
     const [showLinks, setShowLinks] = useState(false)
-    const [hasSeenInstructions, setHasSeenInstructions] = useState(() => localStorage.getItem('factorfall:hasSeenInstructions') === '1')
-
-    const closeInstructions = useCallback(() => {
-        localStorage.setItem('factorfall:hasSeenInstructions', '1')
-        setHasSeenInstructions(true)
-        setShowInstructions(false)
-    }, [])
 
     const wrapperRef = useRef(null)
     const canvasRef = useRef(null)
@@ -707,11 +712,11 @@ const Factorfall = () => {
     const primaryLabel = useMemo(() => {
         if (boardCleared) {
             if (mode === 'tutorial') {
-                return tutorialIdx < puzzleData.tutorial.length - 1 ? 'Next Puzzle' : "Play Today's Puzzles"
+                return tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
             }
             if (mode === 'daily') {
                 const newComp = loadCompletions(daily.key)
-                return [0,1,2].find(i => i !== dailyIdx && !newComp[i]) !== undefined ? 'Next Puzzle' : 'Free Play Mode'
+                return [0,1,2].find(i => i !== dailyIdx && !newComp[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.FREE_PLAY_MODE
             }
             return null
         }
@@ -960,7 +965,8 @@ const Factorfall = () => {
     return (
         <div className="game-container">
             <TopBar
-                title="Factorfall"
+                title={chrome.title}
+                showStats={chrome.showStats}
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
@@ -1052,7 +1058,7 @@ const Factorfall = () => {
             {isFreePlay && !primaryLabel ? (
                 <a href={base} className="btn-primary"
                     style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    All Puzzles
+                    {CTA_LABELS.ALL_PUZZLES}
                 </a>
             ) : primaryLabel ? (
                 <button className="btn-primary" onClick={handlePrimaryClick}>{primaryLabel}</button>
@@ -1061,7 +1067,7 @@ const Factorfall = () => {
             )}
 
             {/* ── Instructions overlay ── */}
-            <SharedModalShell show={showInstructions} onClose={closeInstructions} closeAriaLabel="Close instructions">
+            <SharedModalShell show={showInstructions} onClose={closeInstructions} intent={MODAL_INTENTS.INSTRUCTIONS}>
                 <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Factorfall</h1>
                 <div style={{ flex: 1, textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
@@ -1080,16 +1086,16 @@ const Factorfall = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {!hasSeenInstructions ? (
                         <>
-                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>PLAY TUTORIAL PUZZLES</button>
-                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>SKIP TUTORIAL</button>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>{CTA_LABELS.PLAY_TUTORIAL}</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.SKIP_TUTORIAL}</button>
                         </>
                     ) : (
                         <>
                             <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>
-                                Play Today&apos;s Puzzles
+                                {CTA_LABELS.PLAY_TODAY}
                             </button>
                             <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>
-                                Tutorial Puzzles
+                                {CTA_LABELS.TUTORIAL_PUZZLES}
                             </button>
                         </>
                     )}

@@ -1,4 +1,4 @@
-import React, {DragEvent, useRef} from "react";
+import React, {DragEvent, useEffect, useRef} from "react";
 import {observer} from "mobx-react-lite";
 import {styled, keyframes} from "../stitches.config";
 import IconButton from "./IconButton";
@@ -12,6 +12,7 @@ export type Props = {
 	priority?: boolean; // will be shown above modals without priority
 	hideClose?: boolean;
 	showPrivacy?: boolean;
+	closeOnEscape?: boolean;
 };
 
 const SlideIn = keyframes({
@@ -155,6 +156,7 @@ const Modal: React.FC<Props> = function (props) {
 		priority,
 		hideClose,
 		showPrivacy,
+		closeOnEscape,
 	} = props;
 
 	const bodyRef = useRef(null);
@@ -177,6 +179,19 @@ const Modal: React.FC<Props> = function (props) {
 			close();
 		}
 	};
+
+	useEffect(() => {
+		if (!show || !closeOnEscape) {
+			return;
+		}
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				close();
+			}
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [show, closeOnEscape, close]);
 
 	return (
 		<Background show={show} onClick={closeIfClickOutside} priority={priority}>

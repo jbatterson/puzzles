@@ -1,3 +1,5 @@
+import { PUZZLE_SUITE_INK } from '../../shared-contracts/chromeUi.js'
+
 /** Token → display hex for Folds puzzle cells. Edit here to retheme all puzzles. */
 export const FOLDS_PALETTE = {
     red: '#ff3b30',
@@ -12,7 +14,7 @@ export const FOLDS_PALETTE = {
  * Runtime-only colors (e.g. mixed brown) use hex strings and pass through.
  */
 export function fillColor(token) {
-    if (token == null) return '#000000'
+    if (token == null) return PUZZLE_SUITE_INK
     if (typeof token === 'string' && token.startsWith('#')) return token
     const hex = FOLDS_PALETTE[token]
     if (hex) return hex

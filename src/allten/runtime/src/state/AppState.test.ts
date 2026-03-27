@@ -2,10 +2,12 @@
  * Tests for AppState, particularly the localStorage cleanup functionality.
  */
 
-import AppState from "./AppState";
+import AppState, {TargetState} from "./AppState";
 import {createProblem} from "./Problem";
-import {pstStringify, jumpDays} from "../util/Dates";
+import {pstStringify, pstStringifyForRobots, jumpDays} from "../util/Dates";
 import {runInAction} from "mobx";
+import {stringToLine} from "../expr/Line";
+import * as EState from "../expr/State";
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -249,5 +251,150 @@ describe("AppState cleanup", () => {
 				expect(localStorage.getItem(`${oldStr}-targets`)).toBeNull();
 			}
 		});
+	});
+});
+
+describe("AppState profile / streak", () => {
+	beforeEach(() => {
+		localStorageMock.clear();
+	});
+
+	afterAll(() => {
+		Object.defineProperty(window, "localStorage", {
+			value: originalLocalStorage,
+			configurable: true,
+		});
+	});
+
+	it("updateProfileStatsToToday clears streak when last play is before yesterday", () => {
+		const today = new Date("2024-01-15");
+		const problem = createProblem([1, 2, 3, 4]);
+		const appState = new AppState(problem, today);
+		const oldPlay = pstStringifyForRobots(jumpDays(today, -5));
+		runInAction(() => {
+			appState.profile.numStreak = 12;
+			appState.profile.mostRecentPlayDate = oldPlay;
+		});
+
+		appState.updateProfileStatsToToday();
+
+		expect(appState.profile.numStreak).toBe(0);
+	});
+
+	it("updateProfileStatsToToday keeps streak when last play was yesterday (robot date)", () => {
+		const today = new Date("2024-01-15");
+		const problem = createProblem([1, 2, 3, 4]);
+		const appState = new AppState(problem, today);
+		const yRobot = pstStringifyForRobots(jumpDays(today, -1));
+		runInAction(() => {
+			appState.profile.numStreak = 4;
+			appState.profile.mostRecentPlayDate = yRobot;
+		});
+
+		appState.updateProfileStatsToToday();
+
+		expect(appState.profile.numStreak).toBe(4);
+	});
+
+	it("updateProfileStatsToToday keeps streak when last play was today", () => {
+		const today = new Date("2024-01-15");
+		const problem = createProblem([1, 2, 3, 4]);
+		const appState = new AppState(problem, today);
+		const tRobot = pstStringifyForRobots(today);
+		runInAction(() => {
+			appState.profile.numStreak = 2;
+			appState.profile.mostRecentPlayDate = tRobot;
+		});
+
+		appState.updateProfileStatsToToday();
+
+		expect(appState.profile.numStreak).toBe(2);
+	});
+
+	it("first target solved today increments plays and streak once", () => {
+		const today = new Date("2024-01-15");
+		const problem = createProblem([1, 2, 3, 4]);
+		const appState = new AppState(problem, today);
+		runInAction(() => {
+			appState.profile.numStreak = 2;
+			appState.profile.numPlays = 5;
+			appState.profile.mostRecentPlayDate = "";
+		});
+
+		const lineRes = stringToLine("(s3 - s2) / (s1 - s0)");
+		expect(lineRes.errors.length).toBe(0);
+		expect(lineRes.value).not.toBeNull();
+
+		runInAction(() => {
+			appState.exprState = {
+				start: problem.start,
+				rules: problem.rules,
+				main: lineRes.value!,
+				interm: [],
+			};
+			const eq = EState.isEqualsEnabled(appState.exprState);
+			appState.equalsEnabled = eq === null ? true : eq;
+		});
+
+		appState.pushEquals();
+
+		expect(appState.profile.numPlays).toBe(6);
+		expect(appState.profile.numStreak).toBe(3);
+		expect(appState.profile.mostRecentPlayDate).toBe(pstStringifyForRobots(today));
+	});
+
+	it("second target solved same day does not increment plays or streak", () => {
+		const today = new Date("2024-01-15");
+		const problem = createProblem([1, 2, 3, 4]);
+		const appState = new AppState(problem, today);
+		const tRobot = pstStringifyForRobots(today);
+		runInAction(() => {
+			appState.profile.numStreak = 3;
+			appState.profile.numPlays = 10;
+			appState.profile.mostRecentPlayDate = tRobot;
+		});
+
+		const lineRes = stringToLine("(s3 - s2) / (s1 - s0)");
+		expect(lineRes.value).not.toBeNull();
+		runInAction(() => {
+			appState.exprState = {
+				start: problem.start,
+				rules: problem.rules,
+				main: lineRes.value!,
+				interm: [],
+			};
+			const eq = EState.isEqualsEnabled(appState.exprState);
+			appState.equalsEnabled = eq === null ? true : eq;
+		});
+
+		appState.pushEquals();
+
+		expect(appState.profile.numPlays).toBe(10);
+		expect(appState.profile.numStreak).toBe(3);
+	});
+
+	it("validateNumAllTens raises numAllTens from recent completed targets in storage", () => {
+		const today = new Date("2024-01-15");
+		const problem = createProblem([1, 2, 3, 4]);
+		const appState = new AppState(problem, today);
+		const todayStr = pstStringify(today);
+		const placeholders: TargetState[] = problem.targets.map((number) => ({
+			number,
+			impossible: false,
+			solution: [{type: "num", index: 0}],
+			solutionState: null,
+			solveOrder: 1,
+		}));
+
+		localStorage.setItem(`${todayStr}-problem`, JSON.stringify(problem));
+		localStorage.setItem(`${todayStr}-targets`, JSON.stringify(placeholders));
+
+		runInAction(() => {
+			appState.profile.numAllTens = 0;
+		});
+
+		appState.validateNumAllTens(appState.problemDate);
+
+		expect(appState.profile.numAllTens).toBeGreaterThanOrEqual(1);
 	});
 });

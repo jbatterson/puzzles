@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Built vendor bundle copied from all-ten-main
+# Built vendor bundle copied from src/allten/runtime
 puzzlegames/allten/bundle_allten.js
 puzzlegames/allten/bundle_allten.js.map
 

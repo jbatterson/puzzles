@@ -4,6 +4,17 @@ import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
+import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
+import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
+import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
+import {
+    PUZZLE_SUITE_INK,
+    PUZZLE_SUITE_INK_FAINT,
+    PUZZLE_SUITE_SURFACE_GIVEN,
+    PUZZLE_SUITE_SURFACE_INCOMPLETE,
+    PUZZLE_SUITE_SURFACE_DISABLED,
+    PUZZLE_SUITE_INK_ON_DISABLED,
+} from '../../shared-contracts/chromeUi.js'
 import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
@@ -370,6 +381,7 @@ function retreatAlongAxis(fromIdx, axisMode, inputOrder, locked) {
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function CluelessGame() {
+    const chrome = getGameChrome(GAME_KEYS.CLUELESS)
     // #region agent log
     fetch('http://127.0.0.1:7789/ingest/c63c0e1a-4721-4866-a60f-d01a6afe7afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b390e2'},body:JSON.stringify({sessionId:'b390e2',runId:'pre-fix',hypothesisId:'H1',location:'clueless.jsx:CluelessGame(entry)',message:'CluelessGame render entry',data:{},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
@@ -483,15 +495,12 @@ export default function CluelessGame() {
     }, [daily.key, difficulty, guesses, locked, guessCount, solved, triedLettersByCell])
 
     // UI
-    const [showInstructions, setShowInstructions] = useState(
-        () => localStorage.getItem('clueless:hasSeenInstructions') !== '1'
-    )
+    const {
+        showInstructions,
+        setShowInstructions,
+        closeInstructions,
+    } = useInstructionsGate('clueless:hasSeenInstructions', { openOnMount: false })
     const [showLinks, setShowLinks] = useState(false)
-
-    const closeInstructions = useCallback(() => {
-        localStorage.setItem('clueless:hasSeenInstructions', '1')
-        setShowInstructions(false)
-    }, [])
 
     // ── Input handling ─────────────────────────────────────────────────────
 
@@ -683,8 +692,8 @@ export default function CluelessGame() {
             if (BLOCKED.has(key)) {
                 cells.push(
                     <div key={key} style={{
-                        background: '#000',
-                        border: '1px solid #000',
+                        background: PUZZLE_SUITE_INK,
+                        border: `1px solid ${PUZZLE_SUITE_INK}`,
                     }} />
                 )
                 continue
@@ -693,12 +702,12 @@ export default function CluelessGame() {
             if (geometry.clueCells.has(key)) {
                 cells.push(
                     <div key={key} style={{
-                        border: '1px solid #000',
+                        border: `1px solid ${PUZZLE_SUITE_INK}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: '#E5E5E5',
-                        color: inBand ? '#000' : '#5c5c5c',
+                        background: PUZZLE_SUITE_SURFACE_GIVEN,
+                        color: inBand ? PUZZLE_SUITE_INK : PUZZLE_SUITE_INK_FAINT,
                         fontWeight: 900,
                         fontSize: inBand ? CLUELESS_INPUT_FONT : CLUELESS_CLUE_FONT,
                         transition: 'font-size 0.15s ease',
@@ -718,10 +727,10 @@ export default function CluelessGame() {
             const letter = guesses[key] || ''
 
             let bg = '#fff'
-            let color = '#000'
+            let color = PUZZLE_SUITE_INK
             if (isLocked) { bg = '#c6f6d5'; color = '#15803d' }
             else if (isWrong) { bg = '#fed7d7'; color = '#b91c1c' }
-            if (inBand) color = '#000'
+            if (inBand) color = PUZZLE_SUITE_INK
 
             const showActiveOutline = isSelected && selectionHighlighted
 
@@ -729,7 +738,7 @@ export default function CluelessGame() {
                 <div key={key}
                     onClick={() => selectCell(idx)}
                     style={{
-                        border: '1px solid #000',
+                        border: `1px solid ${PUZZLE_SUITE_INK}`,
                         outline: showActiveOutline ? '6px solid #f6ae2d' : 'none',
                         outlineOffset: showActiveOutline ? '-6px' : undefined,
                         display: 'flex',
@@ -756,7 +765,8 @@ export default function CluelessGame() {
     return (
         <div className="game-container clueless">
             <TopBar
-                title="Clueless"
+                title={chrome.title}
+                showStats={chrome.showStats}
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
@@ -787,8 +797,8 @@ export default function CluelessGame() {
                                         height: '28px',
                                         borderRadius: '6px',
                                         border: 'none',
-                                        background: done ? '#22c55e' : (isActive ? '#000' : '#d1d5db'),
-                                        color: '#fff',
+                                        background: done ? '#22c55e' : (isActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE),
+                                        color: done || isActive ? '#fff' : PUZZLE_SUITE_INK,
                                         fontWeight: 900,
                                         fontSize: '0.94rem',
                                         cursor: 'pointer',
@@ -818,7 +828,7 @@ export default function CluelessGame() {
                 fontSize: '0.85rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
-                color: solved ? '#15803d' : '#000',
+                color: solved ? '#15803d' : PUZZLE_SUITE_INK,
             }}>
                 {solved ? 'Solved!' : statusMsg}
             </div>
@@ -844,7 +854,7 @@ export default function CluelessGame() {
                     aspectRatio: '1 / 1',
                     position: 'relative',
                     background: '#fff',
-                    border: '2px solid #000',
+                    border: `2px solid ${PUZZLE_SUITE_INK}`,
                     minWidth: '200px',
                 }}>
                     <div style={{
@@ -891,7 +901,7 @@ export default function CluelessGame() {
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
                                     height: 'clamp(32px, 7vh, 50px)',
-                                    border: '2px solid #000',
+                                    border: `2px solid ${PUZZLE_SUITE_INK}`,
                                     borderRadius: '4px',
                                     background: '#fff',
                                     fontWeight: 700,
@@ -914,10 +924,10 @@ export default function CluelessGame() {
                                     style={{
                                         minWidth: 'clamp(24px, 7vw, 36px)',
                                         height: 'clamp(32px, 7vh, 50px)',
-                                        border: '2px solid #000',
+                                        border: `2px solid ${PUZZLE_SUITE_INK}`,
                                         borderRadius: '4px',
                                         background: isTried ? '#fed7d7' : '#fff',
-                                        color: isTried ? '#b91c1c' : '#000',
+                                        color: isTried ? '#b91c1c' : PUZZLE_SUITE_INK,
                                         fontFamily: 'Outfit, sans-serif',
                                         fontWeight: 700,
                                         fontSize: 'clamp(0.7rem, 2.5vw, 1rem)',
@@ -941,10 +951,10 @@ export default function CluelessGame() {
                                     style={{
                                         minWidth: 'clamp(36px, 9vw, 52px)',
                                         height: 'clamp(32px, 7vh, 50px)',
-                                        border: '2px solid #000',
+                                        border: `2px solid ${PUZZLE_SUITE_INK}`,
                                         borderRadius: '4px',
-                                        background: checkActive ? '#000' : '#ccc',
-                                        color: checkActive ? '#fff' : '#666',
+                                        background: checkActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_DISABLED,
+                                        color: checkActive ? '#fff' : PUZZLE_SUITE_INK_ON_DISABLED,
                                         fontWeight: 700,
                                         fontSize: 'clamp(0.55rem, 1.8vw, 0.75rem)',
                                         textTransform: 'uppercase',
@@ -964,7 +974,7 @@ export default function CluelessGame() {
             </div>
 
             {/* INSTRUCTIONS OVERLAY */}
-            <SharedModalShell show={showInstructions} onClose={closeInstructions} closeAriaLabel="Close instructions">
+            <SharedModalShell show={showInstructions} onClose={closeInstructions} intent={MODAL_INTENTS.INSTRUCTIONS}>
                 <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Clueless</h1>
                 <div style={{ flex: 1, textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>

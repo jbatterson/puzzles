@@ -5,6 +5,11 @@ import { tileGameFillColor } from '../../src/shared/tileGamePalette.js'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
+import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
+import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
+import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
+import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
+import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import ProductilesIcon from '../../src/shared/icons/ProductilesIcon.jsx'
 
 const SNAP_SPEED = 0.25
@@ -209,8 +214,9 @@ function PuzzleBoxes({ current, completions, perfects, moveCounts, onChange }) {
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: completions[i] ? '#22c55e' : current === i ? '#000' : '#d1d5db',
-                    color: '#fff', fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer', transition: 'all 0.2s',
+                    background: completions[i] ? '#22c55e' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                    color: completions[i] || current === i ? '#fff' : PUZZLE_SUITE_INK,
+                    fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer', transition: 'all 0.2s',
                 }}>
                     {completions[i] ? (moveCounts && moveCounts[i] != null ? String(Math.min(moveCounts[i], MAX_MOVE_DISPLAY)) : '✓') : <DiceFace count={i + 1} size={20} />}
                 </button>
@@ -221,6 +227,7 @@ function PuzzleBoxes({ current, completions, perfects, moveCounts, onChange }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 export default function Productiles() {
+    const chrome = getGameChrome(GAME_KEYS.PRODUCTILES)
     const daily = useMemo(() => getDailyPuzzles(), [])
     const dateLabel = useMemo(() => getDateLabel(), [])
 
@@ -244,15 +251,13 @@ export default function Productiles() {
     const [moveCounts, setMoveCounts]   = useState(() => loadMoveCounts(daily.key))
     const [isSolved, setIsSolved]       = useState(false)
     const [historyLen, setHistoryLen]   = useState(0)
-    const [showInstructions, setShowInstructions] = useState(true)
+    const {
+        hasSeenInstructions,
+        showInstructions,
+        setShowInstructions,
+        closeInstructions,
+    } = useInstructionsGate('productiles:hasSeenInstructions', { openOnMount: true })
     const [showLinks, setShowLinks] = useState(false)
-    const [hasSeenInstructions, setHasSeenInstructions] = useState(() => localStorage.getItem('productiles:hasSeenInstructions') === '1')
-
-    const closeInstructions = useCallback(() => {
-        localStorage.setItem('productiles:hasSeenInstructions', '1')
-        setHasSeenInstructions(true)
-        setShowInstructions(false)
-    }, [])
 
     const currentPuzzleData = useMemo(() => {
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
@@ -580,8 +585,8 @@ export default function Productiles() {
     const allDone = completions.every(Boolean)
     const primaryLabel = isSolved
         ? mode === 'tutorial'
-            ? tutorialIdx < puzzleData.tutorial.length - 1 ? 'Next Puzzle' : 'Play Today\'s Puzzles'
-            : allDone ? 'All Done!' : 'Next Puzzle'
+            ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
+            : allDone ? CTA_LABELS.ALL_DONE : CTA_LABELS.NEXT_PUZZLE
         : null
 
     const base = import.meta.env.BASE_URL
@@ -589,7 +594,8 @@ export default function Productiles() {
     return (
         <div className="game-container">
             <TopBar
-                title="Productiles"
+                title={chrome.title}
+                showStats={chrome.showStats}
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
@@ -652,16 +658,16 @@ export default function Productiles() {
 
             {!isSolved ? (
                 <div className="goal-text">Match the Products</div>
-            ) : primaryLabel === 'All Done!' ? (
+            ) : primaryLabel === CTA_LABELS.ALL_DONE ? (
                 <a href={base} className="btn-primary"
                     style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    All Puzzles
+                    {CTA_LABELS.ALL_PUZZLES}
                 </a>
             ) : (
                 <button className="btn-primary" onClick={handlePrimary}>{primaryLabel}</button>
             )}
 
-            <SharedModalShell show={showInstructions} onClose={closeInstructions} closeAriaLabel="Close instructions">
+            <SharedModalShell show={showInstructions} onClose={closeInstructions} intent={MODAL_INTENTS.INSTRUCTIONS}>
                 <h1 className="title" style={{ marginBottom:'2rem', textAlign:'center' }}>Productiles</h1>
                 <div style={{ flex:1, textAlign:'center' }}>
                     <div style={{ display:'flex', justifyContent:'center', marginBottom:'2rem' }}>
@@ -676,13 +682,13 @@ export default function Productiles() {
                 <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
                     {!hasSeenInstructions ? (
                         <>
-                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>PLAY TUTORIAL PUZZLES</button>
-                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>SKIP TUTORIAL</button>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>{CTA_LABELS.PLAY_TUTORIAL}</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.SKIP_TUTORIAL}</button>
                         </>
                     ) : (
                         <>
-                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}> Play Today&apos;s Puzzles</button>
-                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>Tutorial Puzzles</button>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.PLAY_TODAY}</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>{CTA_LABELS.TUTORIAL_PUZZLES}</button>
                         </>
                     )}
                 </div>

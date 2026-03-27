@@ -19,7 +19,8 @@ type Icons =
 	| "help"
 	| "close"
 	| "chart"
-	| "menu";
+	| "menu"
+	| "home";
 
 export type Sizes = VariantProps<typeof Container>["size"];
 
@@ -283,6 +284,12 @@ const IconButton: React.FC<Props> = function (props: Props) {
 		label = (
 			<Icon>
 				<i className="fa-solid fa-bars fa-lg" />
+			</Icon>
+		);
+	} else if (icon === "home") {
+		label = (
+			<Icon>
+				<i className="fa-solid fa-house fa-sm" />
 			</Icon>
 		);
 	} else if (text !== undefined) {

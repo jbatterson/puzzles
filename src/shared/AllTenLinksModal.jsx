@@ -1,5 +1,7 @@
 import React from 'react'
 import SharedModalShell from './SharedModalShell.jsx'
+import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
+import { ALLTEN_LINK_TARGETS, CHROME_ASSET_URLS } from '../../shared-contracts/chromeUi.js'
 
 function isNowSchoolTime() {
     const date = new Date()
@@ -10,10 +12,10 @@ function isNowSchoolTime() {
 
 export default function AllTenLinksModal({ show, onClose }) {
     const schoolTime = isNowSchoolTime()
-    const href = schoolTime ? 'https://beastacademy.com/educators' : 'https://beastacademy.com/online'
+    const href = schoolTime ? ALLTEN_LINK_TARGETS.SCHOOL : ALLTEN_LINK_TARGETS.HOME
 
     return (
-        <SharedModalShell show={show} onClose={onClose} closeAriaLabel="Close links">
+        <SharedModalShell show={show} onClose={onClose} intent={MODAL_INTENTS.LINKS}>
             <div className="allten-links-wrap">
                 <h1 className="title allten-links-title">Beast Academy</h1>
                 <div className="allten-links-card">
@@ -27,7 +29,7 @@ export default function AllTenLinksModal({ show, onClose }) {
                     </a>
                     <img
                         className="allten-links-image"
-                        src="https://beastacademy.com/assets/wf/images/laptop-2.png"
+                        src={CHROME_ASSET_URLS.LINKS_MODAL_IMAGE}
                         alt="Beast Academy books with laptop"
                     />
                 </div>

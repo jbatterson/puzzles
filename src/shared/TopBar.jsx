@@ -1,4 +1,6 @@
 import React from 'react'
+import { HEADER_ACTIONS, ensureHeaderActions } from '../../shared-contracts/headerActions.js'
+import { CHROME_ACTION_ARIA_LABELS, CHROME_ASSET_URLS } from '../../shared-contracts/chromeUi.js'
 
 const styles = {
     bar: {
@@ -7,7 +9,7 @@ const styles = {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        margin: '0 0 8px 0',
+        margin: 0,
         padding: '10px',
         boxSizing: 'border-box',
         color: '#18355E',
@@ -26,12 +28,12 @@ const styles = {
     left: {
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
+        gap: '4px',
     },
     right: {
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
+        gap: '4px',
     },
     iconBtn: {
         width: '32px',
@@ -86,22 +88,16 @@ const styles = {
         width: 'auto',
         display: 'block',
     },
-    title: {
-        margin: 0,
-        paddingTop: 0,
-        paddingLeft: '5px',
-        fontSize: '26px',
-        display: 'inline-block',
-        color: 'inherit',
-        letterSpacing: 0,
-        fontWeight: 600,
-        textTransform: 'none',
-        whiteSpace: 'nowrap',
-        lineHeight: 1,
-    },
 }
 
 export default function TopBar({ title, onHome, onCube, onStats, onHelp, showStats = false }) {
+    const actions = ensureHeaderActions({
+        [HEADER_ACTIONS.HOME]: onHome,
+        [HEADER_ACTIONS.LINKS]: onCube,
+        [HEADER_ACTIONS.STATS]: onStats,
+        [HEADER_ACTIONS.HELP]: onHelp,
+    })
+
     const barStyle = {
         ...styles.bar,
         position: 'relative',
@@ -111,21 +107,26 @@ export default function TopBar({ title, onHome, onCube, onStats, onHelp, showSta
     }
 
     return (
-        <div style={barStyle}>
+        <div className="topbar-shell" style={barStyle}>
             <div style={styles.content}>
                 <div style={styles.left}>
-                    <button type="button" style={styles.iconBtn} onClick={onHome} aria-label="Home">
+                    <button
+                        type="button"
+                        style={styles.iconBtn}
+                        onClick={actions[HEADER_ACTIONS.HOME]}
+                        aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HOME]}
+                    >
                         <i className="fa-solid fa-house fa-sm" aria-hidden="true" />
                     </button>
                     <button
                         type="button"
                         style={styles.cubeBtn}
-                        onClick={onCube}
-                        aria-label="Open links"
+                        onClick={actions[HEADER_ACTIONS.LINKS]}
+                        aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.LINKS]}
                     >
                         <img
                             style={styles.cubeImg}
-                            src="https://beastacademy.com/u/AllTen/cube.svg"
+                            src={CHROME_ASSET_URLS.CUBE_ICON}
                             alt=""
                             aria-hidden="true"
                         />
@@ -136,21 +137,31 @@ export default function TopBar({ title, onHome, onCube, onStats, onHelp, showSta
                     <div style={styles.logoContainer} aria-hidden="true">
                         <img
                             style={styles.logo}
-                            src="https://beastacademy.com/u/AllTen/beastacademy-logo.svg"
+                            src={CHROME_ASSET_URLS.BEAST_ACADEMY_LOGO}
                             alt=""
                             loading="eager"
                         />
                     </div>
-                    <h1 style={styles.title}>{title}</h1>
+                    <h1 className="topbar-title">{title}</h1>
                 </div>
 
                 <div style={styles.right}>
                     {showStats && (
-                        <button type="button" style={styles.iconBtn} onClick={onStats} aria-label="Stats">
+                        <button
+                            type="button"
+                            style={styles.iconBtn}
+                            onClick={actions[HEADER_ACTIONS.STATS]}
+                            aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.STATS]}
+                        >
                             <i className="fas fa-chart-column" aria-hidden="true" />
                         </button>
                     )}
-                    <button type="button" style={styles.iconBtn} onClick={onHelp} aria-label="Help">
+                    <button
+                        type="button"
+                        style={styles.iconBtn}
+                        onClick={actions[HEADER_ACTIONS.HELP]}
+                        aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HELP]}
+                    >
                         <i className="fas fa-question" aria-hidden="true" />
                     </button>
                 </div>

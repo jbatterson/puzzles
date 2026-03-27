@@ -7,6 +7,7 @@ import FactorfallIcon from './shared/icons/FactorfallIcon.jsx'
 import CluelessIcon from './shared/icons/CluelessIcon.jsx'
 import AllTenIcon from './shared/icons/AllTenIcon.jsx'
 import DiceFace from './shared/DiceFace.jsx'
+import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../shared-contracts/chromeUi.js'
 
 const base = import.meta.env.BASE_URL
 
@@ -139,8 +140,8 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
                             width: '28px',
                             height: '28px',
                             borderRadius: '6px',
-                            background: done ? '#22c55e' : '#d1d5db',
-                            color: '#fff',
+                            background: done ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                            color: done ? '#fff' : PUZZLE_SUITE_INK,
                             fontWeight: 900,
                             fontSize: '1rem',
                             display: 'flex',
@@ -165,7 +166,7 @@ function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
     const done = useAttempts ? (attempts != null) : completed
     const showSuccess = useAttempts && attempts != null
     const showFailed = useAttempts && failed && attempts == null
-    const bg = showSuccess ? '#22c55e' : (showFailed ? '#374151' : (done ? '#22c55e' : '#d1d5db'))
+    const bg = showSuccess ? '#22c55e' : (showFailed ? '#374151' : (done ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE))
     const content = useAttempts
         ? (attempts != null ? (attempts === 1 ? '★' : String(Math.min(attempts, 99))) : (failed ? '•' : '1'))
         : (completed ? (perfect ? '★' : '✓') : '1')
@@ -176,7 +177,7 @@ function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
                 height: '28px',
                 borderRadius: '6px',
                 background: bg,
-                color: '#fff',
+                color: (showSuccess || showFailed || done) ? '#fff' : PUZZLE_SUITE_INK,
                 fontWeight: 900,
                 fontSize: '1.06rem',
                 display: 'flex',
@@ -204,8 +205,8 @@ function CluelessBoxes({ attempts }) {
                             width: '28px',
                             height: '28px',
                             borderRadius: '6px',
-                            background: done ? '#22c55e' : '#d1d5db',
-                            color: '#fff',
+                            background: done ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                            color: done ? '#fff' : PUZZLE_SUITE_INK,
                             fontWeight: 900,
                             fontSize: '1rem',
                             display: 'flex',

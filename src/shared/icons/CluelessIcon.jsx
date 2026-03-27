@@ -1,4 +1,5 @@
 import React from 'react'
+import { PUZZLE_SUITE_INK } from '../../../shared-contracts/chromeUi.js'
 
 export default function Icon({ size = 28, className = '' }) {
     return (
@@ -16,7 +17,7 @@ export default function Icon({ size = 28, className = '' }) {
                 height="41.36"
                 transform="translate(66.04 -.52) rotate(90)"
                 fill="#f6ae2d"
-                stroke="#000"
+                stroke={PUZZLE_SUITE_INK}
                 strokeWidth="5"
                 strokeMiterlimit="3"
             />
@@ -28,7 +29,7 @@ export default function Icon({ size = 28, className = '' }) {
                 height="41.36"
                 transform="translate(149.48 -83.96) rotate(90)"
                 fill="#f6ae2d"
-                stroke="#000"
+                stroke={PUZZLE_SUITE_INK}
                 strokeWidth="5"
                 strokeMiterlimit="3"
             />
@@ -40,7 +41,7 @@ export default function Icon({ size = 28, className = '' }) {
                 width="41.36"
                 height="41.36"
                 transform="translate(149.48 -.52) rotate(90)"
-                stroke="#000"
+                stroke={PUZZLE_SUITE_INK}
                 strokeWidth="5"
                 strokeMiterlimit="3"
             />
@@ -52,7 +53,7 @@ export default function Icon({ size = 28, className = '' }) {
                 height="41.36"
                 transform="translate(149.48 82.91) rotate(90)"
                 fill="#f6ae2d"
-                stroke="#000"
+                stroke={PUZZLE_SUITE_INK}
                 strokeWidth="5"
                 strokeMiterlimit="3"
             />
@@ -64,7 +65,7 @@ export default function Icon({ size = 28, className = '' }) {
                 height="41.36"
                 transform="translate(232.91 -.52) rotate(90)"
                 fill="#f6ae2d"
-                stroke="#000"
+                stroke={PUZZLE_SUITE_INK}
                 strokeWidth="5"
                 strokeMiterlimit="3"
             />

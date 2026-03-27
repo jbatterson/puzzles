@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/puzzles/',
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
   build: {
     rollupOptions: {
       input: {
@@ -15,7 +18,7 @@ export default defineConfig({
         factorfall: 'puzzlegames/factorfall/index.html',
         clueless: 'puzzlegames/clueless/index.html',
         allten: 'puzzlegames/allten/index.html',
-      }
-    }
-  }
+      },
+    },
+  },
 })

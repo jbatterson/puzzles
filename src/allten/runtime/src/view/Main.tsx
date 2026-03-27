@@ -38,6 +38,10 @@ import StatsPage from "./StatsPage";
 
 export type Props = {
 	appState: AppState;
+	/**
+	 * When true, the native title bar is omitted so a suite-level header (e.g. shared TopBar) can render above the game.
+	 */
+	hideNativeTitleBar?: boolean;
 };
 
 const ScreenContainer = styled("div", {
@@ -50,6 +54,20 @@ const ScreenContainer = styled("div", {
 	alignItems: "center",
 	color: "$main",
 	fontFamily: "Roboto, sans-serif",
+	variants: {
+		/**
+		 * When the suite header renders above Main, the game must flex within the remaining height
+		 * instead of height:100% of the full shell (which would overflow and hide the keyboard).
+		 */
+		fillBelowSuiteChrome: {
+			true: {
+				flex: 1,
+				minHeight: 0,
+				height: "auto",
+				overflow: "hidden",
+			},
+		},
+	},
 });
 
 const TitleRow = styled("div", {
@@ -265,7 +283,7 @@ const fakeAnimButtonInnerClassName = css({
 });
 
 const Main: React.FC<Props> = function (props: Props) {
-	const {appState} = props;
+	const {appState, hideNativeTitleBar = false} = props;
 
 	/* rect setup */
 
@@ -449,9 +467,11 @@ const Main: React.FC<Props> = function (props: Props) {
 			<TitleRowContent>
 				<TitleRowSide side="left">
 					<IconButton
-						icon="menu"
+						icon="home"
 						size="small"
-						onClick={() => appState.showLinks(true)}
+						onClick={() => {
+							window.location.href = "/puzzles/";
+						}}
 						color="mainInverted"
 					/>
 					<ImageButton
@@ -556,7 +576,10 @@ const Main: React.FC<Props> = function (props: Props) {
 			currAnimGen={appState.currAnimGen}
 			currAnim={appState.currAnim}
 		>
-			<ScreenContainer ref={gameElRef}>
+			<ScreenContainer
+				ref={gameElRef}
+				fillBelowSuiteChrome={!!hideNativeTitleBar}
+			>
 				<AnimationHook
 					name="fakeAnimButton"
 					outerClassName={fakeAnimButtonClassName()}
@@ -566,7 +589,7 @@ const Main: React.FC<Props> = function (props: Props) {
 					{fakeButton}
 				</AnimationHook>
 				{modals}
-				{title}
+				{!hideNativeTitleBar && title}
 				{body}
 				{keyboard}
 			</ScreenContainer>

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { PUZZLE_SUITE_INK } from '../../shared-contracts/chromeUi.js'
 import NAV from './nav.js'
 import BugIcon from './icons/BugIcon.jsx'
 import FoldsIcon from './icons/FoldsIcon.jsx'
@@ -54,10 +55,10 @@ export default function MenuModal({ onClose }) {
                                     padding: '10px 8px',
                                     borderRadius: '10px',
                                     textDecoration: 'none',
-                                    color: 'black',
+                                    color: PUZZLE_SUITE_INK,
                                     transition: 'background 140ms ease',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.03)'}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(24, 53, 94, 0.06)'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                             >
                                 {Icon && (

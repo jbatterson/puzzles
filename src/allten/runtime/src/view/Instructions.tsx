@@ -141,6 +141,7 @@ const Instructions: React.FC<Props> = function (props: Props) {
 			show={show}
 			showPrivacy={true}
 			extraPad={true}
+			closeOnEscape={true}
 		>
 			<Container>
 				<Space />

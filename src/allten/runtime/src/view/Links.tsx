@@ -110,7 +110,7 @@ const Links: React.FC<Props> = function (props: Props) {
 	);
 
 	return (
-		<Modal close={hideLinks} show={show}>
+		<Modal close={hideLinks} show={show} closeOnEscape={true}>
 			<Container>
 				<Space />
 				{modalContent}

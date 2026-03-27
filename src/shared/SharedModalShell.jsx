@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
+import { getModalCloseAriaLabel } from '../../shared-contracts/modalIntents.js'
 
-export default function SharedModalShell({ show = false, onClose, children, closeAriaLabel = 'Close modal' }) {
+export default function SharedModalShell({ show = false, onClose, children, closeAriaLabel, intent }) {
     useEffect(() => {
         if (!show) return
         const onKey = (e) => {
@@ -11,6 +12,7 @@ export default function SharedModalShell({ show = false, onClose, children, clos
     }, [show, onClose])
 
     if (!show) return null
+    const resolvedCloseAriaLabel = closeAriaLabel || getModalCloseAriaLabel(intent)
 
     return (
         <div id="instructions-overlay" onClick={onClose}>
@@ -22,7 +24,7 @@ export default function SharedModalShell({ show = false, onClose, children, clos
                     type="button"
                     className="shared-modal-close"
                     onClick={onClose}
-                    aria-label={closeAriaLabel}
+                    aria-label={resolvedCloseAriaLabel}
                 >
                     ✕
                 </button>
