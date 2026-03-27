@@ -5,6 +5,7 @@ import ProductilesIcon from './shared/icons/ProductilesIcon.jsx'
 import SumTilesIcon from './shared/icons/SumTilesIcon.jsx'
 import FactorfallIcon from './shared/icons/FactorfallIcon.jsx'
 import CluelessIcon from './shared/icons/CluelessIcon.jsx'
+import AllTenIcon from './shared/icons/AllTenIcon.jsx'
 import DiceFace from './shared/DiceFace.jsx'
 
 const base = import.meta.env.BASE_URL
@@ -286,6 +287,7 @@ function ShareIcon({ size = 18 }) {
 // single: true = one puzzle per day (uses clueless:YYYY-MM-DD storage key pattern)
 
 const GAMES = [
+    { key: 'allten',      href: `${base}puzzlegames/allten/`,      Icon: AllTenIcon,       title: 'All Ten',     desc: 'Use the given numbers to make each target from 1 to 10.' },
     { key: 'scurry',      href: `${base}puzzlegames/scurry/`,      Icon: BugIcon,         title: 'Scurry',      desc: 'Place bugs to fill every highlighted square.' },
     { key: 'clueless',    href: `${base}puzzlegames/clueless/`,     Icon: CluelessIcon,    title: 'Clueless',    desc: 'Fill in the missing letters to complete six crossing words.', single: false },
     { key: 'folds',       href: `${base}puzzlegames/folds/`,       Icon: FoldsIcon,       title: 'Folds',       desc: 'Reflect triangles to match the target pattern.' },

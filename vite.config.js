@@ -14,6 +14,7 @@ export default defineConfig({
         productiles: 'puzzlegames/productiles/index.html',
         factorfall: 'puzzlegames/factorfall/index.html',
         clueless: 'puzzlegames/clueless/index.html',
+        allten: 'puzzlegames/allten/index.html',
       }
     }
   }

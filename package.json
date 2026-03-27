@@ -4,8 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node tools/copyAllTenBundle.mjs",
     "dev": "vite",
+    "prebuild": "node tools/copyAllTenBundle.mjs",
     "build": "vite build",
+    "postbuild": "node tools/copyAllTenBundleToDist.mjs",
     "deploy": "npm run build && gh-pages -d dist",
     "lint": "eslint .",
     "preview": "vite preview"

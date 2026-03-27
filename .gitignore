@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Built vendor bundle copied from all-ten-main
+puzzlegames/allten/bundle_allten.js
+puzzlegames/allten/bundle_allten.js.map
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
