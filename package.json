@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node tools/copyAllTenBundle.mjs",
+    "build:allten": "npm --prefix all-ten-main run build",
+    "predev": "npm run build:allten && node tools/copyAllTenBundle.mjs",
     "dev": "vite",
-    "prebuild": "node tools/copyAllTenBundle.mjs",
+    "prebuild": "npm run build:allten && node tools/copyAllTenBundle.mjs",
     "build": "vite build",
     "postbuild": "node tools/copyAllTenBundleToDist.mjs",
     "deploy": "npm run build && gh-pages -d dist",

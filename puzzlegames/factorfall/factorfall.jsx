@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
+import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
+import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -282,6 +284,7 @@ const Factorfall = () => {
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const [showInstructions, setShowInstructions] = useState(true)
+    const [showLinks, setShowLinks] = useState(false)
     const [hasSeenInstructions, setHasSeenInstructions] = useState(() => localStorage.getItem('factorfall:hasSeenInstructions') === '1')
 
     const closeInstructions = useCallback(() => {
@@ -956,7 +959,12 @@ const Factorfall = () => {
 
     return (
         <div className="game-container">
-            <TopBar title="Factorfall" onHelp={() => setShowInstructions(true)} />
+            <TopBar
+                title="Factorfall"
+                onHome={() => { window.location.href = base }}
+                onHelp={() => setShowInstructions(true)}
+                onCube={() => setShowLinks(true)}
+            />
 
             {/* ── Info bar ── */}
             {mode === 'tutorial' ? (
@@ -1053,46 +1061,42 @@ const Factorfall = () => {
             )}
 
             {/* ── Instructions overlay ── */}
-            {showInstructions && (
-                <div id="instructions-overlay">
-                    <div className="modal-content" style={{ position: 'relative' }}>
-                        <button onClick={closeInstructions}
-                            style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '22px', fontWeight: 900, cursor: 'pointer' }}>✕</button>
-                        <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Factorfall</h1>
-                        <div style={{ flex: 1, textAlign: 'center' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                                <FactorfallIcon size={80} />
-                            </div>
-                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
-                                Drop factors into the grid. Groups of the same color
-                                that <b>multiply</b> to the target are cleared from the board.
-                                <br /><br />
-                                One ball can be part of multiple groups.
-                                <br /><br />
-                                Clear the entire board to solve the puzzle.
-                                <br /><br />
-                            </p>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {!hasSeenInstructions ? (
-                                <>
-                                    <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>PLAY TUTORIAL PUZZLES</button>
-                                    <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>SKIP TUTORIAL</button>
-                                </>
-                            ) : (
-                                <>
-                                    <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>
-                                        Play Today's Puzzles
-                                    </button>
-                                    <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>
-                                        Tutorial Puzzles
-                                    </button>
-                                </>
-                            )}
-                        </div>
+            <SharedModalShell show={showInstructions} onClose={closeInstructions} closeAriaLabel="Close instructions">
+                <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Factorfall</h1>
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                        <FactorfallIcon size={80} />
                     </div>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
+                        Drop factors into the grid. Groups of the same color
+                        that <b>multiply</b> to the target are cleared from the board.
+                        <br /><br />
+                        One ball can be part of multiple groups.
+                        <br /><br />
+                        Clear the entire board to solve the puzzle.
+                        <br /><br />
+                    </p>
                 </div>
-            )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {!hasSeenInstructions ? (
+                        <>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>PLAY TUTORIAL PUZZLES</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>SKIP TUTORIAL</button>
+                        </>
+                    ) : (
+                        <>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>
+                                Play Today&apos;s Puzzles
+                            </button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>
+                                Tutorial Puzzles
+                            </button>
+                        </>
+                    )}
+                </div>
+            </SharedModalShell>
+
+            <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
         </div>
     )
 }

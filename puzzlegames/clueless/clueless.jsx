@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import puzzles from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
+import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
+import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
@@ -484,6 +486,7 @@ export default function CluelessGame() {
     const [showInstructions, setShowInstructions] = useState(
         () => localStorage.getItem('clueless:hasSeenInstructions') !== '1'
     )
+    const [showLinks, setShowLinks] = useState(false)
 
     const closeInstructions = useCallback(() => {
         localStorage.setItem('clueless:hasSeenInstructions', '1')
@@ -752,7 +755,12 @@ export default function CluelessGame() {
 
     return (
         <div className="game-container clueless">
-            <TopBar title="Clueless" onHelp={() => setShowInstructions(true)} />
+            <TopBar
+                title="Clueless"
+                onHome={() => { window.location.href = base }}
+                onHelp={() => setShowInstructions(true)}
+                onCube={() => setShowLinks(true)}
+            />
 
             {/* INFO BAR */}
             <div className="level-nav">
@@ -956,35 +964,27 @@ export default function CluelessGame() {
             </div>
 
             {/* INSTRUCTIONS OVERLAY */}
-            {showInstructions && (
-                <div id="instructions-overlay">
-                    <div className="modal-content" style={{ position: 'relative' }}>
-                        <button onClick={closeInstructions} style={{
-                            position: 'absolute', top: '16px', right: '16px',
-                            background: 'none', border: 'none',
-                            fontSize: '22px', fontWeight: 900, cursor: 'pointer',
-                        }}>✕</button>
-
-                        <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Clueless</h1>
-                        <div style={{ flex: 1, textAlign: 'center' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                                <CluelessIcon size={80} />
-                            </div>
-                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                            Each puzzle uses six common five-letter, classroom-appropriate words — no plurals, proper nouns, abbreviations, or acronyms. The third puzzle may include some less familiar words.
-                            </p>
-                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                                Fill every blank and use the <strong>CHECK</strong> button to reveal which letters are correct.
-                            </p>
-                            <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                                If multiple letters can fill a blank, the puzzle uses the one that creates the most common pair.
-                            </p>
-                        </div>
-
-                        <button className="btn-primary" onClick={closeInstructions}>Play</button>
+            <SharedModalShell show={showInstructions} onClose={closeInstructions} closeAriaLabel="Close instructions">
+                <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Clueless</h1>
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                        <CluelessIcon size={80} />
                     </div>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
+                    Each puzzle uses six common five-letter, classroom-appropriate words - no plurals, proper nouns, abbreviations, or acronyms. The third puzzle may include some less familiar words.
+                    </p>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
+                        Fill every blank and use the <strong>CHECK</strong> button to reveal which letters are correct.
+                    </p>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+                        If multiple letters can fill a blank, the puzzle uses the one that creates the most common pair.
+                    </p>
                 </div>
-            )}
+
+                <button className="btn-primary" onClick={closeInstructions}>Play</button>
+            </SharedModalShell>
+
+            <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
         </div>
     )
 }

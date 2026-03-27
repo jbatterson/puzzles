@@ -3,6 +3,8 @@ import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import { tileGameFillColor } from '../../src/shared/tileGamePalette.js'
 import DiceFace from '../../src/shared/DiceFace.jsx'
+import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
+import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import SumTilesIcon from '../../src/shared/icons/SumTilesIcon.jsx'
 
 const SNAP_SPEED = 0.25
@@ -237,6 +239,7 @@ export default function SumTiles() {
     const [isSolved, setIsSolved]       = useState(false)
     const [historyLen, setHistoryLen]   = useState(0)
     const [showInstructions, setShowInstructions] = useState(true)
+    const [showLinks, setShowLinks] = useState(false)
     const [hasSeenInstructions, setHasSeenInstructions] = useState(() => localStorage.getItem('sumtiles:hasSeenInstructions') === '1')
 
     const closeInstructions = useCallback(() => {
@@ -573,7 +576,12 @@ export default function SumTiles() {
 
     return (
         <div className="game-container">
-            <TopBar title="Sum Tiles" onHelp={() => setShowInstructions(true)} />
+            <TopBar
+                title="Sum Tiles"
+                onHome={() => { window.location.href = base }}
+                onHelp={() => setShowInstructions(true)}
+                onCube={() => setShowLinks(true)}
+            />
 
             {mode === 'tutorial' ? (
                 <div className="level-nav">
@@ -641,38 +649,34 @@ export default function SumTiles() {
                 <button className="btn-primary" onClick={handlePrimary}>{primaryLabel}</button>
             )}
 
-            {showInstructions && (
-                <div id="instructions-overlay">
-                    <div className="modal-content" style={{ position:'relative' }}>
-                        <button onClick={closeInstructions}
-                            style={{ position:'absolute', top:'16px', right:'16px', background:'none', border:'none', fontSize:'22px', fontWeight:900, cursor:'pointer' }}>✕</button>
-                        <h1 className="title" style={{ marginBottom:'2rem', textAlign:'center' }}>Sum Tiles</h1>
-                        <div style={{ flex:1, textAlign:'center' }}>
-                            <div style={{ display:'flex', justifyContent:'center', marginBottom:'2rem' }}>
-                                <SumTilesIcon size={80} />
-                            </div>
-                            <p style={{ fontSize:'1.1rem', lineHeight:'1.6' }}>
-                                Slide the tiles so the <b>sum</b> of the numbers in every row and column matches its target.
-                                <br /><br />
-                                Square tiles can slide in all four directions. Long rectangles only slide the long way.
-                            </p>
-                        </div>
-                        <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-                            {!hasSeenInstructions ? (
-                                <>
-                                    <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>PLAY TUTORIAL PUZZLES</button>
-                                    <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>SKIP TUTORIAL</button>
-                                </>
-                            ) : (
-                                <>
-                                    <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}> Play Today's Puzzles</button>
-                                    <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>Tutorial Puzzles</button>
-                                </>
-                            )}
-                        </div>
+            <SharedModalShell show={showInstructions} onClose={closeInstructions} closeAriaLabel="Close instructions">
+                <h1 className="title" style={{ marginBottom:'2rem', textAlign:'center' }}>Sum Tiles</h1>
+                <div style={{ flex:1, textAlign:'center' }}>
+                    <div style={{ display:'flex', justifyContent:'center', marginBottom:'2rem' }}>
+                        <SumTilesIcon size={80} />
                     </div>
+                    <p style={{ fontSize:'1.1rem', lineHeight:'1.6' }}>
+                        Slide the tiles so the <b>sum</b> of the numbers in every row and column matches its target.
+                        <br /><br />
+                        Square tiles can slide in all four directions. Long rectangles only slide the long way.
+                    </p>
                 </div>
-            )}
+                <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+                    {!hasSeenInstructions ? (
+                        <>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>PLAY TUTORIAL PUZZLES</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>SKIP TUTORIAL</button>
+                        </>
+                    ) : (
+                        <>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}> Play Today&apos;s Puzzles</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>Tutorial Puzzles</button>
+                        </>
+                    )}
+                </div>
+            </SharedModalShell>
+
+            <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
         </div>
     )
 }
