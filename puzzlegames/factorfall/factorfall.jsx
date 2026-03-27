@@ -295,7 +295,7 @@ const Factorfall = () => {
         showInstructions,
         setShowInstructions,
         closeInstructions,
-    } = useInstructionsGate('factorfall:hasSeenInstructions', { openOnMount: true })
+    } = useInstructionsGate('factorfall:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'factorfall' })
     const [showLinks, setShowLinks] = useState(false)
 
     const wrapperRef = useRef(null)
@@ -747,17 +747,25 @@ const Factorfall = () => {
     const undoMove = useCallback(() => {
         usedUndoOrResetRef.current = true
         const gs = gsRef.current
-        if (gs.history.length === 0 || gs.gameState !== 'READY' || gs.isEndless) return
+        if (gs.history.length === 0 || gs.isEndless) return
+        const fromClearedWin = boardCleared && gs.gameState === 'GAMEOVER'
+        if (gs.gameState !== 'READY' && !fromClearedWin) return
         const last = gs.history.pop()
         gs.grid = last.grid
         gs.queue = last.queue
         gs.score = last.score
+        gs.gameState = 'READY'
         setUiScore(gs.score)
         setUiQueue([...gs.queue])
+        if (fromClearedWin) {
+            setBoardCleared(false)
+            setGridFull(false)
+            setOutOfBalls(false)
+        }
         nextFromQueue(gs)
         setUndoDisabled(gs.history.length === 0 || gs.isEndless)
         persistDailyGameStateRef.current()
-    }, [])
+    }, [boardCleared])
 
     const resetLevel = useCallback(() => {
         usedUndoOrResetRef.current = true
@@ -1051,7 +1059,7 @@ const Factorfall = () => {
             {/* ── Buttons ── */}
             <div className="button-tray">
                 <button className="btn-secondary" onClick={undoMove}
-                    disabled={undoDisabled || boardCleared}>Undo</button>
+                    disabled={undoDisabled}>Undo</button>
                 <button className="btn-secondary" onClick={resetLevel}>Reset</button>
             </div>
 

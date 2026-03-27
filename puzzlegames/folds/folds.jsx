@@ -227,6 +227,52 @@ function markComplete(dateKey, idx, isPerfect) {
     localStorage.setItem(key, isPerfect ? '2' : '1')
 }
 
+function foldsWipKey(dateKey, idx) {
+    return `folds:${dateKey}:${idx}:wip`
+}
+
+function foldsLevelFingerprint(puzzle) {
+    if (!puzzle) return ''
+    return JSON.stringify({ s: puzzle.start, t: puzzle.target, f: puzzle.folds })
+}
+
+function clearFoldsWip(dateKey, idx) {
+    try {
+        localStorage.removeItem(foldsWipKey(dateKey, idx))
+    } catch {
+        // ignore
+    }
+}
+
+function loadFoldsWip(dateKey, idx, puzzle) {
+    const fp = foldsLevelFingerprint(puzzle)
+    if (!fp) return null
+    try {
+        const raw = localStorage.getItem(foldsWipKey(dateKey, idx))
+        if (!raw) return null
+        const d = JSON.parse(raw)
+        if (!d || d.v !== 1 || d.fp !== fp || typeof d.board !== 'object' || !Array.isArray(d.history) || typeof d.folds !== 'number') {
+            return null
+        }
+        return { board: d.board, history: d.history, folds: d.folds }
+    } catch {
+        return null
+    }
+}
+
+function saveFoldsWip(dateKey, idx, puzzle, board, folds, history) {
+    const fp = foldsLevelFingerprint(puzzle)
+    if (!fp) return
+    try {
+        localStorage.setItem(
+            foldsWipKey(dateKey, idx),
+            JSON.stringify({ v: 1, fp, board, folds, history }),
+        )
+    } catch {
+        // ignore
+    }
+}
+
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
 function PuzzleBoxes({ current, completions, perfects, onChange }) {
     return (
@@ -263,7 +309,7 @@ const App = () => {
         showInstructions,
         setShowInstructions,
         closeInstructions: closeInstructionsBase,
-    } = useInstructionsGate('folds:hasSeenInstructions', { openOnMount: true })
+    } = useInstructionsGate('folds:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'folds' })
     const [showLinks, setShowLinks] = useState(false)
 
     const [tapFlash, setTapFlash] = useState(null)
@@ -309,14 +355,36 @@ const App = () => {
     const [anim, setAnim] = useState(null)
 
     useEffect(() => {
+        setPendingFoldLine(null)
+        setPendingFoldAnchor(null)
+        if (mode === 'tutorial') {
+            setBoard(puzzle.start)
+            setHistory([puzzle.start])
+            setFolds(puzzle.folds)
+            setAnim(null)
+            usedUndoOrResetRef.current = false
+            return
+        }
+        const loaded = loadFoldsWip(daily.key, dailyIdx, puzzle)
+        if (loaded) {
+            setBoard(loaded.board)
+            setHistory(loaded.history)
+            setFolds(loaded.folds)
+            setAnim(null)
+            usedUndoOrResetRef.current = false
+            return
+        }
         setBoard(puzzle.start)
         setHistory([puzzle.start])
         setFolds(puzzle.folds)
         setAnim(null)
-        setPendingFoldLine(null)
-        setPendingFoldAnchor(null)
         usedUndoOrResetRef.current = false
-    }, [puzzle])
+    }, [puzzle, mode, daily.key, dailyIdx])
+
+    useEffect(() => {
+        if (mode !== 'daily' || !puzzle || anim) return
+        saveFoldsWip(daily.key, dailyIdx, puzzle, board, folds, history)
+    }, [mode, daily.key, dailyIdx, puzzle, board, folds, history, anim])
 
     useEffect(() => () => {
         if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
@@ -411,6 +479,7 @@ const App = () => {
 
     const handlePrimaryClick = () => {
         if (isWon) {
+            if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
             if (mode === 'tutorial') {
                 if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
                 else { setMode('daily'); setDailyIdx(0) }
@@ -420,6 +489,7 @@ const App = () => {
             }
         } else if (folds <= 0) {
             usedUndoOrResetRef.current = true
+            if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
             setBoard(puzzle.start)
             setHistory([puzzle.start])
             setFolds(puzzle.folds)
@@ -604,6 +674,7 @@ const App = () => {
                 <button
                     onClick={() => {
                         usedUndoOrResetRef.current = true
+                        if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
                         setBoard(puzzle.start)
                         setHistory([puzzle.start])
                         setFolds(puzzle.folds)

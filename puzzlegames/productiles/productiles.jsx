@@ -256,7 +256,7 @@ export default function Productiles() {
         showInstructions,
         setShowInstructions,
         closeInstructions,
-    } = useInstructionsGate('productiles:hasSeenInstructions', { openOnMount: true })
+    } = useInstructionsGate('productiles:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'productiles' })
     const [showLinks, setShowLinks] = useState(false)
 
     const currentPuzzleData = useMemo(() => {
@@ -548,9 +548,11 @@ export default function Productiles() {
 
     const handleUndo = () => {
         usedUndoOrResetRef.current = true
-        const s = stateRef.current; if (!s||s.moveHistory.length===0||isSolved) return
+        const s = stateRef.current; if (!s || s.moveHistory.length === 0) return
         const state = JSON.parse(s.moveHistory.pop())
-        for (const sv of state) { const t=s.tiles.find(t=>t.id===sv.id); if (t){t.r=sv.r;t.c=sv.c} }
+        for (const sv of state) { const t = s.tiles.find(t => t.id === sv.id); if (t) { t.r = sv.r; t.c = sv.c } }
+        s.solveAnim = null
+        setIsSolved(false)
         setHistoryLen(s.moveHistory.length)
         if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
     }
@@ -652,7 +654,7 @@ export default function Productiles() {
             </div>
 
             <div className="button-tray" style={{ marginTop: '16px' }}>
-                <button className="btn-secondary" onClick={handleUndo} disabled={historyLen === 0 || isSolved}>Undo</button>
+                <button className="btn-secondary" onClick={handleUndo} disabled={historyLen === 0}>Undo</button>
                 <button className="btn-secondary" onClick={handleReset} disabled={historyLen === 0 || isSolved}>Reset</button>
             </div>
 

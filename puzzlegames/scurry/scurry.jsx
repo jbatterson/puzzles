@@ -63,6 +63,52 @@ function markComplete(dateKey, idx, isPerfect) {
     localStorage.setItem(key, isPerfect ? '2' : '1')
 }
 
+function scurryWipKey(dateKey, idx) {
+    return `scurry:${dateKey}:${idx}:wip`
+}
+
+function scurryLevelFingerprint(level) {
+    if (!level) return ''
+    return JSON.stringify({ t: level.targets, p: level.prePlaced, m: level.maxBugs })
+}
+
+function clearScurryWip(dateKey, idx) {
+    try {
+        localStorage.removeItem(scurryWipKey(dateKey, idx))
+    } catch {
+        // ignore
+    }
+}
+
+function loadScurryWip(dateKey, idx, level) {
+    const fp = scurryLevelFingerprint(level)
+    if (!fp) return null
+    try {
+        const raw = localStorage.getItem(scurryWipKey(dateKey, idx))
+        if (!raw) return null
+        const d = JSON.parse(raw)
+        if (!d || d.v !== 1 || d.fp !== fp || !Array.isArray(d.bugs) || typeof d.bugsPlacedCount !== 'number' || !Array.isArray(d.history)) {
+            return null
+        }
+        return { bugs: d.bugs, bugsPlacedCount: d.bugsPlacedCount, history: d.history }
+    } catch {
+        return null
+    }
+}
+
+function saveScurryWip(dateKey, idx, level, bugs, bugsPlacedCount, history) {
+    const fp = scurryLevelFingerprint(level)
+    if (!fp) return
+    try {
+        localStorage.setItem(
+            scurryWipKey(dateKey, idx),
+            JSON.stringify({ v: 1, fp, bugs, bugsPlacedCount, history }),
+        )
+    } catch {
+        // ignore
+    }
+}
+
 // ── Bug component ────────────────────────────────────────────────────────────
 const Bug = ({ isMoving, isFalling, isCelebrating, size = 42 }) => (
     <div className={`${isFalling ? 'falling-bug' : ''} ${isCelebrating ? 'celebrating-bug' : ''}`}>
@@ -116,7 +162,7 @@ const BugPuzzle = () => {
         showInstructions,
         setShowInstructions,
         closeInstructions,
-    } = useInstructionsGate('scurry:hasSeenInstructions', { openOnMount: true })
+    } = useInstructionsGate('scurry:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'scurry' })
     const [showLinks, setShowLinks] = useState(false)
 
     const [bugs, setBugs] = useState([])
@@ -130,7 +176,7 @@ const BugPuzzle = () => {
         return daily.puzzles[dailyIdx]
     }, [mode, tutorialIdx, dailyIdx, daily])
 
-    const resetLevel = useCallback(() => {
+    const applyFreshBoard = useCallback(() => {
         if (!level) return
         const initial = level.prePlaced.map((sq, i) => ({
             id: `pre-${i}-${Date.now()}`,
@@ -144,10 +190,35 @@ const BugPuzzle = () => {
         setIsCelebrating(false)
     }, [level])
 
+    const resetLevel = useCallback(() => {
+        if (mode === 'daily') clearScurryWip(daily.key, dailyIdx)
+        applyFreshBoard()
+    }, [mode, daily.key, dailyIdx, applyFreshBoard])
+
     useEffect(() => {
-        resetLevel()
+        if (mode === 'tutorial') {
+            applyFreshBoard()
+            usedUndoOrResetRef.current = false
+            return
+        }
+        const loaded = loadScurryWip(daily.key, dailyIdx, level)
+        if (loaded) {
+            setBugs(loaded.bugs)
+            setBugsPlacedCount(loaded.bugsPlacedCount)
+            setHistory(loaded.history)
+            setIsAnimating(false)
+            setIsCelebrating(false)
+            usedUndoOrResetRef.current = false
+            return
+        }
+        applyFreshBoard()
         usedUndoOrResetRef.current = false
-    }, [resetLevel])
+    }, [mode, tutorialIdx, daily.key, dailyIdx, level, applyFreshBoard])
+
+    useEffect(() => {
+        if (mode !== 'daily' || !level || isAnimating) return
+        saveScurryWip(daily.key, dailyIdx, level, bugs, bugsPlacedCount, history)
+    }, [mode, daily.key, dailyIdx, level, bugs, bugsPlacedCount, history, isAnimating])
 
     const allTargetsFilled = level?.targets.length > 0 &&
         level.targets.every(t => bugs.some(b => b.square === t))
@@ -227,7 +298,7 @@ const BugPuzzle = () => {
 
     const undo = () => {
         usedUndoOrResetRef.current = true
-        if (history.length === 0 || allTargetsFilled) return
+        if (history.length === 0) return
         setBugs(history[history.length - 1])
         setHistory(prev => prev.slice(0, -1))
         setBugsPlacedCount(prev => prev - 1)
@@ -235,6 +306,7 @@ const BugPuzzle = () => {
 
     const handlePrimaryClick = () => {
         if (allTargetsFilled) {
+            if (mode === 'daily') clearScurryWip(daily.key, dailyIdx)
             if (mode === 'tutorial') {
                 if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
                 else { setMode('daily'); setDailyIdx(0) }
@@ -359,7 +431,7 @@ const BugPuzzle = () => {
             {/* BUTTONS */}
             <div className="button-tray">
                 <button className="btn-secondary" onClick={undo}
-                    disabled={history.length === 0 || allTargetsFilled}>Undo</button>
+                    disabled={history.length === 0}>Undo</button>
                 <button className="btn-secondary" onClick={() => { usedUndoOrResetRef.current = true; resetLevel() }}>Reset</button>
             </div>
 

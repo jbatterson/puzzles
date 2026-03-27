@@ -90,7 +90,16 @@ const styles = {
     },
 }
 
-export default function TopBar({ title, onHome, onCube, onStats, onHelp, showStats = false }) {
+export default function TopBar({
+    title,
+    onHome,
+    onCube,
+    onStats,
+    onHelp,
+    showStats = false,
+    /** When false, only the cube/links control is shown on the left (e.g. hub). */
+    showHome = true,
+}) {
     const actions = ensureHeaderActions({
         [HEADER_ACTIONS.HOME]: onHome,
         [HEADER_ACTIONS.LINKS]: onCube,
@@ -110,14 +119,16 @@ export default function TopBar({ title, onHome, onCube, onStats, onHelp, showSta
         <div className="topbar-shell" style={barStyle}>
             <div style={styles.content}>
                 <div style={styles.left}>
-                    <button
-                        type="button"
-                        style={styles.iconBtn}
-                        onClick={actions[HEADER_ACTIONS.HOME]}
-                        aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HOME]}
-                    >
-                        <i className="fa-solid fa-house fa-sm" aria-hidden="true" />
-                    </button>
+                    {showHome && (
+                        <button
+                            type="button"
+                            style={styles.iconBtn}
+                            onClick={actions[HEADER_ACTIONS.HOME]}
+                            aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HOME]}
+                        >
+                            <i className="fa-solid fa-house fa-sm" aria-hidden="true" />
+                        </button>
+                    )}
                     <button
                         type="button"
                         style={styles.cubeBtn}

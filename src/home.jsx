@@ -1,4 +1,7 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react'
+import TopBar from './shared/TopBar.jsx'
+import AllTenLinksModal from './shared/AllTenLinksModal.jsx'
+import './shared/style.css'
 import BugIcon from './shared/icons/BugIcon.jsx'
 import FoldsIcon from './shared/icons/FoldsIcon.jsx'
 import ProductilesIcon from './shared/icons/ProductilesIcon.jsx'
@@ -89,12 +92,43 @@ function loadCluelessAttempts(dateKey) {
     return CLUELESS_DIFFS.map(diff => loadCluelessAttempt(dateKey, diff))
 }
 
+/** Maps hub puzzle day (YYYY-MM-DD) to All Ten `-targets` localStorage suffix (PST calendar). */
+function hubDateKeyToAllTenTargetsKey(dateKey) {
+    const parts = dateKey.split('-').map(Number)
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return ''
+    const [y, m, d] = parts
+    const utc = Date.UTC(y, m - 1, d, 12, 0, 0)
+    const head = new Date(utc).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }).split(',')[0]?.trim() ?? ''
+    return head ? `${head}-targets` : ''
+}
+
+/** Count of targets solved today for All Ten (0–10), matching AppState `-targets` JSON. */
+function loadAllTenSolvedCountForHubDateKey(dateKey) {
+    const k = hubDateKeyToAllTenTargetsKey(dateKey)
+    if (!k) return 0
+    try {
+        const raw = localStorage.getItem(k)
+        if (!raw) return 0
+        const arr = JSON.parse(raw)
+        if (!Array.isArray(arr)) return 0
+        return arr.filter((t) => t != null && t.solution != null).length
+    } catch {
+        return 0
+    }
+}
+
+function buildAllTenShareText(title, href, solvedCount) {
+    const playUrl = new URL(href, window.location.origin).href
+    return `${title.toUpperCase()}\n${solvedCount}/10 targets\nPlay at ${playUrl}`
+}
+
 // ── Streaks ───────────────────────────────────────────────────────────────────
 
 const MAX_STREAK_DAYS = 365
 
 /** True if at least one puzzle of this type was completed on that calendar day (PST). */
 function dayHasCompletion(gameKey, single, dateKey) {
+    if (gameKey === 'allten') return loadAllTenSolvedCountForHubDateKey(dateKey) > 0
     return gameKey === 'clueless'
         ? loadCluelessAttempts(dateKey).some(a => a != null)
         : single
@@ -307,13 +341,13 @@ export default function Home() {
     const dateKey = useMemo(() => getDailyKey(), [])
 
     const completions = useMemo(() =>
-        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless').map(g => [g.key, loadCompletions(g.key, dateKey)])),
+        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless' && g.key !== 'allten').map(g => [g.key, loadCompletions(g.key, dateKey)])),
     [dateKey])
     const perfects = useMemo(() =>
-        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless').map(g => [g.key, loadPerfects(g.key, dateKey)])),
+        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless' && g.key !== 'allten').map(g => [g.key, loadPerfects(g.key, dateKey)])),
     [dateKey])
     const moveCounts = useMemo(() =>
-        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless').map(g => [g.key, loadMoveCounts(g.key, dateKey)])),
+        Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless' && g.key !== 'allten').map(g => [g.key, loadMoveCounts(g.key, dateKey)])),
     [dateKey])
 
     const cluelessAttempts = useMemo(() => loadCluelessAttempts(dateKey), [dateKey])
@@ -336,8 +370,11 @@ export default function Home() {
         Object.fromEntries(GAMES.map(g => [g.key, getStreak(g.key, !!g.single)])),
     [dateKey, streakRefresh])
 
+    const allTenTodayCount = useMemo(() => loadAllTenSolvedCountForHubDateKey(dateKey), [dateKey, streakRefresh])
+
     const [shareToastKey, setShareToastKey] = useState(null)
     const [showInstructions, setShowInstructions] = useState(false)
+    const [showLinks, setShowLinks] = useState(false)
     const toastTimeoutRef = useRef(null)
     React.useEffect(() => () => {
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
@@ -366,7 +403,9 @@ export default function Home() {
         e.stopPropagation()
         const game = GAMES.find(g => g.key === key)
         if (!game) return
-        const text = key === 'clueless'
+        const text = key === 'allten'
+            ? buildAllTenShareText(game.title, game.href, allTenTodayCount)
+            : key === 'clueless'
             ? buildCluelessShareText(game.title, game.href, cluelessAttempts)
             : game.single
                 ? buildSingleShareText(game.title, game.href, singleCompletions[key], singlePerfects[key])
@@ -379,13 +418,14 @@ export default function Home() {
                 toastTimeoutRef.current = null
             }, TOAST_MS)
         })
-    }, [cluelessAttempts, completions, perfects, moveCounts, singleCompletions, singlePerfects])
+    }, [allTenTodayCount, cluelessAttempts, completions, perfects, moveCounts, singleCompletions, singlePerfects])
 
     const hasAnyCompletion = useCallback((key, single) => {
+        if (key === 'allten') return allTenTodayCount > 0
         if (key === 'clueless') return cluelessAttempts.some(a => a != null)
         if (single) return singleCompletions[key]
         return completions[key]?.some(Boolean)
-    }, [cluelessAttempts, completions, singleCompletions])
+    }, [allTenTodayCount, cluelessAttempts, completions, singleCompletions])
 
     return (
         <>
@@ -394,17 +434,22 @@ export default function Home() {
 
                 :root {
                     --bg: #ffffff;
-                    --text: #111111;
-                    --muted: #555555;
+                    --text: var(--puzzle-ink);
+                    --muted: var(--puzzle-ink-muted);
                     --hairline: #e7e7e7;
                     --tile: #f4f4f4;
                     --tileHover: #eeeeee;
-                    --shadow: 0 1px 0 rgba(0,0,0,0.03);
+                    --shadow: 0 1px 0 rgba(24, 53, 94, 0.06);
                     --radius: 10px;
-                    --maxw: 720px;
                 }
 
                 * { box-sizing: border-box; }
+
+                /* Hub uses shared style.css for TopBar/modals; allow full width (games keep #root capped). */
+                #root {
+                    max-width: none;
+                    width: 100%;
+                }
 
                 body {
                     margin: 0;
@@ -414,25 +459,27 @@ export default function Home() {
                     -webkit-font-smoothing: antialiased;
                 }
 
-                .hp-page {
-                    max-width: var(--maxw);
-                    margin: 0 auto;
-                    padding: 28px 18px 48px;
-                }
-
-                .hp-top {
-                    display: flex;
-                    flex-direction: row;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    gap: 12px;
-                    margin-bottom: 18px;
-                }
-                .hp-top-inner {
+                .hp-shell {
+                    min-height: 100dvh;
                     display: flex;
                     flex-direction: column;
-                    gap: 6px;
-                    min-width: 0;
+                }
+
+                /* Same column as TopBar inner + .game-container (500px cap, 20px sides). */
+                .hp-page {
+                    flex: 1;
+                    width: min(95vw, 500px);
+                    max-width: min(95vw, 500px);
+                    margin: 0 auto;
+                    box-sizing: border-box;
+                    padding: 18px 20px 48px;
+                }
+
+                .hp-intro {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    margin-bottom: 18px;
                 }
 
                 .hp-tagline {
@@ -440,29 +487,19 @@ export default function Home() {
                     font-size: 15px;
                     font-weight: 600;
                     line-height: 1.4;
-                    color: var(--muted);
-                    max-width: 480px;
+                    color: var(--puzzle-ink-soft);
+                    max-width: 52ch;
                 }
 
                 .hp-date {
                     font-size: 13px;
-                    color: var(--muted);
+                    color: var(--puzzle-ink-muted);
                     letter-spacing: 0.02em;
-                    order: 2;
-                }
-
-                .hp-h1 {
-                    margin: 0;
-                    font-size: 28px;
-                    line-height: 1.15;
-                    font-weight: 900;
-                    letter-spacing: 0.15em;
-                    text-transform: uppercase;
                 }
 
                 .hp-divider {
                     height: 2px;
-                    background: var(--text);
+                    background: var(--puzzle-grid-line);
                     margin: 18px 0;
                 }
 
@@ -483,7 +520,7 @@ export default function Home() {
                 }
 
                 a.hp-card:hover {
-                    background: rgba(0,0,0,0.02);
+                    background: rgba(24, 53, 94, 0.06);
                     transform: translateY(-1px);
                 }
 
@@ -514,17 +551,16 @@ export default function Home() {
                 .hp-desc {
                     font-size: 14px;
                     line-height: 1.35;
-                    color: var(--muted);
+                    color: var(--puzzle-ink-soft);
                     max-width: 52ch;
                 }
 
                 @media (max-width: 420px) {
                     .hp-iconTile { width: 84px; height: 84px; }
-                    .hp-h1 { font-size: 26px; }
                 }
 
                 a.hp-card:focus-visible {
-                    outline: 3px solid rgba(0,0,0,0.2);
+                    outline: 3px solid rgba(24, 53, 94, 0.35);
                     outline-offset: 3px;
                 }
 
@@ -542,29 +578,29 @@ export default function Home() {
                     padding: 8px 12px;
                     margin: 12px;
                     align-self: center;
-                    background: rgba(15, 23, 42, 0.9);
-                    color: white;
+                    background: var(--puzzle-ink);
+                    color: var(--white);
                     border: none;
                     border-radius: 8px;
                     font-size: 12px;
                     font-weight: 700;
                     letter-spacing: 0.06em;
                     cursor: pointer;
-                    transition: background 140ms ease;
+                    transition: background 140ms ease, filter 140ms ease;
                 }
-                .hp-shareBtn:hover { background: rgba(15, 23, 42, 1); }
+                .hp-shareBtn:hover { filter: brightness(0.92); }
                 .hp-shareBtn:focus-visible {
-                    outline: 3px solid rgba(255,255,255,0.5);
+                    outline: 3px solid rgba(24, 53, 94, 0.45);
                     outline-offset: 2px;
                 }
 
                 .toast-panel {
                     max-width: 420px;
-                    background: rgba(15, 23, 42, 0.95);
-                    color: white;
+                    background: rgba(24, 53, 94, 0.95);
+                    color: var(--white);
                     padding: 14px 16px;
                     border-radius: 12px;
-                    box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+                    box-shadow: 0 10px 28px rgba(24, 53, 94, 0.25);
                     z-index: 50;
                 }
                 .toast-text { font-size: 0.9rem; line-height: 1.4; }
@@ -577,23 +613,6 @@ export default function Home() {
                     transform: none;
                 }
                 .hp-shareToast .toast-text { font-size: 0.85rem; }
-
-                .hp-helpBtn {
-                    flex-shrink: 0;
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    border: 2px solid var(--text);
-                    background: none;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    font-weight: 900;
-                    font-size: 1.1rem;
-                    color: var(--text);
-                }
-                .hp-helpBtn:hover { background: rgba(0,0,0,0.06); }
 
                 .hp-instructions-overlay {
                     position: fixed;
@@ -642,26 +661,28 @@ export default function Home() {
                 .hp-modal-body li { margin-bottom: 0.5rem; }
             `}</style>
 
-            <main className="hp-page">
-                <header className="hp-top">
-                    <div className="hp-top-inner">
-                        <h1 className="hp-h1">Daily Puzzles</h1>
-                        <p className="hp-tagline">Math and logic puzzles for the breakfast table, the car ride, or the classroom warm-up.</p>
+            <div className="hp-shell">
+                <div style={{ flexShrink: 0, width: '100%' }}>
+                    <TopBar
+                        title="PUZZLES"
+                        showHome={false}
+                        showStats={false}
+                        onCube={() => setShowLinks(true)}
+                        onHelp={() => setShowInstructions(true)}
+                    />
+                </div>
+
+                <main className="hp-page">
+                    <header className="hp-intro">
+                        <p className="hp-tagline">
+                            Daily puzzles for the breakfast table, the car ride, or the classroom warm-up.
+                        </p>
                         <div className="hp-date">{today}</div>
-                    </div>
-                    <button
-                        type="button"
-                        className="hp-helpBtn"
-                        onClick={() => setShowInstructions(true)}
-                        aria-label="Open instructions"
-                    >
-                        ?
-                    </button>
-                </header>
+                    </header>
 
-                <div className="hp-divider" />
+                    <div className="hp-divider" />
 
-                <section className="hp-list">
+                    <section className="hp-list">
                     {GAMES.map(({ key, href, Icon, title, desc, single }) => (
                         <div key={href} className="hp-cardWrapper">
                             <a className="hp-card" href={href}>
@@ -672,7 +693,27 @@ export default function Home() {
                                     <div className="hp-cardTitle">{title}</div>
                                     <div className="hp-desc">{desc}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                        {key === 'clueless' ? (
+                                        {key === 'allten' && allTenTodayCount > 0 ? (
+                                            <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                                                <div
+                                                    style={{
+                                                        width: '28px',
+                                                        height: '28px',
+                                                        borderRadius: '6px',
+                                                        background: allTenTodayCount >= 10 ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                                                        color: allTenTodayCount >= 10 ? '#fff' : PUZZLE_SUITE_INK,
+                                                        fontWeight: 900,
+                                                        fontSize: '1rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                    }}
+                                                    aria-label={`${allTenTodayCount} of 10 targets solved`}
+                                                >
+                                                    {allTenTodayCount}
+                                                </div>
+                                            </div>
+                                        ) : key === 'clueless' ? (
                                             <CluelessBoxes attempts={cluelessAttempts} />
                                         ) : single ? (
                                             <SinglePuzzleBox
@@ -717,8 +758,11 @@ export default function Home() {
                             )}
                         </div>
                     ))}
-                </section>
-            </main>
+                    </section>
+                </main>
+            </div>
+
+            <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
 
             {showInstructions && (
                 <div className="hp-instructions-overlay" role="dialog" aria-modal="true" aria-label="How progress works">
@@ -731,7 +775,7 @@ export default function Home() {
                             <SumTilesIcon size={48} />
                         </div>
                         <div className="hp-modal-body">
-                            <p>Each day has three puzzles of each type listed in order from easiest to hardest.</p>
+                            <p>Each day has puzzles of each type listed in order from easiest to hardest.</p>
                             <p><strong>Progress</strong> boxes show how you did on today&apos;s puzzles:</p>
                             <ul>
                                 <li><strong>Green</strong> indicates completed puzzles. </li>

@@ -548,6 +548,17 @@ export default function CluelessGame() {
         }
     }, [solved, geometry.inputOrder, selected, axisMode, guesses, locked, advanceAfterType, triedLettersByCell])
 
+    const clearAllUnlockedEntries = useCallback(() => {
+        if (solved) return
+        setGuesses(prev => {
+            const next = {}
+            for (const [k, letter] of Object.entries(prev)) {
+                if (locked.has(k)) next[k] = letter
+            }
+            return next
+        })
+    }, [solved, locked])
+
     // Physical keyboard
     useEffect(() => {
         if (showInstructions) return
@@ -896,7 +907,29 @@ export default function CluelessGame() {
                 {KB_ROWS.map((row, ri) => (
                     <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
                         {ri === 2 && (
+                            <>
                             <button
+                                type="button"
+                                aria-label="Clear all entries"
+                                onClick={clearAllUnlockedEntries}
+                                style={{
+                                    minWidth: 'clamp(36px, 9vw, 52px)',
+                                    height: 'clamp(32px, 7vh, 50px)',
+                                    border: `2px solid ${PUZZLE_SUITE_INK}`,
+                                    borderRadius: '4px',
+                                    background: '#fff',
+                                    color: PUZZLE_SUITE_INK,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <i className="fas fa-arrow-rotate-left fa-sm" aria-hidden="true" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label="Backspace"
                                 onClick={() => handleKey('Backspace')}
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
@@ -904,14 +937,16 @@ export default function CluelessGame() {
                                     border: `2px solid ${PUZZLE_SUITE_INK}`,
                                     borderRadius: '4px',
                                     background: '#fff',
-                                    fontWeight: 700,
-                                    fontSize: 'clamp(0.65rem, 2vw, 0.85rem)',
+                                    color: PUZZLE_SUITE_INK,
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                 }}
-                            >←</button>
+                            >
+                                <i className="fa-solid fa-delete-left fa-sm" aria-hidden="true" />
+                            </button>
+                            </>
                         )}
                         {[...row].map(ch => {
                             const isTried = triedInSelected.includes(ch.toLowerCase())
