@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { getModalCloseAriaLabel } from '../../shared-contracts/modalIntents.js'
 
-export default function SharedModalShell({ show = false, onClose, children, closeAriaLabel, intent }) {
+export default function SharedModalShell({ show = false, onClose, children, closeAriaLabel, intent, contentClassName = '' }) {
     useEffect(() => {
         if (!show) return
         const onKey = (e) => {
@@ -17,7 +17,7 @@ export default function SharedModalShell({ show = false, onClose, children, clos
     return (
         <div id="instructions-overlay" onClick={onClose}>
             <div
-                className="modal-content shared-modal-content"
+                className={`modal-content shared-modal-content${contentClassName ? ` ${contentClassName}` : ''}`}
                 onClick={(e) => e.stopPropagation()}
             >
                 <button

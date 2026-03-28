@@ -1,5 +1,9 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * GitHub Pages base path:
@@ -33,6 +37,25 @@ export default defineConfig(({ mode }) => {
     base,
     resolve: {
       dedupe: ['react', 'react-dom'],
+      /**
+       * Vite 7 can throw "Failed to resolve entry for package …" for deps whose
+       * package.json entry points fail fs resolution (Windows / OneDrive / hoisting).
+       * Pin explicit ESM/CJS files so dev + build always resolve.
+       */
+      alias: {
+        'mobx-react-lite': path.resolve(
+          __dirname,
+          'node_modules/mobx-react-lite/es/index.js',
+        ),
+        mobx: path.resolve(__dirname, 'node_modules/mobx/dist/mobx.esm.js'),
+        'fast-printf': path.resolve(
+          __dirname,
+          'node_modules/fast-printf/dist/src/printf.js',
+        ),
+      },
+    },
+    optimizeDeps: {
+      include: ['mobx', 'mobx-react-lite', 'fast-printf'],
     },
     build: {
       rollupOptions: {

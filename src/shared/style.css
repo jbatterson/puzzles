@@ -560,17 +560,19 @@ html, body {
    ============================================================================= */
 
 #instructions-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    /* Fixed to the viewport so All Ten (overlay inside a positioned game shell)
+       matches other games: content starts at the top of the screen, not only below
+       the in-app game area. */
+    position: fixed;
+    inset: 0;
     background: #ffffff;
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
     align-items: center;
-    z-index: 100;
+    z-index: 200;
     padding: 40px 20px;
+    padding-top: max(40px, env(safe-area-inset-top, 0px));
     overflow-y: auto;
     border-radius: inherit;
 }

@@ -13,7 +13,8 @@
 		"skipLibCheck": true,
 		"resolveJsonModule": true,
 		"noUncheckedIndexedAccess": true,
-		"noEmit": true
+		"noEmit": true,
+		"types": []
 	},
 	"include": ["src/**/*"]
 }

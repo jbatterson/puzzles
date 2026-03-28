@@ -12,12 +12,13 @@ import {TARGET_DISPLAY_HEIGHT} from "./util/Constants";
 import IconButton from "./IconButton";
 import TargetDisplay from "./TargetDisplay";
 import ExpressionDisplay from "./ExpressionDisplay";
-import Modal from "./Modal";
+import SharedModalShell from "../../../../shared/SharedModalShell.jsx";
+import {MODAL_INTENTS} from "../../../../../shared-contracts/modalIntents.js";
+import {CTA_LABELS} from "../../../../../shared-contracts/ctaLabels.js";
 
 export type Props = {
 	hideHelp: () => void;
 	show: boolean;
-	fullscreen?: boolean;
 };
 
 import {
@@ -69,7 +70,7 @@ function stringToLineWithLog(s: string): ExpressionLine | null {
 }
 
 const Instructions: React.FC<Props> = function (props: Props) {
-	const {hideHelp, fullscreen, show} = props;
+	const {hideHelp, show} = props;
 
 	const sampleProblemTarget: Problem = {
 		start: [1, 2, 3, 4],
@@ -135,13 +136,10 @@ const Instructions: React.FC<Props> = function (props: Props) {
 	const sampleExprResult3: Rational = [8, 3];
 
 	return (
-		<Modal
-			close={hideHelp}
-			size={fullscreen ? "fullscreen" : undefined}
+		<SharedModalShell
 			show={show}
-			showPrivacy={true}
-			extraPad={true}
-			closeOnEscape={true}
+			onClose={hideHelp}
+			intent={MODAL_INTENTS.INSTRUCTIONS}
 		>
 			<Container>
 				<Space />
@@ -214,7 +212,33 @@ const Instructions: React.FC<Props> = function (props: Props) {
 				<Aside>Try to get all ten!</Aside>
 				<Space small />
 			</Container>
-		</Modal>
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "stretch",
+					gap: "16px",
+					marginTop: "12px",
+					width: "100%",
+				}}
+			>
+				<a
+					href="https://beastacademy.com/privacy"
+					target="_blank"
+					rel="noopener noreferrer"
+					style={{
+						fontSize: "0.85rem",
+						color: "rgba(24, 53, 94, 0.55)",
+						textAlign: "center",
+					}}
+				>
+					Privacy Policy
+				</a>
+				<button type="button" className="btn-primary" onClick={hideHelp}>
+					{CTA_LABELS.PLAY_TODAY}
+				</button>
+			</div>
+		</SharedModalShell>
 	);
 };
 export default observer(Instructions);

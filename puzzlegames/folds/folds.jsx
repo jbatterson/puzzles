@@ -24,6 +24,8 @@ const pts = (r, c) => {
 }
 const easeIO = (t) => (t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2)
 const BROWN = '#653700'
+/** Emphasized fold line / touch confirm (lighter than suite ink for legibility on the grid). */
+const FOLD_LINE_ACCENT = '#3473CB'
 
 const HEX_POLY = (() => {
     const L = N * S, V0 = { x: PAD + S / 2, y: PAD }, V1 = { x: V0.x + L, y: V0.y }, V2 = { x: V1.x + L / 2, y: V1.y + N * H }
@@ -468,14 +470,13 @@ const App = () => {
         rafId = requestAnimationFrame(tick); return () => cancelAnimationFrame(rafId)
     }, [anim])
 
+    const isFoldLineEmphasized = (lineKey) =>
+        hoverLine === lineKey || pendingFoldLine === lineKey || tapFlash === lineKey
+
     const getLineStroke = (lineKey) => {
-        const highlighted = hoverLine === lineKey || pendingFoldLine === lineKey
-        if (highlighted) return '#6366f1'
-        if (tapFlash === lineKey) return '#6366f1'
+        if (isFoldLineEmphasized(lineKey)) return FOLD_LINE_ACCENT
         return '#cbd5e1'
     }
-
-    const isLineHighlighted = (lineKey) => hoverLine === lineKey || pendingFoldLine === lineKey
 
     const handlePrimaryClick = () => {
         if (isWon) {
@@ -628,8 +629,19 @@ const App = () => {
                                     }}
                                 >
                                     <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} className="fold-hit" stroke="transparent" strokeWidth="22" style={{ pointerEvents: 'stroke' }} />
-                                    <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} className="fold-visual" strokeWidth={isLineHighlighted(l.lineKey) ? 4 : 2} style={{ stroke: getLineStroke(l.lineKey) }} />
+                                    {!isFoldLineEmphasized(l.lineKey) && (
+                                        <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} className="fold-visual" strokeWidth={2} style={{ stroke: getLineStroke(l.lineKey) }} />
+                                    )}
                                 </g>
+                            ))}
+                            {ALL_LINES.filter(l => isFoldLineEmphasized(l.lineKey) && pendingFoldLine !== l.lineKey).map(l => (
+                                <line
+                                    key={`fold-emphasis-${l.lineKey}`}
+                                    x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+                                    className="fold-visual"
+                                    strokeWidth={4}
+                                    style={{ stroke: FOLD_LINE_ACCENT, pointerEvents: 'none' }}
+                                />
                             ))}
                             {pendingFoldLine && (() => {
                                 const l = ALL_LINES.find(ln => ln.lineKey === pendingFoldLine)

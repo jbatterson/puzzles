@@ -28,7 +28,7 @@ function getDomElPos(domEl: HTMLElement): [number, number] {
 export class AnimControl {
 	els: Map<string, AnimElement>;
 	anyActive: boolean;
-	endTimeout: NodeJS.Timeout | null;
+	endTimeout: ReturnType<typeof setTimeout> | null;
 
 	constructor() {
 		this.els = new Map();
