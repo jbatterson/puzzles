@@ -2,7 +2,7 @@ import React from 'react'
 import FloatingModalShell from './FloatingModalShell.jsx'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { ALLTEN_LINK_TARGETS, CHROME_ASSET_URLS } from '../../shared-contracts/chromeUi.js'
-import { isNowSchoolTime } from '../../shared-contracts/schoolTime.cjs'
+import { isNowSchoolTime } from '../../shared-contracts/schoolTime.js'
 
 /**
  * Beast Academy promotional modal (cube in TopBar). Same markup intent as former All Ten Links.tsx.

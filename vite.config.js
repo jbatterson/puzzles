@@ -12,15 +12,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
  *
  * Set VITE_BASE_PATH in .env.production, or one-shot: VITE_BASE_PATH=/MyRepo/ npm run build
  * In GitHub Actions, GITHUB_REPOSITORY supplies the repo slug when VITE_BASE_PATH is unset.
+ *
+ * Local dev uses base "/" so the hub loads at http://localhost:5173/ without fighting the
+ * GitHub Pages subpath; production keeps the deployed base above.
  */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const repoSlug = process.env.GITHUB_REPOSITORY?.split('/')?.[1]
-  const base =
+  const prodBase =
     env.VITE_BASE_PATH ||
     (repoSlug ? `/${repoSlug}/` : '/puzzles/')
+  const base = mode === 'development' ? '/' : prodBase
 
   return {
+    server: {
+      port: 5173,
+      /** Avoid silently using 5174+ while the user still opens 5173 (wrong app or cached tab). */
+      strictPort: true,
+    },
     plugins: [
       react(),
       // Same-origin GitHub Pages assets do not need crossorigin; some browsers mishandle module + crossorigin.

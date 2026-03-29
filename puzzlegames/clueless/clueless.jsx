@@ -932,7 +932,7 @@ export default function CluelessGame() {
                                     justifyContent: 'center',
                                 }}
                             >
-                                <i className="fas fa-arrow-rotate-left fa-sm" aria-hidden="true" />
+                                <i className="fas fa-arrow-rotate-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
                             </button>
                             <button
                                 type="button"
@@ -951,7 +951,7 @@ export default function CluelessGame() {
                                     justifyContent: 'center',
                                 }}
                             >
-                                <i className="fa-solid fa-delete-left fa-sm" aria-hidden="true" />
+                                <i className="fa-solid fa-delete-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
                             </button>
                             </>
                         )}

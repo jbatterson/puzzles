@@ -1,8 +1,8 @@
 "use strict";
 
 /**
- * School hours: 7am–4pm on weekdays (local time). Used for Beast Academy links modal CTA.
- * .cjs so Jest (and Node under the repo's "type": "module") load this as CommonJS without transpiling.
+ * School hours: 7am–4pm on weekdays (local time). Used by All Ten Dates.ts + Jest (CommonJS).
+ * Keep behavior in sync with schoolTime.js (ESM, used by the Vite hub).
  */
 function isNowSchoolTime() {
 	const date = new Date();
