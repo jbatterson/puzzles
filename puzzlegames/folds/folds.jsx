@@ -321,6 +321,7 @@ const App = () => {
     const [hoverLine, setHoverLine] = useState(null)
     const [pendingFoldLine, setPendingFoldLine] = useState(null)
     const [pendingFoldAnchor, setPendingFoldAnchor] = useState(null)
+    const pendingFoldLineRef = useRef(null)
     const svgRef = useRef(null)
     const canvasWrapperRef = useRef(null)
     const t0 = useRef(0)
@@ -419,6 +420,10 @@ const App = () => {
     }, [])
 
     useEffect(() => {
+        pendingFoldLineRef.current = pendingFoldLine
+    }, [pendingFoldLine])
+
+    useEffect(() => {
         const onPointerDownCapture = (e) => {
             if (showInstructions || showStats || showLinks) return
             const wrap = canvasWrapperRef.current
@@ -427,6 +432,18 @@ const App = () => {
         }
         window.addEventListener('pointerdown', onPointerDownCapture, true)
         return () => window.removeEventListener('pointerdown', onPointerDownCapture, true)
+    }, [showInstructions, showStats, showLinks, clearFoldLineInteractionState])
+
+    const onSvgPointerDownCapture = useCallback((e) => {
+        if (e.pointerType !== 'touch') return
+        if (!pendingFoldLineRef.current) return
+        if (showInstructions || showStats || showLinks) return
+        if (Date.now() < ignoreBoardPointerUntilRef.current) return
+        const raw = e.target
+        const el = raw instanceof Element ? raw : raw?.parentElement
+        if (!el || !(el instanceof Element)) return
+        if (el.closest('.fold-group') || el.closest('[data-fold-overlay]')) return
+        clearFoldLineInteractionState()
     }, [showInstructions, showStats, showLinks, clearFoldLineInteractionState])
 
     const isWon = useMemo(() => {
@@ -514,6 +531,13 @@ const App = () => {
         if (isFoldLineEmphasized(lineKey)) return FOLD_LINE_ACCENT
         return '#cbd5e1'
     }
+
+    const confirmPendingFold = useCallback((lineKey) => {
+        if (!lineKey) return
+        setPendingFoldLine(null)
+        setPendingFoldAnchor(null)
+        handleFold(lineKey)
+    }, [handleFold])
 
     const handlePrimaryClick = () => {
         if (isWon) {
@@ -603,6 +627,7 @@ const App = () => {
                         viewBox={`${HEX_VIEWBOX.x} ${HEX_VIEWBOX.y} ${HEX_VIEWBOX.w} ${HEX_VIEWBOX.h}`}
                         preserveAspectRatio="xMidYMid meet"
                         style={{ width: '100%', height: '100%', display: 'block' }}
+                        onPointerDownCapture={onSvgPointerDownCapture}
                     >
                         <g transform={`rotate(30 ${HEX_BOUNDS.minX + HEX_BOUNDS.width/2} ${HEX_BOUNDS.minY + HEX_BOUNDS.height/2})`}>
                             {ALL_TRIANGLES.map(t => <polygon key={t.key} points={pts(t.r, t.c)} fill="none" stroke="#f1f5f9" strokeWidth="1.5" />)}
@@ -689,12 +714,10 @@ const App = () => {
                                     if (Date.now() < ignoreBoardPointerUntilRef.current) return
                                     e.stopPropagation()
                                     e.preventDefault()
-                                    setPendingFoldLine(null)
-                                    setPendingFoldAnchor(null)
-                                    handleFold(l.lineKey)
+                                    confirmPendingFold(l.lineKey)
                                 }
                                 return (
-                                    <g key="fold-overlay">
+                                    <g key="fold-overlay" data-fold-overlay="">
                                         <line x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke={getLineStroke(l.lineKey)} strokeWidth={4} style={{ pointerEvents: 'stroke' }} onPointerDown={confirmFold} />
                                         <g transform={`rotate(-30 ${cx} ${cy})`} onPointerDown={confirmFold} style={{ cursor: 'pointer' }}>
                                             <circle cx={cx} cy={cy} r={20} fill={getLineStroke(l.lineKey)} />
@@ -736,7 +759,9 @@ const App = () => {
                 >Reset</button>
             </div>
 
-            {(anim || (!isWon && folds > 0)) ? (
+            {!anim && !isWon && folds > 0 && pendingFoldLine ? (
+                <button className="btn-primary" onClick={() => confirmPendingFold(pendingFoldLine)}>FOLD</button>
+            ) : (anim || (!isWon && folds > 0)) ? (
                 <div className="goal-text">Match the Pattern</div>
             ) : primaryLabel === CTA_LABELS.ALL_DONE ? (
                 <a href={base} className="btn-primary"
