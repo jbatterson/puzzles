@@ -90,7 +90,4 @@ export function jumpDays(date: Date, nDays: number): Date {
 	return newDate;
 }
 
-const {isNowSchoolTime} = require("../../../../../shared-contracts/schoolTime.cjs") as {
-	isNowSchoolTime: () => boolean;
-};
-export {isNowSchoolTime};
+export {isNowSchoolTime} from "../../../../../shared-contracts/schoolTime.js";
