@@ -322,6 +322,7 @@ const App = () => {
     const [pendingFoldLine, setPendingFoldLine] = useState(null)
     const [pendingFoldAnchor, setPendingFoldAnchor] = useState(null)
     const svgRef = useRef(null)
+    const canvasWrapperRef = useRef(null)
     const t0 = useRef(0)
     const hoverDelayRef = useRef(null)
     const ignoreBoardPointerUntilRef = useRef(0)
@@ -341,13 +342,36 @@ const App = () => {
         return { x: cx + rx * cos - ry * sin, y: cy + rx * sin + ry * cos }
     }, [])
 
-    const closeInstructions = useCallback(() => {
+    /** Clears hover / pending fold UI. Use ignorePointerMs (e.g. 400) after modal close to absorb stray pointer events. */
+    const clearFoldLineInteractionState = useCallback((options = {}) => {
+        const { ignorePointerMs = false } = options
+        if (hoverDelayRef.current) {
+            clearTimeout(hoverDelayRef.current)
+            hoverDelayRef.current = null
+        }
         setHoverLine(null)
         setPendingFoldLine(null)
         setPendingFoldAnchor(null)
-        ignoreBoardPointerUntilRef.current = Date.now() + 400
+        setTapFlash(null)
+        if (typeof ignorePointerMs === 'number' && ignorePointerMs > 0) {
+            ignoreBoardPointerUntilRef.current = Date.now() + ignorePointerMs
+        }
+    }, [])
+
+    const closeInstructions = useCallback(() => {
+        clearFoldLineInteractionState({ ignorePointerMs: 400 })
         closeInstructionsBase()
-    }, [closeInstructionsBase])
+    }, [closeInstructionsBase, clearFoldLineInteractionState])
+
+    const closeStats = useCallback(() => {
+        clearFoldLineInteractionState({ ignorePointerMs: 400 })
+        setShowStats(false)
+    }, [clearFoldLineInteractionState])
+
+    const closeLinks = useCallback(() => {
+        clearFoldLineInteractionState({ ignorePointerMs: 400 })
+        setShowLinks(false)
+    }, [clearFoldLineInteractionState])
 
     const puzzle = useMemo(() => {
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
@@ -360,8 +384,7 @@ const App = () => {
     const [anim, setAnim] = useState(null)
 
     useEffect(() => {
-        setPendingFoldLine(null)
-        setPendingFoldAnchor(null)
+        clearFoldLineInteractionState()
         if (mode === 'tutorial') {
             setBoard(puzzle.start)
             setHistory([puzzle.start])
@@ -384,7 +407,7 @@ const App = () => {
         setFolds(puzzle.folds)
         setAnim(null)
         usedUndoOrResetRef.current = false
-    }, [puzzle, mode, daily.key, dailyIdx])
+    }, [puzzle, mode, daily.key, dailyIdx, clearFoldLineInteractionState])
 
     useEffect(() => {
         if (mode !== 'daily' || !puzzle || anim) return
@@ -394,6 +417,17 @@ const App = () => {
     useEffect(() => () => {
         if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
     }, [])
+
+    useEffect(() => {
+        const onPointerDownCapture = (e) => {
+            if (showInstructions || showStats || showLinks) return
+            const wrap = canvasWrapperRef.current
+            if (!wrap || wrap.contains(e.target)) return
+            clearFoldLineInteractionState()
+        }
+        window.addEventListener('pointerdown', onPointerDownCapture, true)
+        return () => window.removeEventListener('pointerdown', onPointerDownCapture, true)
+    }, [showInstructions, showStats, showLinks, clearFoldLineInteractionState])
 
     const isWon = useMemo(() => {
         const tK = Object.keys(puzzle.target), bK = Object.keys(board)
@@ -563,7 +597,7 @@ const App = () => {
             )}
 
             <div className="game-stage" style={{ border: 'none', boxShadow: 'none', outline: 'none', background: 'transparent' }}>
-                <div id="canvas-wrapper" style={{ border: 'none', outline: 'none', boxShadow: 'none' }}>
+                <div id="canvas-wrapper" ref={canvasWrapperRef} style={{ border: 'none', outline: 'none', boxShadow: 'none' }}>
                     <svg
                         ref={svgRef}
                         viewBox={`${HEX_VIEWBOX.x} ${HEX_VIEWBOX.y} ${HEX_VIEWBOX.w} ${HEX_VIEWBOX.h}`}
@@ -677,6 +711,7 @@ const App = () => {
             <div className="button-tray">
                 <button
                     onClick={() => {
+                        clearFoldLineInteractionState()
                         usedUndoOrResetRef.current = true
                         if (history.length <= 1) return
                         const prev = history.slice(0, -1)
@@ -689,6 +724,7 @@ const App = () => {
                 >Undo</button>
                 <button
                     onClick={() => {
+                        clearFoldLineInteractionState()
                         usedUndoOrResetRef.current = true
                         if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
                         setBoard(puzzle.start)
@@ -739,10 +775,10 @@ const App = () => {
                 </div>
             </SharedModalShell>
 
-            <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
+            <AllTenLinksModal show={showLinks} onClose={closeLinks} />
             <SimpleGameStatsModal
                 show={showStats}
-                onClose={() => setShowStats(false)}
+                onClose={closeStats}
                 gameKey={GAME_KEYS.FOLDS}
             />
         </div>
