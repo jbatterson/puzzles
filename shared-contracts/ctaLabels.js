@@ -6,5 +6,4 @@ export const CTA_LABELS = Object.freeze({
 	ALL_PUZZLES: "All Puzzles",
 	NEXT_PUZZLE: "Next Puzzle",
 	ALL_DONE: "All Done!",
-	FREE_PLAY_MODE: "Free Play Mode",
 });

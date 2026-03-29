@@ -303,10 +303,11 @@ const Main: React.FC<Props> = function (props: Props) {
 		setHeight(element?.clientHeight);
 	};
 
-	// Display instructions at start if applicable
-	if (appState.profile.showHelpOnStart && !appState.displayedHelp) {
-		appState.showHelp(true);
-	}
+	useEffect(() => {
+		if (appState.profile.showHelpOnStart && !appState.displayedHelp) {
+			appState.showHelp(true);
+		}
+	}, [appState]);
 
 	useEffect(() => {
 		window.addEventListener("resize", grabRectDimensions);

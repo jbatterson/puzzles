@@ -27,7 +27,10 @@ export const PUZZLE_SUITE_INK_ON_DISABLED = "rgba(24, 53, 94, 0.52)";
 export const CHROME_ASSET_URLS = Object.freeze({
 	CUBE_ICON: "https://beastacademy.com/u/AllTen/cube.svg",
 	BEAST_ACADEMY_LOGO: "https://beastacademy.com/u/AllTen/beastacademy-logo.svg",
+	/** Banner atop the Beast Academy card in the links modal (matches All Ten in-app Links). */
+	BA_LOGO_BANNER: "https://beastacademy.com/u/AllTen/ba-logo.svg",
 	LINKS_MODAL_IMAGE: "https://beastacademy.com/assets/wf/images/laptop-2.png",
+	LINKS_MODAL_PLAYGROUND_LOGO: "https://beastacademy.com/assets/wf/images/pg-logo.svg",
 });
 
 export const CHROME_ACTION_ARIA_LABELS = Object.freeze({
@@ -40,4 +43,5 @@ export const CHROME_ACTION_ARIA_LABELS = Object.freeze({
 export const ALLTEN_LINK_TARGETS = Object.freeze({
 	SCHOOL: "https://beastacademy.com/educators",
 	HOME: "https://beastacademy.com/online",
+	PLAYGROUND: "https://beastacademy.com/playground?audience=teacher",
 });

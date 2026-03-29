@@ -9,6 +9,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
+import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -287,7 +288,7 @@ const Factorfall = () => {
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState('daily')
     const [tutorialIdx, setTutorialIdx] = useState(0)
-    const [dailyIdx, setDailyIdx] = useState(0)
+    const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const {
@@ -335,7 +336,6 @@ const Factorfall = () => {
     }, [daily])
 
     const [uiQueue, setUiQueue] = useState([])
-    const [uiScore, setUiScore] = useState(0)
     const [uiTarget, setUiTarget] = useState(24)
     const [undoDisabled, setUndoDisabled] = useState(true)
 
@@ -348,12 +348,9 @@ const Factorfall = () => {
         uiSnapshotRef.current = { boardCleared, gridFull, outOfBalls }
     }, [boardCleared, gridFull, outOfBalls])
 
-    const allDailyDone = completions.every(Boolean)
-
     // ── Puzzle resolution ────────────────────────────────────────────────────
     const getPuzzle = useCallback(() => {
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
-        if (mode === 'freeplay') return null
         return daily.puzzles[dailyIdx]
     }, [mode, tutorialIdx, dailyIdx, daily])
 
@@ -394,7 +391,6 @@ const Factorfall = () => {
     function initLevel(puzzle, cs) {
         if (!puzzle) return
         const gs = gsRef.current
-        usedUndoOrResetRef.current = false
         gs.cellSize = cs
         gs.history = []
         gs.score = 0
@@ -423,7 +419,6 @@ const Factorfall = () => {
         nextFromQueue(gs)
 
         setUiQueue([...gs.queue])
-        setUiScore(0)
         setUiTarget(puzzle.target)
         setUndoDisabled(true)
         setBoardCleared(false)
@@ -443,6 +438,8 @@ const Factorfall = () => {
             }
             clearGameState(daily.key, dailyIdx)
         }
+        // Fresh puzzle only (not hydrate). Reset/retry call initLevel directly and must keep usedUndoOrResetRef true.
+        usedUndoOrResetRef.current = false
         initLevel(p, cs)
     }, [getPuzzle, mode, dailyIdx, tutorialIdx, daily.key])
 
@@ -504,7 +501,6 @@ const Factorfall = () => {
             gs.pendingBall = null
         }
         setUiQueue([...gs.queue])
-        setUiScore(gs.score)
         setUiTarget(puzzle.target)
         setUndoDisabled(gs.history.length === 0 || gs.isEndless)
         setBoardCleared(saved.ui.boardCleared)
@@ -657,7 +653,6 @@ const Factorfall = () => {
         gs.turnPops++
         if (gs.isEndless) {
             gs.score += gs.turnPops
-            setUiScore(gs.score)
         }
         const cs = gs.cellSize
         const canvasH = (ROWS + 1) * cs
@@ -694,18 +689,12 @@ const Factorfall = () => {
                 const newComp = loadCompletions(daily.key)
                 const nextUnsolved = [0, 1, 2].find(i => i !== dailyIdx && !newComp[i])
                 if (nextUnsolved !== undefined) setDailyIdx(nextUnsolved)
-                else startFreePlay()
             }
         } else if (outOfBalls || gridFull) {
-            if (mode === 'freeplay') {
-                // Restart free play
-                startFreePlay()
-            } else {
-                usedUndoOrResetRef.current = true
-                if (mode === 'daily') clearGameState(daily.key, dailyIdx)
-                const p = getPuzzle()
-                if (p) initLevel(p, gsRef.current.cellSize)
-            }
+            usedUndoOrResetRef.current = true
+            if (mode === 'daily') clearGameState(daily.key, dailyIdx)
+            const p = getPuzzle()
+            if (p) initLevel(p, gsRef.current.cellSize)
         }
     }, [boardCleared, outOfBalls, gridFull, mode, tutorialIdx, dailyIdx, daily.key, getPuzzle])
 
@@ -716,32 +705,14 @@ const Factorfall = () => {
             }
             if (mode === 'daily') {
                 const newComp = loadCompletions(daily.key)
-                return [0,1,2].find(i => i !== dailyIdx && !newComp[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.FREE_PLAY_MODE
+                return [0,1,2].find(i => i !== dailyIdx && !newComp[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
             }
             return null
         }
         if (outOfBalls) return 'Retry Puzzle'
-        if (gridFull && mode === 'freeplay') return 'Play Again'
         if (gridFull) return 'Retry Puzzle'
         return null
     }, [boardCleared, outOfBalls, gridFull, mode, tutorialIdx, dailyIdx, daily.key])
-
-    // ── Free Play ────────────────────────────────────────────────────────────
-    const startFreePlay = useCallback(() => {
-        const gs = gsRef.current
-        gs.isEndless = true
-        gs.score = 0
-        gs.grid = Array.from({ length: COLS }, () => [])
-        setUiScore(0)
-        setBoardCleared(false)
-        setGridFull(false)
-        setOutOfBalls(false)
-        refillEndlessQueue(gs)
-        setUiQueue([...gs.queue])
-        gs.gameState = 'READY'
-        nextFromQueue(gs)
-        setMode('freeplay')
-    }, [])
 
     // ── Undo / Reset ─────────────────────────────────────────────────────────
     const undoMove = useCallback(() => {
@@ -755,7 +726,6 @@ const Factorfall = () => {
         gs.queue = last.queue
         gs.score = last.score
         gs.gameState = 'READY'
-        setUiScore(gs.score)
         setUiQueue([...gs.queue])
         if (fromClearedWin) {
             setBoardCleared(false)
@@ -769,14 +739,10 @@ const Factorfall = () => {
 
     const resetLevel = useCallback(() => {
         usedUndoOrResetRef.current = true
-        if (mode === 'freeplay') {
-            startFreePlay()
-        } else {
-            if (mode === 'daily') clearGameState(daily.key, dailyIdx)
-            const p = getPuzzle()
-            if (p) initLevel(p, gsRef.current.cellSize)
-        }
-    }, [getPuzzle, mode, daily.key, dailyIdx, startFreePlay])
+        if (mode === 'daily') clearGameState(daily.key, dailyIdx)
+        const p = getPuzzle()
+        if (p) initLevel(p, gsRef.current.cellSize)
+    }, [getPuzzle, mode, daily.key, dailyIdx])
 
     // ── Canvas interaction ───────────────────────────────────────────────────
     const dropBallInColumn = useCallback((col) => {
@@ -968,7 +934,6 @@ const Factorfall = () => {
 
     // ── Render ───────────────────────────────────────────────────────────────
     const base = import.meta.env.BASE_URL
-    const isFreePlay = mode === 'freeplay'
 
     return (
         <div className="game-container">
@@ -997,23 +962,6 @@ const Factorfall = () => {
                         </div>
                         <button className={`nav-arrow ${tutorialIdx === puzzleData.tutorial.length - 1 ? 'disabled' : ''}`}
                             onClick={() => { if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1) }}>→</button>
-                    </div>
-                    <div className="stats-group">
-                        <span className="stats-label">Target</span>
-                        <span className="stats-num">{uiTarget}</span>
-                    </div>
-                </div>
-            ) : isFreePlay ? (
-                <div className="level-nav">
-                    <div className="left-spacer">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span className="stats-label">Score</span>
-                            <span className="stats-num">{uiScore}</span>
-                        </div>
-                    </div>
-                    <div className="level-label" style={{ textAlign: 'center' }}>
-                        <span className="sub">Free Play</span>
-                        <span className="num">∞</span>
                     </div>
                     <div className="stats-group">
                         <span className="stats-label">Target</span>
@@ -1060,10 +1008,10 @@ const Factorfall = () => {
             <div className="button-tray">
                 <button className="btn-secondary" onClick={undoMove}
                     disabled={undoDisabled}>Undo</button>
-                <button className="btn-secondary" onClick={resetLevel}>Reset</button>
+                <button className="btn-secondary" onClick={resetLevel} disabled={undoDisabled}>Reset</button>
             </div>
 
-            {isFreePlay && !primaryLabel ? (
+            {primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
                 <a href={base} className="btn-primary"
                     style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {CTA_LABELS.ALL_PUZZLES}

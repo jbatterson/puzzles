@@ -705,6 +705,22 @@ export default class AppState {
 		if (val) {
 			this.profile = JSON.parse(val || "");
 		}
+		let helpOnStartSynced = false;
+		if (typeof this.profile.showHelpOnStart !== "boolean") {
+			this.profile.showHelpOnStart = true;
+			helpOnStartSynced = true;
+		}
+		// Match other suite games: only auto-open instructions until at least one
+		// target is solved (persisted progress implies no auto-open).
+		if (this.targets.some((t) => t.solution)) {
+			if (this.profile.showHelpOnStart) {
+				this.profile.showHelpOnStart = false;
+				helpOnStartSynced = true;
+			}
+		}
+		if (helpOnStartSynced) {
+			this.saveToStorage();
+		}
 
 		this.updateProfileStatsToToday();
 		// Validate stats using last 30 days of data (must happen before cleanup)

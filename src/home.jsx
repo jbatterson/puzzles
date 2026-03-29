@@ -11,6 +11,11 @@ import CluelessIcon from './shared/icons/CluelessIcon.jsx'
 import AllTenIcon from './shared/icons/AllTenIcon.jsx'
 import DiceFace from './shared/DiceFace.jsx'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../shared-contracts/chromeUi.js'
+import {
+    buildAllTenInPuzzleStyleSharePlaintext,
+    getAllTenPuzzleNumberDisplayString,
+} from '../shared-contracts/allTenSharePlaintext.js'
+import { hubHrefFirstUnfinishedClueless, hubHrefFirstUnfinishedThree } from '../shared-contracts/hubEntry.js'
 
 const base = import.meta.env.BASE_URL
 
@@ -126,9 +131,18 @@ function loadAllTenSolvedCountForHubDateKey(dateKey) {
     }
 }
 
-function buildAllTenShareText(title, href, solvedCount) {
-    const playUrl = new URL(href, window.location.origin).href
-    return `${title.toUpperCase()}\n${solvedCount}/10 targets\nPlay at ${playUrl}`
+/** Parsed `-targets` array for the hub puzzle day, or null. */
+function loadAllTenTargetsForHubDateKey(dateKey) {
+    const k = hubDateKeyToAllTenTargetsKey(dateKey)
+    if (!k) return null
+    try {
+        const raw = lsGet(k)
+        if (!raw) return null
+        const arr = JSON.parse(raw)
+        return Array.isArray(arr) ? arr : null
+    } catch {
+        return null
+    }
 }
 
 // ── Streaks ───────────────────────────────────────────────────────────────────
@@ -285,7 +299,7 @@ function buildShareText(key, title, href, completions, perfects, moveCounts) {
             out += `${label}   ⬜\n`
         }
     }
-    out += 'Play at ' + playUrl
+    out += playUrl
     return out
 }
 
@@ -298,7 +312,7 @@ function buildSingleShareText(title, href, completed, perfect) {
     } else {
         out += `⬜\n`
     }
-    out += 'Play at ' + playUrl
+    out += playUrl
     return out
 }
 
@@ -315,7 +329,7 @@ function buildCluelessShareText(title, href, attempts) {
             out += `${labels[i]}   ⬜\n`
         }
     }
-    out += 'Play at ' + playUrl
+    out += playUrl
     return out
 }
 
@@ -416,7 +430,14 @@ export default function Home() {
         const game = GAMES.find(g => g.key === key)
         if (!game) return
         const text = key === 'allten'
-            ? buildAllTenShareText(game.title, game.href, allTenTodayCount)
+            ? (() => {
+                const targets = loadAllTenTargetsForHubDateKey(dateKey)
+                const now = new Date()
+                if (targets && targets.length) {
+                    return buildAllTenInPuzzleStyleSharePlaintext(targets, now)
+                }
+                return `All Ten #${getAllTenPuzzleNumberDisplayString(now)}\n${allTenTodayCount}/10\n`
+            })()
             : key === 'clueless'
             ? buildCluelessShareText(game.title, game.href, cluelessAttempts)
             : game.single
@@ -430,7 +451,7 @@ export default function Home() {
                 toastTimeoutRef.current = null
             }, TOAST_MS)
         })
-    }, [allTenTodayCount, cluelessAttempts, completions, perfects, moveCounts, singleCompletions, singlePerfects])
+    }, [dateKey, allTenTodayCount, cluelessAttempts, completions, perfects, moveCounts, singleCompletions, singlePerfects])
 
     const hasAnyCompletion = useCallback((key, single) => {
         if (key === 'allten') return allTenTodayCount > 0
@@ -695,9 +716,18 @@ export default function Home() {
                     <div className="hp-divider" />
 
                     <section className="hp-list">
-                    {GAMES.map(({ key, href, Icon, title, desc, single }) => (
+                    {GAMES.map(({ key, href, Icon, title, desc, single }) => {
+                        const cardHref =
+                            key === 'allten'
+                                ? href
+                                : single
+                                  ? href
+                                  : key === 'clueless'
+                                    ? hubHrefFirstUnfinishedClueless(href, cluelessAttempts)
+                                    : hubHrefFirstUnfinishedThree(href, completions[key])
+                        return (
                         <div key={href} className="hp-cardWrapper">
-                            <a className="hp-card" href={href}>
+                            <a className="hp-card" href={cardHref}>
                                 <div className="hp-iconTile">
                                     <Icon size={56} />
                                 </div>
@@ -771,7 +801,8 @@ export default function Home() {
                                 </div>
                             )}
                         </div>
-                    ))}
+                        )
+                    })}
                     </section>
                 </main>
             </div>

@@ -2,6 +2,9 @@ import React from 'react'
 import { HEADER_ACTIONS, ensureHeaderActions } from '../../shared-contracts/headerActions.js'
 import { CHROME_ACTION_ARIA_LABELS, CHROME_ASSET_URLS } from '../../shared-contracts/chromeUi.js'
 
+/** Hub (puzzle piece) icon position inside the navy circle — tweak these until it looks centered. Positive x = right, positive y = down. */
+const HOME_PUZZLE_ICON_NUDGE_PX = { x: 1.5, y: -1.5 }
+
 const styles = {
     bar: {
         width: '100%',
@@ -93,6 +96,13 @@ const styles = {
         fontSize: '1.2rem',
         lineHeight: 1,
     },
+    /** Puzzle piece only — uses `HOME_PUZZLE_ICON_NUDGE_PX` above */
+    homePuzzleIcon: {
+        fontSize: '1.2rem',
+        lineHeight: 1,
+        display: 'block',
+        transform: `translate(${HOME_PUZZLE_ICON_NUDGE_PX.x}px, ${HOME_PUZZLE_ICON_NUDGE_PX.y}px)`,
+    },
 }
 
 export default function TopBar({
@@ -131,7 +141,7 @@ export default function TopBar({
                             onClick={actions[HEADER_ACTIONS.HOME]}
                             aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HOME]}
                         >
-                            <i className="fa-solid fa-puzzle-piece" style={styles.iconGlyph} aria-hidden="true" />
+                            <i className="fa-solid fa-puzzle-piece" style={styles.homePuzzleIcon} aria-hidden="true" />
                         </button>
                     )}
                     <button

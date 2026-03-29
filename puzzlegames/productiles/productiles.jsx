@@ -10,6 +10,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
+import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import ProductilesIcon from '../../src/shared/icons/ProductilesIcon.jsx'
 
 const SNAP_SPEED = 0.25
@@ -242,7 +243,7 @@ export default function Productiles() {
     const modeRef = useRef('daily')
     const [mode, setMode]               = useState('daily') // 'daily' | 'tutorial'
     const [tutorialIdx, setTutorialIdx] = useState(0)
-    const [dailyIdx, setDailyIdx]       = useState(0)
+    const [dailyIdx, setDailyIdx]       = useState(() => parseHubDailyPuzzleParam())
     dailyKeyRef.current = daily.key
     dailyIdxRef.current = dailyIdx
     modeRef.current = mode
@@ -655,7 +656,7 @@ export default function Productiles() {
 
             <div className="button-tray" style={{ marginTop: '16px' }}>
                 <button className="btn-secondary" onClick={handleUndo} disabled={historyLen === 0}>Undo</button>
-                <button className="btn-secondary" onClick={handleReset} disabled={historyLen === 0 || isSolved}>Reset</button>
+                <button className="btn-secondary" onClick={handleReset} disabled={historyLen === 0}>Reset</button>
             </div>
 
             {!isSolved ? (

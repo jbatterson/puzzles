@@ -9,6 +9,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
+import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import BugIcon from '../../src/shared/icons/BugIcon.jsx'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
@@ -154,7 +155,7 @@ const BugPuzzle = () => {
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState('daily') // 'daily' | 'tutorial'
     const [tutorialIdx, setTutorialIdx] = useState(0)
-    const [dailyIdx, setDailyIdx] = useState(0)
+    const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const {
@@ -432,7 +433,11 @@ const BugPuzzle = () => {
             <div className="button-tray">
                 <button className="btn-secondary" onClick={undo}
                     disabled={history.length === 0}>Undo</button>
-                <button className="btn-secondary" onClick={() => { usedUndoOrResetRef.current = true; resetLevel() }}>Reset</button>
+                <button
+                    className="btn-secondary"
+                    disabled={history.length === 0}
+                    onClick={() => { usedUndoOrResetRef.current = true; resetLevel() }}
+                >Reset</button>
             </div>
 
             {primaryLabel === CTA_LABELS.ALL_PUZZLES ? (

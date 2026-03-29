@@ -281,17 +281,79 @@ html, body {
     cursor: pointer;
     line-height: 1;
     padding: 4px;
+    color: var(--puzzle-ink, #18355e);
+}
+
+/* Floating card modal (cube / Beast Academy links)—matches All Ten runtime Modal backdrop + Body */
+.floating-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.floating-modal-panel {
+    width: min(95%, 450px);
+    max-height: min(95vh, 750px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 48px 20px 24px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow:
+        1px 2px 16px 4px rgba(15, 10, 8, 0.05),
+        1px 1px 8px 1px rgba(15, 10, 8, 0.08),
+        1px 1px 4px 1px rgba(15, 10, 8, 0.04);
 }
 
 /* Links modal content mirroring All Ten Links intent */
 .allten-links-wrap {
     width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    margin: auto;
+}
+.allten-links-wrap--compact .allten-links-card {
+    margin: 4px 0;
+    padding: 12px;
+    gap: 10px;
+}
+/* Inside FloatingModalShell: single white surface is the panel, not nested cards */
+.allten-links-wrap--floating .allten-links-card {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+}
+.allten-links-wrap--floating.allten-links-wrap--compact .allten-links-card {
+    margin: 0;
+    padding: 0;
+    gap: 10px;
+}
+.allten-links-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: calc(100% - 12px);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .allten-links-title {
     margin-bottom: 2rem;
     text-align: center;
 }
 .allten-links-card {
+    width: 100%;
+    box-sizing: border-box;
     border-radius: 14px;
     border: 1px solid #e5e7eb;
     background: #fff;
@@ -300,20 +362,71 @@ html, body {
     flex-direction: column;
     gap: 16px;
     align-items: center;
+    text-align: center;
+}
+.allten-links-card--hidden {
+    display: none;
+}
+.allten-links-banner {
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+    display: block;
 }
 .allten-links-copy {
     margin: 0;
+    color: var(--ink, #18355e);
     font-size: 1.05rem;
     line-height: 1.5;
     font-weight: 700;
     text-align: center;
 }
+.allten-links-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
 .allten-links-btn {
     text-decoration: none;
+}
+
+/* Beast Academy promo CTA (matches runtime ButtonLink baRed) */
+.allten-links-cta {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 16px 18px;
+    margin: 0.3rem 0 0;
+    border: none;
+    border-radius: 5px;
+    background: #ed1940;
+    color: #fff;
+    font-size: 1.35rem;
+    font-weight: 900;
+    text-align: center;
+    cursor: pointer;
+}
+.allten-links-cta:hover {
+    background: #8c0523;
+    color: #fff;
+}
+.allten-links-wrap--compact .allten-links-cta {
+    padding: 16px 12px;
+    font-size: 1.15rem;
+    margin: 0.25rem 0 0;
 }
 .allten-links-image {
     width: min(80%, 320px);
     height: auto;
+}
+.allten-links-image--playground {
+    max-width: 80%;
+    width: auto;
 }
 
 .selector-group {

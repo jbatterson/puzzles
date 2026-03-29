@@ -90,12 +90,4 @@ export function jumpDays(date: Date, nDays: number): Date {
 	return newDate;
 }
 
-/**
- * Determines if the time is during school hours. i.e. 7am to 4pm on weekdays.
- */
-export function isNowSchoolTime(): boolean {
-	const date = new Date();
-	const hour = date.getHours();
-	const day = date.getDay();
-	return hour >= 7 && hour < 16 && day !== 0 && day !== 6;
-}
+export {isNowSchoolTime} from "../../../../../shared-contracts/schoolTime.js";

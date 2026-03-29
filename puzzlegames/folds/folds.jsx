@@ -10,6 +10,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
+import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import FoldsIcon from '../../src/shared/icons/FoldsIcon.jsx'
 
 // ── Geometry (unchanged) ─────────────────────────────────────────────────────
@@ -303,7 +304,7 @@ const App = () => {
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState('daily') // 'daily' | 'tutorial'
     const [tutorialIdx, setTutorialIdx] = useState(0)
-    const [dailyIdx, setDailyIdx] = useState(0)
+    const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const {
@@ -691,6 +692,7 @@ const App = () => {
                         setHistory([puzzle.start])
                         setFolds(puzzle.folds)
                     }}
+                    disabled={history.length <= 1 && !pendingFoldLine && !pendingFoldAnchor}
                     className="btn-secondary"
                 >Reset</button>
             </div>

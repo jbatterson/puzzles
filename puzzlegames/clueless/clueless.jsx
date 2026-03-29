@@ -16,6 +16,7 @@ import {
     PUZZLE_SUITE_INK_ON_DISABLED,
 } from '../../shared-contracts/chromeUi.js'
 import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
+import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
 
@@ -253,6 +254,9 @@ const CLUELESS_CLUE_FONT = 'clamp(1rem, 4vw, 1.5rem)'
 /** Matches input cells; active-band clues use this so they read at the same scale. */
 const CLUELESS_INPUT_FONT = 'clamp(1.2rem, 5vw, 2rem)'
 
+/** Board outer width — keyboard and post-solve buttons use the same value so they match the grid. */
+const CLUELESS_STAGE_WIDTH = 'min(calc(100vw - 40px), calc(100dvh - 346px), 460px)'
+
 /** Next/prev typeable cell index in `inputOrder`, wrapping; +1 forward, -1 back. */
 function nextUnlockedNavIndex(inputOrder, locked, fromIdx, delta) {
     const unlocked = []
@@ -385,7 +389,7 @@ export default function CluelessGame() {
     // #region agent log
     fetch('http://127.0.0.1:7789/ingest/c63c0e1a-4721-4866-a60f-d01a6afe7afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b390e2'},body:JSON.stringify({sessionId:'b390e2',runId:'pre-fix',hypothesisId:'H1',location:'clueless.jsx:CluelessGame(entry)',message:'CluelessGame render entry',data:{},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
-    const [difficultyIdx, setDifficultyIdx] = useState(0)
+    const [difficultyIdx, setDifficultyIdx] = useState(() => parseHubDailyPuzzleParam())
     const difficulty = DIFFS[difficultyIdx] || 'easy'
 
     const daily = useMemo(() => getDailyPuzzle(difficulty), [difficulty])
@@ -861,7 +865,7 @@ export default function CluelessGame() {
                 flexShrink: 0,
             }}>
                 <div style={{
-                    width: 'min(calc(100vw - 40px), calc(100dvh - 346px), 460px)',
+                    width: CLUELESS_STAGE_WIDTH,
                     aspectRatio: '1 / 1',
                     position: 'relative',
                     background: '#fff',
@@ -886,8 +890,8 @@ export default function CluelessGame() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px',
-                width: '100%',
-                maxWidth: '400px',
+                width: CLUELESS_STAGE_WIDTH,
+                maxWidth: '100%',
                 alignSelf: 'center',
                 flexShrink: 0,
             }}>
