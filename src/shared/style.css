@@ -314,6 +314,51 @@ html, body {
         1px 1px 4px 1px rgba(15, 10, 8, 0.04);
 }
 
+/* Suite game stats (All Ten–style three-column summary, shared modal shell) */
+.simple-game-stats-title {
+    margin: 0 0 1.5rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--puzzle-ink, #18355e);
+}
+.simple-game-stats-row {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0.35rem;
+    width: 100%;
+}
+.simple-game-stats-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0 4px;
+}
+.simple-game-stats-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--puzzle-ink-muted, rgba(24, 53, 94, 0.62));
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+}
+.simple-game-stats-value {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--puzzle-ink, #18355e);
+}
+.simple-game-stats-unit {
+    margin-top: 0.1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--puzzle-ink-faint, rgba(24, 53, 94, 0.5));
+}
+
 /* Links modal content mirroring All Ten Links intent */
 .allten-links-wrap {
     width: 100%;

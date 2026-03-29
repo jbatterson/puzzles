@@ -3,6 +3,7 @@ import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
+import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -298,6 +299,7 @@ const Factorfall = () => {
         closeInstructions,
     } = useInstructionsGate('factorfall:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'factorfall' })
     const [showLinks, setShowLinks] = useState(false)
+    const [showStats, setShowStats] = useState(false)
 
     const wrapperRef = useRef(null)
     const canvasRef = useRef(null)
@@ -943,6 +945,7 @@ const Factorfall = () => {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
+                onStats={() => setShowStats(true)}
             />
 
             {/* ── Info bar ── */}
@@ -1059,6 +1062,11 @@ const Factorfall = () => {
             </SharedModalShell>
 
             <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
+            <SimpleGameStatsModal
+                show={showStats}
+                onClose={() => setShowStats(false)}
+                gameKey={GAME_KEYS.FACTORFALL}
+            />
         </div>
     )
 }

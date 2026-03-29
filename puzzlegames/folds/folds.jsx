@@ -4,6 +4,7 @@ import { fillColor } from './palette.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
+import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -314,6 +315,7 @@ const App = () => {
         closeInstructions: closeInstructionsBase,
     } = useInstructionsGate('folds:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'folds' })
     const [showLinks, setShowLinks] = useState(false)
+    const [showStats, setShowStats] = useState(false)
 
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
@@ -515,6 +517,7 @@ const App = () => {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
+                onStats={() => setShowStats(true)}
             />
 
             {mode === 'tutorial' ? (
@@ -737,6 +740,11 @@ const App = () => {
             </SharedModalShell>
 
             <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
+            <SimpleGameStatsModal
+                show={showStats}
+                onClose={() => setShowStats(false)}
+                gameKey={GAME_KEYS.FOLDS}
+            />
         </div>
     )
 }

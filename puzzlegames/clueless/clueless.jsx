@@ -3,6 +3,7 @@ import puzzles from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
+import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -505,6 +506,7 @@ export default function CluelessGame() {
         closeInstructions,
     } = useInstructionsGate('clueless:hasSeenInstructions', { openOnMount: false })
     const [showLinks, setShowLinks] = useState(false)
+    const [showStats, setShowStats] = useState(false)
 
     // ── Input handling ─────────────────────────────────────────────────────
 
@@ -785,6 +787,7 @@ export default function CluelessGame() {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
+                onStats={() => setShowStats(true)}
             />
 
             {/* INFO BAR */}
@@ -1034,6 +1037,11 @@ export default function CluelessGame() {
             </SharedModalShell>
 
             <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
+            <SimpleGameStatsModal
+                show={showStats}
+                onClose={() => setShowStats(false)}
+                gameKey={GAME_KEYS.CLUELESS}
+            />
         </div>
     )
 }

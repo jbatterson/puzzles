@@ -10,12 +10,12 @@ export const GAME_KEYS = Object.freeze({
 
 const GAME_CHROME = Object.freeze({
 	[GAME_KEYS.ALLTEN]: { title: "All Ten", showStats: true },
-	[GAME_KEYS.SCURRY]: { title: "Scurry", showStats: false },
-	[GAME_KEYS.FOLDS]: { title: "Folds", showStats: false },
+	[GAME_KEYS.SCURRY]: { title: "Scurry", showStats: true },
+	[GAME_KEYS.FOLDS]: { title: "Folds", showStats: true },
 	[GAME_KEYS.SUMTILES]: { title: "Sum Tiles", showStats: false },
 	[GAME_KEYS.PRODUCTILES]: { title: "Productiles", showStats: false },
-	[GAME_KEYS.FACTORFALL]: { title: "Factorfall", showStats: false },
-	[GAME_KEYS.CLUELESS]: { title: "Clueless", showStats: false },
+	[GAME_KEYS.FACTORFALL]: { title: "Factorfall", showStats: true },
+	[GAME_KEYS.CLUELESS]: { title: "Clueless", showStats: true },
 });
 
 export function getGameChrome(gameKey) {
