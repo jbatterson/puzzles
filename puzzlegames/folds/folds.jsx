@@ -5,6 +5,7 @@ import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
+import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -316,6 +317,8 @@ const App = () => {
     } = useInstructionsGate('folds:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'folds' })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [showCompletionModal, setShowCompletionModal] = useState(false)
+    const allDailyDoneCompletionRef = useRef(null)
 
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
@@ -565,6 +568,19 @@ const App = () => {
         : folds <= 0 ? 'Retry Puzzle'
         : null
 
+    useEffect(() => {
+        if (mode !== 'daily') return
+        const done = completions.every(Boolean)
+        if (allDailyDoneCompletionRef.current === null) {
+            allDailyDoneCompletionRef.current = done
+            return
+        }
+        if (done && !allDailyDoneCompletionRef.current) {
+            queueMicrotask(() => setShowCompletionModal(true))
+        }
+        allDailyDoneCompletionRef.current = done
+    }, [mode, completions])
+
     const base = import.meta.env.BASE_URL
 
     return (
@@ -805,6 +821,12 @@ const App = () => {
                 show={showStats}
                 onClose={closeStats}
                 gameKey={GAME_KEYS.FOLDS}
+            />
+            <SuiteGameCompletionModal
+                show={showCompletionModal}
+                onClose={() => setShowCompletionModal(false)}
+                gameKey={GAME_KEYS.FOLDS}
+                dateKey={daily.key}
             />
         </div>
     )

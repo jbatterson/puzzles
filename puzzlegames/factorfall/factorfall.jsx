@@ -4,6 +4,7 @@ import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
+import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -300,6 +301,8 @@ const Factorfall = () => {
     } = useInstructionsGate('factorfall:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'factorfall' })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [showCompletionModal, setShowCompletionModal] = useState(false)
+    const allDailyDoneCompletionRef = useRef(null)
 
     const wrapperRef = useRef(null)
     const canvasRef = useRef(null)
@@ -716,6 +719,19 @@ const Factorfall = () => {
         return null
     }, [boardCleared, outOfBalls, gridFull, mode, tutorialIdx, dailyIdx, daily.key])
 
+    useEffect(() => {
+        if (mode !== 'daily') return
+        const done = completions.every(Boolean)
+        if (allDailyDoneCompletionRef.current === null) {
+            allDailyDoneCompletionRef.current = done
+            return
+        }
+        if (done && !allDailyDoneCompletionRef.current) {
+            queueMicrotask(() => setShowCompletionModal(true))
+        }
+        allDailyDoneCompletionRef.current = done
+    }, [mode, completions])
+
     // ── Undo / Reset ─────────────────────────────────────────────────────────
     const undoMove = useCallback(() => {
         usedUndoOrResetRef.current = true
@@ -1066,6 +1082,12 @@ const Factorfall = () => {
                 show={showStats}
                 onClose={() => setShowStats(false)}
                 gameKey={GAME_KEYS.FACTORFALL}
+            />
+            <SuiteGameCompletionModal
+                show={showCompletionModal}
+                onClose={() => setShowCompletionModal(false)}
+                gameKey={GAME_KEYS.FACTORFALL}
+                dateKey={daily.key}
             />
         </div>
     )

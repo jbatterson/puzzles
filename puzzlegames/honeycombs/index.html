@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Honeycomb</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: #fff;
+    color: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 2px solid #1a1a2e;
+    flex-shrink: 0;
+  }
+  .topbar-side { display: flex; gap: 6px; align-items: center; }
+  .topbar-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-align: center;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid #1a1a2e;
+    background: #1a1a2e;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── PUZZLE META ── */
+  #meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 480px;
+    padding: 6px 16px 0;
+  }
+  .meta-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #888; }
+  .meta-value { font-size: 1.1rem; font-weight: 700; }
+
+  /* ── PUZZLE NAV (prev/next) ── */
+  #puzzle-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0 0;
+  }
+  .nav-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.4rem;
+    color: #1a1a2e;
+    padding: 2px 6px;
+    line-height: 1;
+  }
+  .nav-btn:disabled { color: #ccc; cursor: default; }
+  #puzzle-index-label { font-size: 0.85rem; font-weight: 600; }
+
+  /* ── HONEYCOMB GRID ── */
+  #grid-container {
+    position: relative;
+    flex-shrink: 0;
+    margin: 12px auto 0;
+  }
+  svg#hex-grid { display: block; overflow: visible; }
+
+  /* hex cell styles */
+  .hex-cell { cursor: pointer; }
+  .hex-cell.given { cursor: default; }
+  .hex-cell polygon {
+    stroke: #f5a623;
+    stroke-width: 2.5;
+    transition: fill 0.15s;
+  }
+  .hex-cell.empty polygon    { fill: #fff; }
+  .hex-cell.given polygon    { fill: #f5a623; }
+  .hex-cell.filled polygon   { fill: #fff; }
+  .hex-cell.selected polygon { fill: #d0e8ff; }
+  .hex-label {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    fill: #1a1a2e;
+    dominant-baseline: central;
+    text-anchor: middle;
+    pointer-events: none;
+    user-select: none;
+  }
+  .hex-cell.given .hex-label { fill: #fff; }
+
+  #hex-trace { pointer-events: none; }
+  #hex-trace polyline,
+  #hex-trace line {
+    will-change: stroke-dashoffset, stroke, opacity;
+  }
+
+  /* ── KEYBOARD ── */
+  #keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 14px auto 16px;
+    width: 100%;
+    max-width: 480px;
+    padding: 0 10px;
+    align-items: center;
+  }
+  .kb-row {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+  }
+  .kb-key {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, opacity 0.12s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .kb-key.available {
+    background: #1a1a2e;
+    color: #fff;
+  }
+  .kb-key.used {
+    background: #e5e7eb;
+    color: #9ca3af;
+    cursor: pointer;
+  }
+  .kb-key.used:hover { background: #d1d5db; }
+  .kb-key.kb-clue {
+    background: #f5a623;
+    color: #fff;
+    cursor: default;
+  }
+  .kb-key.kb-active {
+    background: #4587ba;
+    color: #fff;
+  }
+  .kb-key.available:hover { background: #374151; }
+  .kb-key.kb-active:hover { background: #3a7399; }
+
+  /* Third row: Scurry / Factorfall-style rectangular controls */
+  .kb-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    max-width: 460px;
+    margin-top: 4px;
+  }
+  .kb-action-btn-secondary {
+    min-height: 52px;
+    border-radius: 4px;
+    border: 2px solid #18355E;
+    background: #fff;
+    color: #18355E;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    font-size: 0.68rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      transform 0.08s ease,
+      filter 0.12s ease,
+      background-color 0.12s ease,
+      opacity 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .kb-action-btn-secondary:active {
+    transform: scale(0.96);
+    filter: brightness(0.96);
+  }
+  @media (hover: hover) {
+    .kb-action-btn-secondary:hover {
+      background-color: rgba(24, 53, 94, 0.07);
+      transform: translateY(-1px);
+    }
+  }
+  .kb-action-btn-primary {
+    min-height: 52px;
+    border-radius: 4px;
+    border: none;
+    background: #18355E;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    font-size: 0.68rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      transform 0.08s ease,
+      filter 0.12s ease,
+      opacity 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .kb-action-btn-primary:active:not(:disabled) {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+  }
+  @media (hover: hover) {
+    .kb-action-btn-primary:not(:disabled):hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+  }
+  .kb-action-btn-primary:disabled {
+    opacity: 0.32;
+    cursor: not-allowed;
+    transform: none;
+    filter: none;
+  }
+
+  /* Solve strip (Scurry / Factorfall-style) — below Delete / Reset / Check */
+  .kb-solve-strip {
+    width: 100%;
+    max-width: 460px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .kb-next-puzzle {
+    width: 100%;
+    min-height: 52px;
+    border-radius: 4px;
+    border: none;
+    background: #18355E;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      transform 0.08s ease,
+      filter 0.12s ease,
+      opacity 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .kb-next-puzzle:active {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+  }
+  @media (hover: hover) {
+    .kb-next-puzzle:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+  }
+  .kb-action-btn-secondary:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    border-color: rgba(24, 53, 94, 0.22);
+    color: rgba(24, 53, 94, 0.36);
+    background: #fff;
+    transform: none;
+    filter: none;
+  }
+
+  /* Folds-style win pulse on completed path (matches shared pulseWin) */
+  @keyframes tracePulseWin {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.6; }
+  }
+  #hex-trace.trace-pulse-win {
+    animation: tracePulseWin 0.6s ease-in-out 3 forwards;
+  }
+
+  /* ── INSTRUCTIONS OVERLAY ── */
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #overlay.open { display: flex; }
+  #modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px 24px;
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+  }
+  #modal h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 12px; }
+  #modal p  { font-size: 0.95rem; line-height: 1.6; margin-bottom: 10px; color: #333; }
+  #modal .close-btn {
+    margin-top: 14px;
+    padding: 10px 32px;
+    border-radius: 6px;
+    border: none;
+    background: #1a1a2e;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  /* ── UTIL ── */
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="topbar-side">
+    <button class="icon-btn" id="btn-new" title="New puzzle" aria-label="New puzzle">+</button>
+    <button class="icon-btn" id="btn-info" title="How to play" aria-label="How to play">?</button>
+  </div>
+  <div class="topbar-title">🐝 Honeycomb</div>
+  <div class="topbar-side">
+    <div style="text-align:right">
+      <div class="meta-label">Guesses</div>
+      <div class="meta-value" id="guess-count">0</div>
+    </div>
+  </div>
+</div>
+
+<!-- PUZZLE NAV -->
+<div id="meta">
+  <div id="puzzle-nav">
+    <button class="nav-btn" id="btn-prev" aria-label="Previous puzzle">&#8592;</button>
+    <span id="puzzle-index-label">Puzzle 1</span>
+    <button class="nav-btn" id="btn-next" aria-label="Next puzzle">&#8594;</button>
+  </div>
+  <div style="text-align:right">
+    <div class="meta-label">Difficulty</div>
+    <div class="meta-value" id="diff-label">Easy</div>
+  </div>
+</div>
+
+<!-- HEX GRID -->
+<div id="grid-container">
+  <svg id="hex-grid"></svg>
+</div>
+
+<!-- KEYBOARD -->
+<div id="keyboard"></div>
+
+<!-- INSTRUCTIONS OVERLAY -->
+<div id="overlay">
+  <div id="modal">
+    <h2>How to Play</h2>
+    <p>Fill every empty hexagon with a number so that the complete sequence <strong>1 → N</strong> traces a connected path — each consecutive pair of numbers must share an edge.</p>
+    <p>After you place a number, the <strong>next</strong> one highlights on the keyboard. Tap an empty cell beside that previous number to place it in one tap. Tap any other empty cell (or a filled cell) to select it and clear the highlight — then pick a number or continue from there.</p>
+    <p>Tap the header, a clue hex, or anywhere outside the grid or keyboard to clear selection and the blue highlight—or tap the selected hex or highlighted number again. Tap any dark number to choose the active value, or a gray number after selecting a cell to move that value (the old cell empties and the replaced number returns to the keyboard).</p>
+    <p>If a hex is selected (blue ring), number keys type into that hex. Press <strong>Escape</strong> to clear selection so a number key picks the blue keyboard “pen” for tap-to-place on empties.</p>
+    <p>When all cells are filled, tap <strong>Check</strong> to trace the path from <strong>1</strong> through consecutive numbers. A green line means a valid path; red means the path got stuck. The line fades after a few seconds or when you interact.</p>
+    <button class="close-btn" id="btn-close-modal">Play</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// PUZZLE DATA
+// Format: { size: 'easy'|'medium'|'hard', clues: [[row, col, value], ...] }
+// Coordinates use offset hex grid:
+//   easy   3-4-3  (rows 0..2, cols depend on row)
+//   medium 3-4-4-3
+//   hard   3-4-5-4-3
+// ═══════════════════════════════════════════════════════════
+
+const PUZZLES = [
+  // ── EASY (3-4-3, 10 cells) ────────────────────────────────
+
+  { size: 'easy', clues: [[2,0,1], [1,2,3], [1,3,6]] },
+  { size: 'easy', clues: [[2,2,1], [2,0,4], [1,0,6]] },
+  { size: 'easy', clues: [[1,2,2], [2,1,4], [2,0,6]] },
+  { size: 'easy', clues: [[2,0,1], [2,1,4], [1,0,10]] },
+  { size: 'easy', clues: [[0,2,2], [1,3,3], [0,0,6]] },
+  { size: 'easy', clues: [[0,2,1], [1,3,6], [2,0,9]] },
+  { size: 'easy', clues: [[2,0,2], [2,2,5], [1,2,6]] },
+
+  // ── MEDIUM (3-4-4-3, 14 cells) ───────────────────────────
+  { size: 'medium', clues: [[0,1,4], [1,2,6], [2,2,7], [1,3,13]] },
+  { size: 'medium', clues: [[1,1,1], [1,0,9], [3,0,12], [3,1,13]] },
+  { size: 'medium', clues: [[2,0,2], [2,1,6], [0,2,11], [0,0,13]] },
+  { size: 'medium', clues: [[0,2,2], [1,1,7], [0,1,8], [3,0,12]] },
+  { size: 'medium', clues: [[1,1,2], [2,0,6], [3,0,7], [0,1,13]] },
+  { size: 'medium', clues: [[0,0,3], [2,1,5], [1,3,9], [2,2,11]] },
+  { size: 'medium', clues: [[1,1,3], [1,2,4], [2,3,8], [0,1,11]] },
+
+  // ── HARD (3-4-5-4-3, 19 cells) ──────────────────────────
+  { size: 'hard', clues: [[4,0,1], [2,2,6], [1,3,14], [4,1,18], [3,1,19]] },
+  { size: 'hard', clues: [[4,1,1], [1,1,8], [2,2,15], [2,3,16], [3,3,18]] },
+  { size: 'hard', clues: [[4,2,1], [2,2,4], [2,1,8], [4,0,11], [1,3,18]] },
+  { size: 'hard', clues: [[1,1,1], [2,1,2], [0,0,7], [0,2,10], [2,2,14]] },
+  { size: 'hard', clues: [[1,0,2], [2,3,5], [0,2,9], [4,1,14], [3,2,15]] },
+  { size: 'hard', clues: [[1,3,1], [3,2,7], [2,3,10], [3,0,16], [1,0,18]] },
+  { size: 'hard', clues: [[2,1,2], [2,2,6], [1,1,10], [3,3,16], [4,2,17]] },
+
+]
+
+// ═══════════════════════════════════════════════════════════
+// HEX GRID DEFINITIONS
+//
+// Pointy-top honeycomb geometry:
+//   - Hex center-to-center horizontal distance = HEX_W  (= R*√3)
+//   - Hex center-to-center vertical distance   = HEX_H * 0.75  (= R*1.5)
+//   - Every other row is staggered RIGHT by HEX_W/2
+//
+// For each grid shape we store the row lengths AND a per-row stagger
+// value (in units of HEX_W/2) that places rows correctly so they
+// share edges. The stagger is chosen so the whole shape is centered.
+//
+// Stagger logic for a honeycomb (pointy-top, rows nest left-right):
+//   The widest row has stagger 0 (flush left of the bounding box).
+//   Each row that is 1 cell shorter than the widest adds +1 stagger.
+//   But in a real honeycomb the nesting alternates: each row relative
+//   to its neighbor is offset by exactly +0.5 or -0.5 hex widths.
+//
+// We use absolute pixel offsets per row, computed so edges are shared.
+// ═══════════════════════════════════════════════════════════
+
+const GRID_DEFS = {
+  // rowOffsets: x-offset of each row's leftmost cell center,
+  //             expressed as multiples of HEX_W.
+  // 0 = aligned with widest row's left edge.
+  // 0.5 = shifted right by half a hex width.
+  easy:   { rows: [3, 4, 3], rowOffsets: [0.5, 0, 0.5] },
+  medium: { rows: [3, 4, 4, 3], rowOffsets: [0.5, 0, 0.5, 1.0] },
+  hard:   { rows: [3, 4, 5, 4, 3], rowOffsets: [1.0, 0.5, 0, 0.5, 1.0] },
+}
+
+const HEX_R   = 32    // circumradius
+const HEX_GAP = 3     // gap between hex edges in pixels
+const HEX_W   = HEX_R * Math.sqrt(3) + HEX_GAP   // center-to-center horizontal
+const HEX_H   = HEX_R * 2                          // center-to-center vertical (before 0.75 factor)
+const HEX_VER = HEX_H * 0.75 + HEX_GAP * 0.577    // center-to-center vertical (with gap)
+
+// Pointy-top hex polygon points
+function hexPoints(cx, cy, r) {
+  const pts = []
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.PI / 180 * (60 * i - 30) // pointy-top: first vertex at top
+    pts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)])
+  }
+  return pts.map(p => p[0].toFixed(2) + ',' + p[1].toFixed(2)).join(' ')
+}
+
+// Build cell list: [{row, col, cx, cy}]
+// cx, cy are pixel centers within the SVG (before adding PAD).
+function buildCells(size) {
+  const { rows, rowOffsets } = GRID_DEFS[size]
+  const cells = []
+  for (let r = 0; r < rows.length; r++) {
+    const cols = rows[r]
+    const xBase = rowOffsets[r] * HEX_W  // left edge of this row
+    for (let c = 0; c < cols; c++) {
+      const cx = xBase + c * HEX_W + HEX_W / 2
+      const cy = r * HEX_VER + HEX_R
+      cells.push({ row: r, col: c, cx, cy })
+    }
+  }
+  return cells
+}
+
+// Adjacency by pixel distance — works for any row offset scheme.
+// Two pointy-top hex centers that share an edge are always exactly
+// HEX_W (horizontal neighbors) or HEX_VER (diagonal neighbors) apart.
+// We use a generous tolerance to handle both cases.
+function areAdjacent(size, r1, c1, r2, c2) {
+  const cells = buildCells(size)
+  const a = cells.find(c => c.row === r1 && c.col === c1)
+  const b = cells.find(c => c.row === r2 && c.col === c2)
+  if (!a || !b) return false
+  const dx = a.cx - b.cx
+  const dy = a.cy - b.cy
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  // The max distance for an adjacent pair is HEX_W (horizontal).
+  // Use 1.05× tolerance for float rounding.
+  return dist < HEX_W * 1.05
+}
+
+// ═══════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════
+
+let state = {
+  puzzleIdx: 0,
+  cells: [],        // [{row, col, cx, cy, value, isClue}]
+  selected: null,   // {row, col} or null
+  guessCount: 0,
+  solved: false,
+  activeDigit: null, // highlighted placeable number (hidden when solved)
+  activeDigitFromUser: false, // true = user picked digit on keyboard; empty-cell tap places anywhere
+}
+
+function currentPuzzle() { return PUZZLES[state.puzzleIdx] }
+
+function cellKey(r, c) { return `${r},${c}` }
+
+function initPuzzle(idx) {
+  const puzzle = PUZZLES[idx]
+  const size = puzzle.size
+  const rawCells = buildCells(size)
+
+  // Build clue lookup
+  const clueMap = {}
+  for (const [r, c, v] of puzzle.clues) clueMap[cellKey(r, c)] = v
+
+  state.puzzleIdx  = idx
+  state.cells      = rawCells.map(({ row, col, cx, cy }) => ({
+    row, col, cx, cy,
+    value:  clueMap[cellKey(row, col)] ?? null,
+    isClue: !!clueMap[cellKey(row, col)],
+  }))
+  state.selected   = null
+  state.guessCount = 0
+  state.solved     = false
+  state.activeDigitFromUser = false
+  state.activeDigit = computeActiveDigitMinMissing()
+  pathTraceSession++
+  clearPathFadeTimeout()
+  clearTraceDomImmediate()
+}
+
+function clueValues() {
+  return new Set(currentPuzzle().clues.map(([, , v]) => v))
+}
+
+function placedValues() {
+  return new Set(state.cells.map(c => c.value).filter(v => v !== null))
+}
+
+function shouldShowHints() {
+  return !state.solved
+}
+
+function computeActiveDigitMinMissing() {
+  const n = maxNumber()
+  const placed = placedValues()
+  if (placed.size >= n) return null
+  for (let k = 1; k <= n; k++) {
+    if (!placed.has(k)) return k
+  }
+  return null
+}
+
+function computeActiveDigitAfterFill(lastPlaced) {
+  const n = maxNumber()
+  const placed = placedValues()
+  if (placed.size >= n) return null
+  for (let k = lastPlaced + 1; k <= n; k++) {
+    if (!placed.has(k)) return k
+  }
+  for (let k = 1; k <= n; k++) {
+    if (!placed.has(k)) return k
+  }
+  return null
+}
+
+/** True if (row,col) is an obvious place for digit d: adjacent to the cell with d−1, or any empty cell when placing 1 and 1 is not on the board yet. */
+function isObviousContinuation(row, col, d) {
+  const size = currentPuzzle().size
+  const oneOnBoard = state.cells.some(c => c.value === 1)
+  if (d === 1) {
+    if (oneOnBoard) return false
+    return true
+  }
+  const prevCell = state.cells.find(c => c.value === d - 1)
+  if (!prevCell) return false
+  return areAdjacent(size, row, col, prevCell.row, prevCell.col)
+}
+
+function applyDigitToCell(row, col, num) {
+  const cell = state.cells.find(c => c.row === row && c.col === col)
+  if (!cell || cell.isClue) return
+  if (
+    state.cells.some(
+      c =>
+        c.value === num &&
+        c.isClue &&
+        (c.row !== row || c.col !== col)
+    )
+  ) {
+    return
+  }
+  const existing = state.cells.find(
+    c => c.value === num && !c.isClue && (c.row !== row || c.col !== col)
+  )
+  if (existing) existing.value = null
+  cell.value = num
+  state.selected = null
+  state.activeDigitFromUser = false
+  state.activeDigit = computeActiveDigitAfterFill(num)
+  render()
+}
+
+function totalCells() { return state.cells.length }
+
+function maxNumber() { return totalCells() }
+
+function allFilled() {
+  return state.cells.every(c => c.value !== null)
+}
+
+/**
+ * Trace 1→2→… on the board by cell centers. complete=true iff 1..N each once and every step is adjacent.
+ */
+function buildPathTrace() {
+  const n = maxNumber()
+  const size = currentPuzzle().size
+  const byValue = {}
+  for (const cell of state.cells) {
+    if (cell.value === null) continue
+    if (byValue[cell.value]) return { complete: false, cells: [], bad: 'duplicate' }
+    byValue[cell.value] = cell
+  }
+  for (let v = 1; v <= n; v++) {
+    if (!byValue[v]) return { complete: false, cells: [], bad: 'missing' }
+  }
+  const chain = [byValue[1]]
+  for (let v = 2; v <= n; v++) {
+    const prev = chain[chain.length - 1]
+    const cur = byValue[v]
+    if (!areAdjacent(size, prev.row, prev.col, cur.row, cur.col)) {
+      return { complete: false, cells: chain }
+    }
+    chain.push(cur)
+  }
+  return { complete: true, cells: chain }
+}
+
+function computeGridOffsets() {
+  const PAD = 10
+  const minCx = Math.min(...state.cells.map(c => c.cx))
+  const maxCx = Math.max(...state.cells.map(c => c.cx))
+  const minCy = Math.min(...state.cells.map(c => c.cy))
+  const maxCy = Math.max(...state.cells.map(c => c.cy))
+  const svgW = (maxCx - minCx) + HEX_R * 2 + PAD * 2
+  const svgH = (maxCy - minCy) + HEX_R * 2 + PAD * 2
+  const offX = -minCx + HEX_R + PAD
+  const offY = -minCy + HEX_R + PAD
+  return { PAD, offX, offY, svgW, svgH }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════
+
+const svg = document.getElementById('hex-grid')
+const keyboard = document.getElementById('keyboard')
+const guessCountEl = document.getElementById('guess-count')
+const diffLabel = document.getElementById('diff-label')
+const puzzleLabel = document.getElementById('puzzle-index-label')
+const btnPrev = document.getElementById('btn-prev')
+const btnNext = document.getElementById('btn-next')
+
+let pathTraceSession = 0
+let pathFadeTimeout = null
+
+function clearPathFadeTimeout() {
+  if (pathFadeTimeout) {
+    clearTimeout(pathFadeTimeout)
+    pathFadeTimeout = null
+  }
+}
+
+function clearTraceDomImmediate() {
+  const g = svg.querySelector('#hex-trace')
+  if (!g) return
+  g.innerHTML = ''
+  g.classList.remove('trace-pulse-win')
+  g.style.opacity = '1'
+  g.style.transition = ''
+}
+
+/** Fade the trace away (user input, or delayed after OK). */
+function fadePathTraceOut() {
+  const g = svg.querySelector('#hex-trace')
+  if (!g || g.childNodes.length === 0) {
+    clearTraceDomImmediate()
+    return
+  }
+  pathTraceSession++
+  g.style.transition = 'opacity 0.45s ease'
+  g.style.opacity = '0'
+  setTimeout(() => {
+    clearTraceDomImmediate()
+  }, 450)
+}
+
+function schedulePathTraceFade() {
+  clearPathFadeTimeout()
+  pathFadeTimeout = setTimeout(() => {
+    pathFadeTimeout = null
+    fadePathTraceOut()
+  }, 2000)
+}
+
+/** Called on any gameplay interaction: fades trace if present. */
+function notifyPathTraceUserInput() {
+  const g = svg.querySelector('#hex-trace')
+  if (!g || g.childNodes.length === 0) {
+    clearPathFadeTimeout()
+    return
+  }
+  clearPathFadeTimeout()
+  fadePathTraceOut()
+}
+
+function runPathTraceAnimation(trace) {
+  const cells = trace.cells
+  if (cells.length === 0) return
+
+  const session = pathTraceSession
+  clearPathFadeTimeout()
+  const traceG = svg.querySelector('#hex-trace')
+  if (!traceG) return
+
+  traceG.innerHTML = ''
+  traceG.classList.remove('trace-pulse-win')
+  traceG.style.opacity = '1'
+  traceG.style.transition = ''
+
+  const { offX, offY } = computeGridOffsets()
+  const drawColor = '#4587ba'
+  const okColor = '#15803d'
+  const badColor = '#b91c1c'
+
+  let strokeDone = false
+  const finishStroke = () => {
+    if (session !== pathTraceSession || strokeDone) return
+    strokeDone = true
+    if (trace.complete) {
+      state.solved = true
+      render()
+    }
+    schedulePathTraceFade()
+  }
+
+  const pts = cells.map(c => `${c.cx + offX},${c.cy + offY}`)
+
+  const SEG_MS = 100
+
+  if (pts.length === 1) {
+    const c0 = cells[0]
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    dot.setAttribute('cx', String(c0.cx + offX))
+    dot.setAttribute('cy', String(c0.cy + offY))
+    dot.setAttribute('r', '5')
+    dot.setAttribute('fill', 'none')
+    dot.setAttribute('stroke', drawColor)
+    dot.setAttribute('stroke-width', '4')
+    traceG.appendChild(dot)
+    requestAnimationFrame(() => {
+      if (session !== pathTraceSession) return
+      dot.setAttribute('stroke', trace.complete ? okColor : badColor)
+      if (trace.complete) traceG.classList.add('trace-pulse-win')
+      finishStroke()
+    })
+    return
+  }
+
+  const lines = []
+  let colorApplied = false
+  const applyFinalColor = () => {
+    if (session !== pathTraceSession || colorApplied) return
+    colorApplied = true
+    const end = trace.complete ? okColor : badColor
+    for (const line of lines) {
+      line.style.transition = 'stroke 0.22s ease'
+      line.setAttribute('stroke', end)
+    }
+    if (trace.complete) traceG.classList.add('trace-pulse-win')
+    setTimeout(finishStroke, 220)
+  }
+
+  const parsePt = (s) => {
+    const [x, y] = s.split(',').map(Number)
+    return { x, y }
+  }
+
+  const runSegment = (i) => {
+    if (session !== pathTraceSession) return
+    if (i >= pts.length - 1) {
+      applyFinalColor()
+      return
+    }
+    const a = parsePt(pts[i])
+    const b = parsePt(pts[i + 1])
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y)
+    if (segLen < 0.5) {
+      runSegment(i + 1)
+      return
+    }
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    line.setAttribute('stroke', drawColor)
+    line.setAttribute('stroke-width', '4')
+    line.setAttribute('stroke-linecap', 'round')
+    line.setAttribute('x1', String(a.x))
+    line.setAttribute('y1', String(a.y))
+    line.setAttribute('x2', String(b.x))
+    line.setAttribute('y2', String(b.y))
+    line.style.strokeDasharray = String(segLen)
+    line.style.strokeDashoffset = String(segLen)
+    line.style.transition = `stroke-dashoffset ${SEG_MS}ms ease-out`
+    traceG.appendChild(line)
+    lines.push(line)
+
+    requestAnimationFrame(() => {
+      if (session !== pathTraceSession) return
+      line.getBoundingClientRect()
+      requestAnimationFrame(() => {
+        if (session !== pathTraceSession) return
+        line.style.strokeDashoffset = '0'
+      })
+    })
+
+    let advanced = false
+    const next = () => {
+      if (session !== pathTraceSession || advanced) return
+      advanced = true
+      runSegment(i + 1)
+    }
+
+    line.addEventListener(
+      'transitionend',
+      (e) => {
+        if (e.propertyName !== 'stroke-dashoffset') return
+        next()
+      },
+      { once: true }
+    )
+
+    setTimeout(() => {
+      if (session !== pathTraceSession || advanced) return
+      if (line.style.strokeDashoffset !== '0') return
+      next()
+    }, SEG_MS + 60)
+  }
+
+  runSegment(0)
+}
+
+function renderGrid() {
+  const { offX, offY, svgW, svgH } = computeGridOffsets()
+
+  svg.setAttribute('width',   Math.ceil(svgW))
+  svg.setAttribute('height',  Math.ceil(svgH))
+  svg.setAttribute('viewBox', `0 0 ${Math.ceil(svgW)} ${Math.ceil(svgH)}`)
+
+  let cellsGroup = svg.querySelector('#hex-cells')
+  let traceGroup = svg.querySelector('#hex-trace')
+  if (!cellsGroup) {
+    svg.innerHTML = ''
+    cellsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    cellsGroup.id = 'hex-cells'
+    svg.appendChild(cellsGroup)
+    traceGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    traceGroup.id = 'hex-trace'
+    svg.appendChild(traceGroup)
+  } else {
+    cellsGroup.innerHTML = ''
+  }
+
+  for (const cell of state.cells) {
+    const cx = cell.cx + offX
+    const cy = cell.cy + offY
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    g.setAttribute('class', cellClass(cell))
+    g.dataset.row = cell.row
+    g.dataset.col = cell.col
+
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
+    poly.setAttribute('points', hexPoints(cx, cy, HEX_R - 1))
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+    text.setAttribute('x', cx)
+    text.setAttribute('y', cy)
+    text.setAttribute('class', 'hex-label')
+    text.textContent = cell.value !== null ? cell.value : ''
+
+    // Font size scaling for 2-digit numbers
+    if (cell.value !== null && cell.value >= 10) {
+      text.setAttribute('font-size', '12')
+    }
+
+    g.appendChild(poly)
+    g.appendChild(text)
+
+    if (!cell.isClue) {
+      g.addEventListener('click', (e) => { e.stopPropagation(); handleCellClick(cell.row, cell.col) })
+    }
+
+    cellsGroup.appendChild(g)
+  }
+}
+
+function cellClass(cell) {
+  const isSelected = state.selected && state.selected.row === cell.row && state.selected.col === cell.col
+
+  if (cell.isClue) return 'hex-cell given'
+  if (isSelected) return 'hex-cell selected'
+  if (cell.value !== null) return 'hex-cell filled'
+  return 'hex-cell empty'
+}
+
+function renderKeyboard() {
+  keyboard.innerHTML = ''
+  const n = maxNumber()
+  const clues = clueValues()
+  const playerUsed = new Set(
+    state.cells
+      .filter(c => !c.isClue && c.value !== null)
+      .map(c => c.value)
+  )
+  const showActive = shouldShowHints() && state.activeDigit !== null
+
+  const size = currentPuzzle().size
+  let numRows
+  if (size === 'easy') {
+    numRows = [
+      [1, 2, 3, 4, 5],
+      [6, 7, 8, 9, 10],
+    ]
+  } else if (size === 'medium') {
+    numRows = [
+      [1, 2, 3, 4, 5, 6, 7],
+      [8, 9, 10, 11, 12, 13, 14],
+    ]
+  } else {
+    numRows = [
+      [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+    ]
+  }
+
+  for (const row of numRows) {
+    const rowDiv = document.createElement('div')
+    rowDiv.className = 'kb-row'
+
+    for (const num of row) {
+      if (num > n) continue
+      const btn = document.createElement('button')
+      const isFixedKey = clues.has(num)
+      const isPlayerUsed = playerUsed.has(num)
+      let cls = 'kb-key'
+      if (isFixedKey) cls += ' kb-clue'
+      else if (isPlayerUsed) cls += ' used'
+      else {
+        cls += ' available'
+        if (showActive && num === state.activeDigit) cls += ' kb-active'
+      }
+      btn.className = cls
+      btn.textContent = num
+      if (!isFixedKey) {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); handleKeyPress(num) })
+      }
+      rowDiv.appendChild(btn)
+    }
+
+    keyboard.appendChild(rowDiv)
+  }
+
+  const actions = document.createElement('div')
+  actions.className = 'kb-actions'
+
+  const del = document.createElement('button')
+  del.type = 'button'
+  del.className = 'kb-action-btn-secondary'
+  del.textContent = 'Delete'
+  del.title = 'Erase selected cell'
+  del.disabled = state.solved
+  del.addEventListener('click', (e) => { e.stopPropagation(); handleBackspace() })
+
+  const rst = document.createElement('button')
+  rst.type = 'button'
+  rst.className = 'kb-action-btn-secondary'
+  rst.textContent = 'Reset'
+  rst.title = 'Clear all player entries'
+  rst.disabled = state.solved
+  rst.addEventListener('click', (e) => { e.stopPropagation(); handleClearAll() })
+
+  const chk = document.createElement('button')
+  chk.type = 'button'
+  const checkActive = allFilled() && !state.solved
+  chk.className = 'kb-action-btn-primary'
+  chk.textContent = 'Check'
+  chk.title = 'Check your answer'
+  chk.disabled = !checkActive
+  if (checkActive) chk.addEventListener('click', (e) => { e.stopPropagation(); handleCheck() })
+
+  actions.appendChild(del)
+  actions.appendChild(rst)
+  actions.appendChild(chk)
+  keyboard.appendChild(actions)
+
+  if (state.solved && state.puzzleIdx < PUZZLES.length - 1) {
+    const strip = document.createElement('div')
+    strip.className = 'kb-solve-strip'
+    const nextBtn = document.createElement('button')
+    nextBtn.type = 'button'
+    nextBtn.className = 'kb-next-puzzle'
+    nextBtn.textContent = 'NEXT PUZZLE'
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      initPuzzle(state.puzzleIdx + 1)
+      render()
+    })
+    strip.appendChild(nextBtn)
+    keyboard.appendChild(strip)
+  }
+}
+
+function renderMeta() {
+  const puzzle = currentPuzzle()
+  diffLabel.textContent = puzzle.size.charAt(0).toUpperCase() + puzzle.size.slice(1)
+  puzzleLabel.textContent = `Puzzle ${state.puzzleIdx + 1} of ${PUZZLES.length}`
+  guessCountEl.textContent = state.guessCount
+  btnPrev.disabled = state.puzzleIdx === 0
+  btnNext.disabled = state.puzzleIdx === PUZZLES.length - 1
+}
+
+function render() {
+  renderGrid()
+  renderKeyboard()
+  renderMeta()
+}
+
+
+
+// ═══════════════════════════════════════════════════════════
+// INTERACTION
+// ═══════════════════════════════════════════════════════════
+
+function handleCellClick(row, col) {
+  if (state.solved) return
+  notifyPathTraceUserInput()
+  const cell = state.cells.find(c => c.row === row && c.col === col)
+  if (!cell || cell.isClue) return
+
+  if (
+    state.selected &&
+    state.selected.row === row &&
+    state.selected.col === col
+  ) {
+    state.selected = null
+    state.activeDigit = null
+    state.activeDigitFromUser = false
+    render()
+    return
+  }
+
+  if (cell.value === null && shouldShowHints() && state.activeDigit !== null) {
+    if (
+      state.activeDigitFromUser ||
+      isObviousContinuation(row, col, state.activeDigit)
+    ) {
+      applyDigitToCell(row, col, state.activeDigit)
+      return
+    }
+    state.activeDigit = null
+    state.activeDigitFromUser = false
+    state.selected = null
+    render()
+    return
+  }
+
+  // Filled-cell tap: drop pen unless tapping the path predecessor (value === activeDigit − 1), e.g. still next to the 7 you placed while 8 is highlighted
+  const keepPenForPath =
+    state.activeDigit != null &&
+    cell.value != null &&
+    state.activeDigit > 1 &&
+    cell.value === state.activeDigit - 1
+  if (!keepPenForPath) {
+    state.activeDigit = null
+    state.activeDigitFromUser = false
+  }
+
+  state.selected = { row, col }
+  render()
+}
+
+function handleKeyPress(num) {
+  if (state.solved) return
+  notifyPathTraceUserInput()
+  const clues = clueValues()
+  if (clues.has(num)) return
+
+  const playerUsed = new Set(
+    state.cells
+      .filter(c => !c.isClue && c.value !== null)
+      .map(c => c.value)
+  )
+
+  if (
+    shouldShowHints() &&
+    state.activeDigit === num &&
+    !playerUsed.has(num)
+  ) {
+    state.activeDigit = null
+    state.activeDigitFromUser = false
+    state.selected = null
+    render()
+    return
+  }
+
+  if (state.selected) {
+    const cell = state.cells.find(c => c.row === state.selected.row && c.col === state.selected.col)
+    if (cell && !cell.isClue) {
+      applyDigitToCell(cell.row, cell.col, num)
+      return
+    }
+  }
+
+  // Used (gray) keys need a selected cell to move a value; otherwise pick a free digit as the pen
+  if (playerUsed.has(num)) return
+
+  state.activeDigit = num
+  state.activeDigitFromUser = true
+  render()
+}
+
+function handleBackspace() {
+  if (!state.selected || state.solved) return
+  notifyPathTraceUserInput()
+  const cell = state.cells.find(c => c.row === state.selected.row && c.col === state.selected.col)
+  if (!cell || cell.isClue) return
+  cell.value = null
+  state.activeDigitFromUser = false
+  state.activeDigit = computeActiveDigitMinMissing()
+  render()
+}
+
+function handleClearAll() {
+  if (state.solved) return
+  notifyPathTraceUserInput()
+  for (const cell of state.cells) {
+    if (!cell.isClue) cell.value = null
+  }
+  state.selected = null
+  state.activeDigitFromUser = false
+  state.activeDigit = computeActiveDigitMinMissing()
+  render()
+}
+
+function handleCheck() {
+  if (!allFilled() || state.solved) return
+  pathTraceSession++
+  clearPathFadeTimeout()
+  clearTraceDomImmediate()
+  state.guessCount++
+  state.activeDigit = null
+  state.activeDigitFromUser = false
+
+  const trace = buildPathTrace()
+  if (trace.bad === 'duplicate' || trace.bad === 'missing' || trace.cells.length === 0) {
+    render()
+    return
+  }
+
+  runPathTraceAnimation(trace)
+}
+
+function handleKeyboard(e) {
+  if (e.defaultPrevented) return
+  const t = e.target
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+
+  const key = e.key
+  const n = maxNumber()
+
+  if (key >= '1' && key <= '9') {
+    const d = parseInt(key, 10)
+    if (d <= n) {
+      e.preventDefault()
+      handleKeyPress(d)
+    }
+  } else if (key === '0') {
+    if (n >= 10) {
+      e.preventDefault()
+      handleKeyPress(10)
+    }
+  } else if (key === 'Escape') {
+    notifyPathTraceUserInput()
+    state.selected = null
+    state.activeDigit = null
+    state.activeDigitFromUser = false
+    render()
+  }
+}
+
+/**
+ * Folds-style: tap “chrome” or any non-action spot clears selection + pen.
+ * Player hex clicks use stopPropagation; clue hexes and SVG padding bubble here.
+ */
+function handleDocumentBackgroundClick(e) {
+  if (state.solved) return
+  if (e.target.closest && e.target.closest('#overlay.open')) return
+  if (e.target.closest && e.target.closest('#keyboard')) return
+
+  if (e.target.closest && e.target.closest('#hex-grid')) {
+    const g = e.target.closest('g.hex-cell')
+    if (g && !g.classList.contains('given')) return
+  }
+
+  if (state.selected === null && state.activeDigit === null) return
+
+  notifyPathTraceUserInput()
+  state.selected = null
+  state.activeDigit = null
+  state.activeDigitFromUser = false
+  render()
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION & INIT
+// ═══════════════════════════════════════════════════════════
+
+btnPrev.addEventListener('click', (e) => {
+  e.stopPropagation()
+  if (state.puzzleIdx > 0) {
+    initPuzzle(state.puzzleIdx - 1)
+    render()
+  }
+})
+
+btnNext.addEventListener('click', (e) => {
+  e.stopPropagation()
+  if (state.puzzleIdx < PUZZLES.length - 1) {
+    initPuzzle(state.puzzleIdx + 1)
+    render()
+  }
+})
+
+document.getElementById('btn-new').addEventListener('click', (e) => {
+  e.stopPropagation()
+  initPuzzle(state.puzzleIdx)
+  render()
+})
+
+document.getElementById('btn-info').addEventListener('click', () => {
+  document.getElementById('overlay').classList.add('open')
+})
+
+document.getElementById('btn-close-modal').addEventListener('click', () => {
+  document.getElementById('overlay').classList.remove('open')
+})
+
+document.addEventListener('keydown', handleKeyboard)
+document.addEventListener('click', handleDocumentBackgroundClick)
+
+// Boot
+initPuzzle(0)
+render()
+</script>
+</body>
+</html>

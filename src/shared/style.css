@@ -359,6 +359,122 @@ html, body {
     color: var(--puzzle-ink-faint, rgba(24, 53, 94, 0.5));
 }
 
+/* Suite game completion modal (All Ten Results–style: promo + stats + share + hub CTA) */
+/* Applied on the same node as .floating-modal-panel — do not set width: 100% or it overrides min(95%, 450px). */
+.suite-completion-shell {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    box-sizing: border-box;
+}
+.suite-completion-title {
+    margin: 0 0 0.25rem;
+    padding-right: 28px;
+    text-align: center;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--puzzle-ink, #18355e);
+}
+.suite-completion-promo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 18px 16px 16px;
+    margin: 0 0 0.25rem;
+    background: #f0f2f5;
+    border-radius: 10px;
+    box-sizing: border-box;
+    width: 100%;
+}
+.suite-completion-promo-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--puzzle-ink, #18355e);
+    margin: 0 0 10px;
+    line-height: 1.25;
+}
+.suite-completion-promo-copy {
+    margin: 0 0 14px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--puzzle-ink, #18355e);
+    max-width: 42ch;
+}
+.suite-completion-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    text-decoration: none;
+    color: #fff !important;
+    background: #e53e3e;
+    border: none;
+    cursor: pointer;
+    transition: filter 0.14s ease;
+}
+.suite-completion-cta:hover {
+    filter: brightness(0.95);
+}
+.suite-completion-stats {
+    margin: 0.35rem 0 0.15rem;
+}
+.suite-completion-share-block {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin: 0.35rem 0 0.15rem;
+}
+.suite-completion-share-toast {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    z-index: 5;
+    background: rgba(24, 53, 94, 0.95);
+    color: var(--white, #fff);
+    box-shadow: 0 10px 28px rgba(24, 53, 94, 0.25);
+}
+.suite-completion-share-toast .toast-text {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+.suite-completion-share-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: var(--puzzle-ink, #18355e);
+    color: var(--white, #fff);
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: filter 0.14s ease;
+}
+.suite-completion-share-btn:hover {
+    filter: brightness(0.92);
+}
+.suite-completion-share-btn:focus-visible {
+    outline: 3px solid rgba(24, 53, 94, 0.45);
+    outline-offset: 2px;
+}
+.suite-completion-all-puzzles {
+    margin-top: 0.35rem;
+}
+
 /* Links modal content mirroring All Ten Links intent */
 .allten-links-wrap {
     width: 100%;

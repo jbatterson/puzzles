@@ -4,6 +4,7 @@ import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
+import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -167,6 +168,8 @@ const BugPuzzle = () => {
     } = useInstructionsGate('scurry:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'scurry' })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [showCompletionModal, setShowCompletionModal] = useState(false)
+    const allDailyDoneCompletionRef = useRef(null)
 
     const [bugs, setBugs] = useState([])
     const [bugsPlacedCount, setBugsPlacedCount] = useState(0)
@@ -323,7 +326,18 @@ const BugPuzzle = () => {
         }
     }
 
-    const allDailyDone = completions.every(Boolean)
+    useEffect(() => {
+        if (mode !== 'daily') return
+        const done = completions.every(Boolean)
+        if (allDailyDoneCompletionRef.current === null) {
+            allDailyDoneCompletionRef.current = done
+            return
+        }
+        if (done && !allDailyDoneCompletionRef.current) {
+            queueMicrotask(() => setShowCompletionModal(true))
+        }
+        allDailyDoneCompletionRef.current = done
+    }, [mode, completions])
 
     const primaryLabel = allTargetsFilled
         ? mode === 'tutorial'
@@ -491,6 +505,12 @@ const BugPuzzle = () => {
                 show={showStats}
                 onClose={() => setShowStats(false)}
                 gameKey={GAME_KEYS.SCURRY}
+            />
+            <SuiteGameCompletionModal
+                show={showCompletionModal}
+                onClose={() => setShowCompletionModal(false)}
+                gameKey={GAME_KEYS.SCURRY}
+                dateKey={daily.key}
             />
         </div>
     )

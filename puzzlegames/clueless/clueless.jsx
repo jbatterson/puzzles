@@ -4,6 +4,7 @@ import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
+import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -444,6 +445,18 @@ export default function CluelessGame() {
         return DIFFS.map(d => (d === difficulty ? bestAttempts : loadBestAttempts(daily.key, d)))
     }, [daily.key, difficulty, bestAttempts])
 
+    useEffect(() => {
+        const done = attemptsByDiff.every(a => a != null)
+        if (allDifficultiesDoneCompletionRef.current === null) {
+            allDifficultiesDoneCompletionRef.current = done
+            return
+        }
+        if (done && !allDifficultiesDoneCompletionRef.current) {
+            queueMicrotask(() => setShowCompletionModal(true))
+        }
+        allDifficultiesDoneCompletionRef.current = done
+    }, [attemptsByDiff])
+
     // Load/restore state whenever difficulty changes
     useEffect(() => {
         const saved = loadGameState(daily.key, difficulty, ALL_PLAYABLE_KEYS)
@@ -507,6 +520,8 @@ export default function CluelessGame() {
     } = useInstructionsGate('clueless:hasSeenInstructions', { openOnMount: false })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [showCompletionModal, setShowCompletionModal] = useState(false)
+    const allDifficultiesDoneCompletionRef = useRef(null)
 
     // ── Input handling ─────────────────────────────────────────────────────
 
@@ -1041,6 +1056,12 @@ export default function CluelessGame() {
                 show={showStats}
                 onClose={() => setShowStats(false)}
                 gameKey={GAME_KEYS.CLUELESS}
+            />
+            <SuiteGameCompletionModal
+                show={showCompletionModal}
+                onClose={() => setShowCompletionModal(false)}
+                gameKey={GAME_KEYS.CLUELESS}
+                dateKey={daily.key}
             />
         </div>
     )

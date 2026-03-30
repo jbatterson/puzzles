@@ -16,6 +16,8 @@ import {
     getAllTenPuzzleNumberDisplayString,
 } from '../shared-contracts/allTenSharePlaintext.js'
 import { hubHrefFirstUnfinishedClueless, hubHrefFirstUnfinishedThree } from '../shared-contracts/hubEntry.js'
+import { buildHubSharePlaintext } from '../shared-contracts/hubSharePlaintext.js'
+import ShareIcon from './shared/ShareIcon.jsx'
 
 const base = import.meta.env.BASE_URL
 
@@ -175,7 +177,6 @@ function getStreak(gameKey, single = false) {
 // ── PuzzleBoxes (multi-puzzle games) ─────────────────────────────────────────
 
 const TILE_GAMES = new Set(['sumtiles', 'productiles'])
-const DIFF_LABELS = ['Easy', 'Med', 'Hard']
 
 function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
     const isTileGame = TILE_GAMES.has(gameKey)
@@ -283,67 +284,6 @@ function CluelessBoxes({ attempts }) {
     )
 }
 
-// ── Share text builders ───────────────────────────────────────────────────────
-
-function buildShareText(key, title, href, completions, perfects, moveCounts) {
-    const playUrl = new URL(href, window.location.origin).href
-    const isTileGame = TILE_GAMES.has(key)
-    let out = title.toUpperCase() + '\n'
-    for (let i = 0; i < 3; i++) {
-        const label = DIFF_LABELS[i]
-        if (completions[i]) {
-            const moves = isTileGame && moveCounts && moveCounts[i] != null ? ` (${moveCounts[i]} moves)` : ''
-            const firstTry = !isTileGame && perfects && perfects[i] ? ' (⭐ First try!)' : ''
-            out += `${label}   🟩${moves}${firstTry}\n`
-        } else {
-            out += `${label}   ⬜\n`
-        }
-    }
-    out += playUrl
-    return out
-}
-
-function buildSingleShareText(title, href, completed, perfect) {
-    const playUrl = new URL(href, window.location.origin).href
-    let out = title.toUpperCase() + '\n'
-    if (completed) {
-        const star = perfect ? ' (⭐ First try!)' : ''
-        out += `🟩${star}\n`
-    } else {
-        out += `⬜\n`
-    }
-    out += playUrl
-    return out
-}
-
-function buildCluelessShareText(title, href, attempts) {
-    const playUrl = new URL(href, window.location.origin).href
-    const labels = ['Easy', 'Med', 'Hard']
-    let out = title.toUpperCase() + '\n'
-    for (let i = 0; i < 3; i++) {
-        const a = attempts?.[i] ?? null
-        if (a != null) {
-            const score = a === 1 ? '★' : String(Math.min(a, 99))
-            out += `${labels[i]}   🟩 ${score}\n`
-        } else {
-            out += `${labels[i]}   ⬜\n`
-        }
-    }
-    out += playUrl
-    return out
-}
-
-function ShareIcon({ size = 18 }) {
-    return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="6" cy="12" r="2.5" />
-            <circle cx="18" cy="8" r="2.5" />
-            <circle cx="18" cy="16" r="2.5" />
-            <path d="M8.5 11.5L15.5 9.2M8.5 12.5L15.5 14.8" />
-        </svg>
-    )
-}
-
 // ── Game definitions ──────────────────────────────────────────────────────────
 // single: true = one puzzle per day (uses clueless:YYYY-MM-DD storage key pattern)
 
@@ -438,11 +378,7 @@ export default function Home() {
                 }
                 return `All Ten #${getAllTenPuzzleNumberDisplayString(now)}\n${allTenTodayCount}/10\n`
             })()
-            : key === 'clueless'
-            ? buildCluelessShareText(game.title, game.href, cluelessAttempts)
-            : game.single
-                ? buildSingleShareText(game.title, game.href, singleCompletions[key], singlePerfects[key])
-                : buildShareText(key, game.title, game.href, completions[key], perfects[key], moveCounts[key])
+            : buildHubSharePlaintext(key, dateKey, base)
         navigator.clipboard.writeText(text).then(() => {
             if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
             setShareToastKey(key)
@@ -451,7 +387,7 @@ export default function Home() {
                 toastTimeoutRef.current = null
             }, TOAST_MS)
         })
-    }, [dateKey, allTenTodayCount, cluelessAttempts, completions, perfects, moveCounts, singleCompletions, singlePerfects])
+    }, [dateKey, allTenTodayCount])
 
     const hasAnyCompletion = useCallback((key, single) => {
         if (key === 'allten') return allTenTodayCount > 0
