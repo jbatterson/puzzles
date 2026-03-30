@@ -144,7 +144,12 @@ function loadGameState(dateKey, difficulty, validCellKeys) {
                 }
             }
         }
-        return { ...data, triedLettersByCell }
+        let checkedSignatures = []
+        if (Array.isArray(data.checkedSignatures) &&
+            data.checkedSignatures.every(s => typeof s === 'string')) {
+            checkedSignatures = data.checkedSignatures
+        }
+        return { ...data, triedLettersByCell, checkedSignatures }
     } catch {
         return null
     }
@@ -158,11 +163,17 @@ function saveGameState(dateKey, difficulty, state) {
             guessCount: state.guessCount,
             solved: state.solved,
             triedLettersByCell: state.triedLettersByCell || {},
+            checkedSignatures: state.checkedSignatures || [],
         }
         localStorage.setItem(storageKeyGameState(dateKey, difficulty), JSON.stringify(payload))
     } catch {
         // ignore
     }
+}
+
+/** Letter pattern for all input cells (fixed order); used to dedupe redundant CHECKs. */
+function boardCheckSignature(inputOrder, guesses) {
+    return inputOrder.map(({ r, c }) => guesses[`${r},${c}`] || '').join('')
 }
 
 // ── Grid geometry ────────────────────────────────────────────────────────────
@@ -438,11 +449,12 @@ export default function CluelessGame() {
     const [selectionHighlighted, setSelectionHighlighted] = useState(true)
     const [axisMode, setAxisMode] = useState('row')
     const [bestAttempts, setBestAttempts] = useState(null)
+    const [checkedSignatures, setCheckedSignatures] = useState([])
 
     selectedRef.current = selected
 
     const attemptsByDiff = useMemo(() => {
-        return DIFFS.map(d => (d === difficulty ? bestAttempts : loadBestAttempts(daily.key, d)))
+        return DIFFS.map(d => loadBestAttempts(daily.key, d))
     }, [daily.key, difficulty, bestAttempts])
 
     useEffect(() => {
@@ -473,6 +485,7 @@ export default function CluelessGame() {
             nextSolved = !!saved.solved
             setSolved(nextSolved)
             setTriedLettersByCell(saved.triedLettersByCell || {})
+            setCheckedSignatures(saved.checkedSignatures || [])
             setBestAttempts(best)
         } else if (best != null) {
             const revealed = {}
@@ -484,6 +497,7 @@ export default function CluelessGame() {
             nextSolved = true
             setSolved(true)
             setTriedLettersByCell({})
+            setCheckedSignatures([])
             setBestAttempts(best)
         } else {
             setGuesses({})
@@ -491,6 +505,7 @@ export default function CluelessGame() {
             setGuessCount(0)
             setSolved(false)
             setTriedLettersByCell({})
+            setCheckedSignatures([])
             setBestAttempts(null)
         }
 
@@ -509,8 +524,9 @@ export default function CluelessGame() {
             guessCount,
             solved,
             triedLettersByCell,
+            checkedSignatures,
         })
-    }, [daily.key, difficulty, guesses, locked, guessCount, solved, triedLettersByCell])
+    }, [daily.key, difficulty, guesses, locked, guessCount, solved, triedLettersByCell, checkedSignatures])
 
     // UI
     const {
@@ -580,6 +596,8 @@ export default function CluelessGame() {
         })
     }, [solved, locked])
 
+    const checkAnswerRef = useRef(null)
+
     // Physical keyboard
     useEffect(() => {
         if (showInstructions) return
@@ -600,17 +618,14 @@ export default function CluelessGame() {
                 return
             }
             if (e.key === 'Backspace') { e.preventDefault(); handleKey('Backspace') }
-            else if (e.key === 'Enter') { e.preventDefault(); checkAnswer() }
+            else if (e.key === 'Enter') { e.preventDefault(); checkAnswerRef.current?.() }
             else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key)
         }
         window.addEventListener('keydown', handler)
         return () => window.removeEventListener('keydown', handler)
-    }, [showInstructions, handleKey, navigateUnlockedCell])  // checkAnswer added via ref below
+    }, [showInstructions, handleKey, navigateUnlockedCell])  // checkAnswer wired via ref below
 
     // ── Check answer ───────────────────────────────────────────────────────
-
-    // Use a ref so the keydown handler always has the latest version
-    const checkAnswerRef = useRef(null)
 
     const checkAnswer = useCallback(() => {
         if (solved) return
@@ -633,6 +648,11 @@ export default function CluelessGame() {
             setStatusMsg('Fill all cells first')
             return
         }
+
+        const sig = boardCheckSignature(geometry.inputOrder, guesses)
+        if (checkedSignatures.includes(sig)) return
+
+        setCheckedSignatures(prev => [...prev, sig])
 
         const nextGuessCount = guessCount + 1
         setGuessCount(nextGuessCount)
@@ -670,7 +690,7 @@ export default function CluelessGame() {
                 setAxisMode('row')
             }
         }
-    }, [solved, geometry.inputOrder, guessCount, guesses, locked, answers, daily.key, difficulty])
+    }, [solved, geometry.inputOrder, guessCount, guesses, locked, answers, daily.key, difficulty, checkedSignatures])
 
     checkAnswerRef.current = checkAnswer
 
@@ -695,6 +715,9 @@ export default function CluelessGame() {
         const k = `${r},${c}`
         return locked.has(k) || !!guesses[k]
     })
+
+    const currentBoardSig = boardCheckSignature(geometry.inputOrder, guesses)
+    const boardAlreadyChecked = checkedSignatures.includes(currentBoardSig)
 
     const base = import.meta.env.BASE_URL
     const nextUnsolvedIdx = [0, 1, 2].find(i => i !== difficultyIdx && attemptsByDiff[i] == null)
@@ -929,7 +952,6 @@ export default function CluelessGame() {
                 {KB_ROWS.map((row, ri) => (
                     <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
                         {ri === 2 && (
-                            <>
                             <button
                                 type="button"
                                 aria-label="Clear all entries"
@@ -949,26 +971,6 @@ export default function CluelessGame() {
                             >
                                 <i className="fas fa-arrow-rotate-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
                             </button>
-                            <button
-                                type="button"
-                                aria-label="Backspace"
-                                onClick={() => handleKey('Backspace')}
-                                style={{
-                                    minWidth: 'clamp(36px, 9vw, 52px)',
-                                    height: 'clamp(32px, 7vh, 50px)',
-                                    border: `2px solid ${PUZZLE_SUITE_INK}`,
-                                    borderRadius: '4px',
-                                    background: '#fff',
-                                    color: PUZZLE_SUITE_INK,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <i className="fa-solid fa-delete-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
-                            </button>
-                            </>
                         )}
                         {[...row].map(ch => {
                             const isTried = triedInSelected.includes(ch.toLowerCase())
@@ -999,8 +1001,29 @@ export default function CluelessGame() {
                                 </button>
                             )
                         })}
-                        {ri === 2 && (() => {
-                            const checkActive = allFilled && !solved
+                        {ri === 2 && (
+                            <>
+                            <button
+                                type="button"
+                                aria-label="Backspace"
+                                onClick={() => handleKey('Backspace')}
+                                style={{
+                                    minWidth: 'clamp(36px, 9vw, 52px)',
+                                    height: 'clamp(32px, 7vh, 50px)',
+                                    border: `2px solid ${PUZZLE_SUITE_INK}`,
+                                    borderRadius: '4px',
+                                    background: '#fff',
+                                    color: PUZZLE_SUITE_INK,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <i className="fa-solid fa-delete-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
+                            </button>
+                            {(() => {
+                            const checkActive = allFilled && !solved && !boardAlreadyChecked
                             return (
                                 <button
                                     onClick={checkActive ? checkAnswerRef.current : undefined}
@@ -1024,6 +1047,8 @@ export default function CluelessGame() {
                                 >CHECK</button>
                             )
                         })()}
+                            </>
+                        )}
                     </div>
                 ))}
                 </>
