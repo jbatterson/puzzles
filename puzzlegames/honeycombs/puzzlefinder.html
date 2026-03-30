@@ -102,9 +102,50 @@ input[type="number"] { width: 80px; }
   min-height: 0;
 }
 #empty-msg { color: #94a3b8; font-size: 0.9rem; font-style: italic; }
-#game-inner { display: none; flex-direction: column; align-items: center; }
-.guess-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #64748b; text-align: center; }
-.guess-val   { font-size: 1.5rem; font-weight: 300; color: #0f172a; text-align: center; line-height: 1; margin-bottom: 12px; }
+#game-inner {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+/* Mirrors honeycombs/index.html #meta — sit above grid like the shipped game */
+.finder-solver-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  padding: 4px 2px 0;
+  margin-bottom: 4px;
+}
+.finder-solver-meta .meta-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.finder-diff-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.finder-solver-meta .guess-val {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: right;
+  line-height: 1;
+}
+.solver-keyboard-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
 svg#hex-grid { display: block; overflow: visible; }
 .hex-cell { cursor: pointer; }
@@ -136,10 +177,10 @@ svg#hex-grid { display: block; overflow: visible; }
   display: flex;
   flex-direction: column;
   gap: 5px;
-  margin: 14px auto 8px;
+  margin: 14px auto 16px;
   width: 100%;
   max-width: 480px;
-  padding: 0 10px;
+  padding: 0;
   align-items: center;
 }
 .kb-row {
@@ -385,10 +426,20 @@ svg#hex-grid { display: block; overflow: visible; }
 <div id="game-view">
   <div id="empty-msg">Generate a batch to start playtesting.</div>
   <div id="game-inner">
-    <div class="guess-label">Guesses</div>
-    <div class="guess-val" id="guess-val">0</div>
+    <div class="finder-solver-meta" aria-hidden="false">
+      <div>
+        <div class="meta-label">Difficulty</div>
+        <div class="finder-diff-value" id="finder-diff-label">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="meta-label">Guesses</div>
+        <div class="guess-val" id="guess-val">0</div>
+      </div>
+    </div>
     <svg id="hex-grid"></svg>
-    <div id="keyboard"></div>
+    <div id="solver-keyboard" class="solver-keyboard-stack">
+      <div id="keyboard"></div>
+    </div>
   </div>
 </div>
 
@@ -1115,8 +1166,20 @@ function renderNav() {
   btnNext.classList.toggle('off', batchIdx >= batch.length - 1)
 }
 
+function renderSolverMeta() {
+  const el = document.getElementById('finder-diff-label')
+  if (!el) return
+  if (batch.length > 0 && batchIdx >= 0 && currentPuzzle()) {
+    const s = currentPuzzle().size
+    el.textContent = s.charAt(0).toUpperCase() + s.slice(1)
+  } else {
+    el.textContent = '—'
+  }
+}
+
 function render() {
   guessValEl.textContent = state.guessCount
+  renderSolverMeta()
   renderGrid()
   renderKeyboard()
   renderNav()
