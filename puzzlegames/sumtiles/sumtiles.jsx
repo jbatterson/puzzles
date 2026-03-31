@@ -609,7 +609,7 @@ export default function SumTiles() {
     const primaryLabel = isSolved
         ? mode === 'tutorial'
             ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
-            : allDone ? CTA_LABELS.ALL_DONE : CTA_LABELS.NEXT_PUZZLE
+            : allDone ? CTA_LABELS.ALL_PUZZLES : CTA_LABELS.NEXT_PUZZLE
         : null
 
     const base = import.meta.env.BASE_URL
@@ -682,7 +682,7 @@ export default function SumTiles() {
 
             {!isSolved ? (
                 <div className="goal-text">Match the Sums</div>
-            ) : primaryLabel === CTA_LABELS.ALL_DONE ? (
+            ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
                 <a href={base} className="btn-primary"
                     style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {CTA_LABELS.ALL_PUZZLES}

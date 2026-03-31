@@ -1,9 +1,12 @@
+import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
+
 /**
  * Imperative SVG + keyboard game logic for Honeycombs (mounted inside React).
  * @param {{
  *   mount: HTMLElement,
  *   puzzles: unknown[],
  *   dateKey: string,
+ *   hubBaseHref: string,
  *   onRequestNextPuzzle?: () => void,
  *   onCompletionsUpdated?: () => void,
  *   isBlockingModalOpen?: () => boolean,
@@ -14,6 +17,7 @@ export function createHoneycombsEngine({
   mount,
   puzzles: enginePuzzles,
   dateKey: engineDateKey,
+  hubBaseHref,
   onRequestNextPuzzle,
   onCompletionsUpdated,
   isBlockingModalOpen,
@@ -565,6 +569,9 @@ function notifyPathTraceUserInput() {
   clearTraceDomImmediate()
 }
 
+/** Keep in sync with `#hex-trace.trace-pulse-win` in honeycombs.css (0.6s × 3 iterations). */
+const WIN_TRACE_PULSE_TOTAL_MS = 0.6 * 3 * 1000
+
 function runPathTraceAnimation(trace) {
   const cells = trace.cells
   if (cells.length === 0) return
@@ -590,6 +597,14 @@ function runPathTraceAnimation(trace) {
   const okColor = '#22c55e'
   const badColor = '#b91c1c'
 
+  const scheduleWinModalAfterPulse = () => {
+    const idx = state.puzzleIdx
+    setTimeout(() => {
+      if (session !== pathTraceSession) return
+      onWinAnimationComplete?.(idx)
+    }, WIN_TRACE_PULSE_TOTAL_MS)
+  }
+
   let strokeDone = false
   const finishStroke = () => {
     if (session !== pathTraceSession || strokeDone) return
@@ -597,15 +612,15 @@ function runPathTraceAnimation(trace) {
     if (trace.complete) {
       if (lastBeePoint) startIdleBeeBuzz(beeCtl, lastBeePoint, session)
       scheduleWinLineFade()
-      if (typeof onWinAnimationComplete === 'function') {
-        onWinAnimationComplete(state.puzzleIdx)
-      }
       return
     }
     scheduleLossFade()
   }
 
   const pts = cells.map(c => `${c.cx + offX},${c.cy + offY}`)
+  /** Declared before branches so `finishStroke` can safely read on single-cell wins. */
+  let beeCtl = null
+  let lastBeePoint = null
 
   const SEG_MS = 150
 
@@ -622,7 +637,10 @@ function runPathTraceAnimation(trace) {
     requestAnimationFrame(() => {
       if (session !== pathTraceSession) return
       dot.setAttribute('stroke', trace.complete ? okColor : badColor)
-      if (trace.complete) traceG.classList.add('trace-pulse-win')
+      if (trace.complete) {
+        traceG.classList.add('trace-pulse-win')
+        scheduleWinModalAfterPulse()
+      }
       finishStroke()
     })
     return
@@ -638,7 +656,10 @@ function runPathTraceAnimation(trace) {
       line.style.transition = 'stroke 0.22s ease'
       line.setAttribute('stroke', end)
     }
-    if (trace.complete) traceG.classList.add('trace-pulse-win')
+    if (trace.complete) {
+      traceG.classList.add('trace-pulse-win')
+      scheduleWinModalAfterPulse()
+    }
     setTimeout(finishStroke, 220)
   }
 
@@ -649,8 +670,8 @@ function runPathTraceAnimation(trace) {
   const headingDeg = (a, b) => (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI
   const start = parsePt(pts[0])
   const firstTarget = parsePt(pts[1])
-  const beeCtl = createBeeSprite(traceG, start, headingDeg(start, firstTarget))
-  let lastBeePoint = { x: start.x, y: start.y }
+  beeCtl = createBeeSprite(traceG, start, headingDeg(start, firstTarget))
+  lastBeePoint = { x: start.x, y: start.y }
 
   const animateBeeSegment = (a, b) => {
     const startedAt = performance.now()
@@ -897,12 +918,20 @@ function renderKeyboard() {
     const nextBtn = document.createElement('button')
     nextBtn.type = 'button'
     nextBtn.className = 'kb-next-puzzle'
-    nextBtn.textContent = 'NEXT PUZZLE'
+    nextBtn.textContent = CTA_LABELS.NEXT_PUZZLE
     nextBtn.addEventListener('click', (e) => {
       e.stopPropagation()
       onRequestNextPuzzle?.()
     })
     bottom.appendChild(nextBtn)
+  } else if (state.solved && state.puzzleIdx === enginePuzzles.length - 1 && hubBaseHref) {
+    hasBottom = true
+    const hub = document.createElement('a')
+    hub.href = hubBaseHref
+    hub.className = 'kb-next-puzzle'
+    hub.textContent = CTA_LABELS.ALL_PUZZLES
+    hub.addEventListener('click', (e) => e.stopPropagation())
+    bottom.appendChild(hub)
   } else if (!state.solved && allFilled()) {
     hasBottom = true
     const chk = document.createElement('button')

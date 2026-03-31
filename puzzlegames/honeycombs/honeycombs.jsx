@@ -17,7 +17,6 @@ import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
-import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import HoneycombsIcon from '../../src/shared/icons/HoneycombsIcon.jsx'
 import './honeycombs.css'
@@ -119,9 +118,7 @@ export default function HoneycombsApp() {
       if (!pendingSuiteModalRef.current) return
       if (puzzleIdx !== dailyIdx) return
       pendingSuiteModalRef.current = false
-      setTimeout(() => {
-        setShowCompletionModal(true)
-      }, 500)
+      setShowCompletionModal(true)
     },
     [dailyIdx],
   )
@@ -147,6 +144,7 @@ export default function HoneycombsApp() {
       mount,
       puzzles: daily.puzzles,
       dateKey: daily.dateKey,
+      hubBaseHref: base,
       onRequestNextPuzzle: onRequestNext,
       onCompletionsUpdated: bumpCompletions,
       isBlockingModalOpen: () => modalsOpenRef.current,
@@ -157,28 +155,11 @@ export default function HoneycombsApp() {
       engine.destroy()
       engineRef.current = null
     }
-  }, [daily.puzzles, daily.dateKey, onRequestNext, bumpCompletions])
+  }, [daily.puzzles, daily.dateKey, base, onRequestNext, bumpCompletions, handleWinAnimationComplete])
 
   useLayoutEffect(() => {
     engineRef.current?.initPuzzle(dailyIdx)
   }, [dailyIdx])
-
-  const nextUnsolvedIdx = useMemo(
-    () => [0, 1, 2].find((i) => i !== dailyIdx && !completions[i]),
-    [dailyIdx, completions],
-  )
-
-  const primaryLabel = useMemo(() => {
-    if (nextUnsolvedIdx !== undefined) return CTA_LABELS.NEXT_PUZZLE
-    if (completions.every(Boolean)) return CTA_LABELS.ALL_PUZZLES
-    return null
-  }, [nextUnsolvedIdx, completions])
-
-  const handlePrimaryClick = useCallback(() => {
-    if (primaryLabel === CTA_LABELS.NEXT_PUZZLE && nextUnsolvedIdx !== undefined) {
-      setDailyIdx(nextUnsolvedIdx)
-    }
-  }, [primaryLabel, nextUnsolvedIdx])
 
   return (
     <div className="game-container">
@@ -238,32 +219,12 @@ export default function HoneycombsApp() {
         </button>
       </SharedModalShell>
 
-      <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} compact />
+      <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
       <SimpleGameStatsModal
         show={showStats}
         onClose={() => setShowStats(false)}
         gameKey={GAME_KEYS.HONEYCOMBS}
       />
-
-      {primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
-        <a
-          href={base}
-          className="btn-primary"
-          style={{
-            textAlign: 'center',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {CTA_LABELS.ALL_PUZZLES}
-        </a>
-      ) : primaryLabel ? (
-        <button type="button" className="btn-primary" onClick={handlePrimaryClick}>
-          {primaryLabel}
-        </button>
-      ) : null}
 
       <SuiteGameCompletionModal
         show={showCompletionModal}

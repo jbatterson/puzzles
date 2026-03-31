@@ -188,8 +188,9 @@ export function computeSimpleGameStats(gameKey) {
         return { played, streak: getStreak(gameKey), stars }
     }
     if (gameKey === GAME_KEYS.SUMTILES || gameKey === GAME_KEYS.PRODUCTILES) {
-        const { played, avgMoves } = aggregateTileMovesFromStorage(gameKey)
-        return { played, streak: getStreak(gameKey), stars: 0, avgMoves }
+        const { played, stars } = aggregateMultiGameFromStorage(gameKey)
+        const { avgMoves } = aggregateTileMovesFromStorage(gameKey)
+        return { played, streak: getStreak(gameKey), stars, avgMoves }
     }
     return { played: 0, streak: 0, stars: 0 }
 }

@@ -18,6 +18,7 @@ const COMPLETION_HEADLINE = Object.freeze({
     [GAME_KEYS.FACTORFALL]: 'FACTORFELL!',
     [GAME_KEYS.SUMTILES]: 'AWE-SUM!',
     [GAME_KEYS.PRODUCTILES]: 'PRODUCTIVE!',
+    [GAME_KEYS.HONEYCOMBS]: 'HEX-CELLENT!',
 })
 
 function pluralUnit(n, singular, plural) {

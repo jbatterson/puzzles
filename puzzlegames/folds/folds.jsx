@@ -567,7 +567,7 @@ const App = () => {
     const primaryLabel = isWon
         ? mode === 'tutorial'
             ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
-            : [0, 1, 2].find(i => i !== dailyIdx && !completions[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_DONE
+            : [0, 1, 2].find(i => i !== dailyIdx && !completions[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
         : folds <= 0 ? 'Retry Puzzle'
         : null
 
@@ -784,7 +784,7 @@ const App = () => {
                 <button className="btn-primary" data-fold-confirm onClick={confirmPendingFold}>FOLD</button>
             ) : (anim || (!isWon && folds > 0)) ? (
                 <div className="goal-text">Match the Pattern</div>
-            ) : primaryLabel === CTA_LABELS.ALL_DONE ? (
+            ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
                 <a href={base} className="btn-primary"
                     style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {CTA_LABELS.ALL_PUZZLES}

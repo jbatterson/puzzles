@@ -399,9 +399,6 @@ function retreatAlongAxis(fromIdx, axisMode, inputOrder, locked) {
 
 export default function CluelessGame() {
     const chrome = getGameChrome(GAME_KEYS.CLUELESS)
-    // #region agent log
-    fetch('http://127.0.0.1:7789/ingest/c63c0e1a-4721-4866-a60f-d01a6afe7afe',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b390e2'},body:JSON.stringify({sessionId:'b390e2',runId:'pre-fix',hypothesisId:'H1',location:'clueless.jsx:CluelessGame(entry)',message:'CluelessGame render entry',data:{},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     const [difficultyIdx, setDifficultyIdx] = useState(() => parseHubDailyPuzzleParam())
     const difficulty = DIFFS[difficultyIdx] || 'easy'
 
