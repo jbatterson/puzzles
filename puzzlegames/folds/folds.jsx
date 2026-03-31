@@ -535,7 +535,8 @@ const App = () => {
         return '#cbd5e1'
     }
 
-    const confirmPendingFold = useCallback((lineKey) => {
+    const confirmPendingFold = useCallback(() => {
+        const lineKey = pendingFoldLineRef.current
         if (!lineKey) return
         setPendingFoldLine(null)
         setPendingFoldAnchor(null)
@@ -730,7 +731,7 @@ const App = () => {
                                     if (Date.now() < ignoreBoardPointerUntilRef.current) return
                                     e.stopPropagation()
                                     e.preventDefault()
-                                    confirmPendingFold(l.lineKey)
+                                    confirmPendingFold()
                                 }
                                 return (
                                     <g key="fold-overlay" data-fold-overlay="">
@@ -776,7 +777,7 @@ const App = () => {
             </div>
 
             {!anim && !isWon && folds > 0 && pendingFoldLine ? (
-                <button className="btn-primary" onClick={() => confirmPendingFold(pendingFoldLine)}>FOLD</button>
+                <button className="btn-primary" onClick={confirmPendingFold}>FOLD</button>
             ) : (anim || (!isWon && folds > 0)) ? (
                 <div className="goal-text">Match the Pattern</div>
             ) : primaryLabel === CTA_LABELS.ALL_DONE ? (
