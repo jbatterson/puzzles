@@ -71,6 +71,7 @@ const GAME_TITLES = Object.freeze({
 	factorfall: 'Factorfall',
 	sumtiles: 'Sum Tiles',
 	productiles: 'Productiles',
+	honeycombs: 'Honeycombs',
 })
 
 function buildShareText(key, title, href, completions, perfects, moveCounts) {

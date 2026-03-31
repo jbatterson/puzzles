@@ -98,6 +98,8 @@ const styles = {
     },
     /** Puzzle piece only — uses `HOME_PUZZLE_ICON_NUDGE_PX` above */
     homePuzzleIcon: {
+        fontFamily: '"Font Awesome 6 Free"',
+        fontWeight: 900,
         fontSize: '1.2rem',
         lineHeight: 1,
         display: 'block',
@@ -122,12 +124,15 @@ export default function TopBar({
         [HEADER_ACTIONS.HELP]: onHelp,
     })
 
+    /** Full-bleed bar inside hub / #root max-width column: 50% is parent width, 50vw is viewport. */
     const barStyle = {
         ...styles.bar,
         position: 'relative',
-        left: '50%',
         width: '100vw',
-        transform: 'translateX(-50%)',
+        maxWidth: '100vw',
+        marginLeft: 'calc(50% - 50vw)',
+        marginRight: 'calc(50% - 50vw)',
+        boxSizing: 'border-box',
     }
 
     return (

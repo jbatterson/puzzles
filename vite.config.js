@@ -76,6 +76,7 @@ export default defineConfig(({ mode }) => {
           productiles: 'puzzlegames/productiles/index.html',
           factorfall: 'puzzlegames/factorfall/index.html',
           clueless: 'puzzlegames/clueless/index.html',
+          honeycombs: 'puzzlegames/honeycombs/index.html',
           allten: 'puzzlegames/allten/index.html',
         },
       },

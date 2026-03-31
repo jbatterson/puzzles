@@ -6,6 +6,7 @@ export const GAME_KEYS = Object.freeze({
 	PRODUCTILES: "productiles",
 	FACTORFALL: "factorfall",
 	CLUELESS: "clueless",
+	HONEYCOMBS: "honeycombs",
 });
 
 const GAME_CHROME = Object.freeze({
@@ -16,6 +17,7 @@ const GAME_CHROME = Object.freeze({
 	[GAME_KEYS.PRODUCTILES]: { title: "Productiles", showStats: false },
 	[GAME_KEYS.FACTORFALL]: { title: "Factorfall", showStats: true },
 	[GAME_KEYS.CLUELESS]: { title: "Clueless", showStats: true },
+	[GAME_KEYS.HONEYCOMBS]: { title: "Honeycombs", showStats: true },
 });
 
 export function getGameChrome(gameKey) {

@@ -9,6 +9,7 @@ import SumTilesIcon from './shared/icons/SumTilesIcon.jsx'
 import FactorfallIcon from './shared/icons/FactorfallIcon.jsx'
 import CluelessIcon from './shared/icons/CluelessIcon.jsx'
 import AllTenIcon from './shared/icons/AllTenIcon.jsx'
+import HoneycombsIcon from './shared/icons/HoneycombsIcon.jsx'
 import DiceFace from './shared/DiceFace.jsx'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../shared-contracts/chromeUi.js'
 import {
@@ -292,9 +293,10 @@ const GAMES = [
     { key: 'scurry',      href: `${base}puzzlegames/scurry/`,      Icon: BugIcon,         title: 'Scurry',      desc: 'Place bugs to fill every highlighted square.' },
     { key: 'clueless',    href: `${base}puzzlegames/clueless/`,     Icon: CluelessIcon,    title: 'Clueless',    desc: 'Fill in the missing letters to complete six crossing words.', single: false },
     { key: 'folds',       href: `${base}puzzlegames/folds/`,       Icon: FoldsIcon,       title: 'Folds',       desc: 'Reflect triangles to match the target pattern.' },
-    { key: 'factorfall',  href: `${base}puzzlegames/factorfall/`,  Icon: FactorfallIcon,  title: 'Factorfall',  desc: 'Drop factors into the grid. Clear same-color groups that multiply to the target.' },
+    { key: 'honeycombs',  href: `${base}puzzlegames/honeycombs/`,  Icon: HoneycombsIcon,  title: 'Honeycombs',  desc: 'Fill each honeycomb with a single 1-to-N connected path.' },
     { key: 'sumtiles',    href: `${base}puzzlegames/sumtiles/`,    Icon: SumTilesIcon,    title: 'Sum Tiles',   desc: 'Slide tiles so every row and column hits its sum.' },
     { key: 'productiles', href: `${base}puzzlegames/productiles/`, Icon: ProductilesIcon, title: 'Productiles', desc: 'Slide tiles so every row and column hits its product.' },
+    { key: 'factorfall',  href: `${base}puzzlegames/factorfall/`,  Icon: FactorfallIcon,  title: 'Factorfall',  desc: 'Drop factors into the grid. Clear same-color groups that multiply to the target.' },
 ]
 
 const today = new Date().toLocaleDateString('en-US', {
