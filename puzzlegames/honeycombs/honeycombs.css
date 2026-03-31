@@ -81,7 +81,6 @@
   .hex-cell.empty polygon    { fill: #fff; }
   .hex-cell.given polygon    { fill: #f5a623; }
   .hex-cell.filled polygon   { fill: #fff; }
-  .hex-cell.selected polygon { fill: #d0e8ff; }
   .hex-label {
     font-family: 'Outfit', sans-serif;
     font-weight: 700;

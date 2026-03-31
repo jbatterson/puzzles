@@ -210,7 +210,7 @@ export default function HoneycombsApp() {
             <HoneycombsIcon size={80} />
           </div>
           <p style={{ fontSize: '1.1rem', lineHeight: '1.6', color: '#333' }}>
-            Fill the grid so the numbered hexagons form one connected path that visits every hexagon
+            Fill the honeycomb so the numbered hexagons form one connected path that visits every hexagon
             in the honeycomb. Orange hexagons are fixed clues on the path.
           </p>
         </div>

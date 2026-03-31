@@ -171,13 +171,12 @@ function areAdjacent(size, r1, c1, r2, c2) {
 let state = {
   puzzleIdx: 0,
   cells: [],        // [{row, col, cx, cy, value, isClue}]
-  selected: null,   // {row, col} or null
   solved: false,
   activeDigit: null, // highlighted placeable number (hidden when solved)
-  activeDigitFromUser: false, // true = user picked digit on keyboard; empty-cell tap places anywhere
   moveHistory: [],   // stack of cell value snapshots for Undo
 }
 
+/** If set, solve stores '1' not '2': undo, reset, or tap-clear on a filled player cell. */
 let usedUndoOrReset = false
 
 function completionKey(idx) {
@@ -213,9 +212,7 @@ function initPuzzle(idx) {
     value:  clueMap[cellKey(row, col)] ?? null,
     isClue: !!clueMap[cellKey(row, col)],
   }))
-  state.selected   = null
   state.solved     = false
-  state.activeDigitFromUser = false
   state.moveHistory = []
   state.activeDigit = computeActiveDigitMinMissing()
   usedUndoOrReset = false
@@ -231,10 +228,6 @@ function clueValues() {
 
 function placedValues() {
   return new Set(state.cells.map(c => c.value).filter(v => v !== null))
-}
-
-function shouldShowHints() {
-  return !state.solved
 }
 
 function computeActiveDigitMinMissing() {
@@ -260,7 +253,7 @@ function computeActiveDigitAfterFill(lastPlaced) {
   return null
 }
 
-/** True if (row,col) is an obvious place for digit d: adjacent to the cell with d−1, or any empty cell when placing 1 and 1 is not on the board yet. */
+/** Snapshot grid values for Undo. */
 function pushMoveHistory() {
   state.moveHistory.push(state.cells.map(c => c.value))
 }
@@ -274,23 +267,8 @@ function handleUndo() {
   for (let i = 0; i < state.cells.length; i++) {
     state.cells[i].value = prev[i]
   }
-  state.selected = null
-  state.activeDigitFromUser = false
   state.activeDigit = computeActiveDigitMinMissing()
   render()
-}
-
-/** True if (row,col) is an obvious place for digit d: adjacent to the cell with d−1, or any empty cell when placing 1 and 1 is not on the board yet. */
-function isObviousContinuation(row, col, d) {
-  const size = currentPuzzle().size
-  const oneOnBoard = state.cells.some(c => c.value === 1)
-  if (d === 1) {
-    if (oneOnBoard) return false
-    return true
-  }
-  const prevCell = state.cells.find(c => c.value === d - 1)
-  if (!prevCell) return false
-  return areAdjacent(size, row, col, prevCell.row, prevCell.col)
 }
 
 function applyDigitToCell(row, col, num) {
@@ -306,14 +284,8 @@ function applyDigitToCell(row, col, num) {
   ) {
     return
   }
-  const existing = state.cells.find(
-    c => c.value === num && !c.isClue && (c.row !== row || c.col !== col)
-  )
   pushMoveHistory()
-  if (existing) existing.value = null
   cell.value = num
-  state.selected = null
-  state.activeDigitFromUser = false
   state.activeDigit = computeActiveDigitAfterFill(num)
   render()
 }
@@ -819,10 +791,7 @@ function renderGrid() {
 }
 
 function cellClass(cell) {
-  const isSelected = state.selected && state.selected.row === cell.row && state.selected.col === cell.col
-
   if (cell.isClue) return 'hex-cell given'
-  if (isSelected) return 'hex-cell selected'
   if (cell.value !== null) return 'hex-cell filled'
   return 'hex-cell empty'
 }
@@ -836,7 +805,7 @@ function renderKeyboard() {
       .filter(c => !c.isClue && c.value !== null)
       .map(c => c.value)
   )
-  const showActive = shouldShowHints() && state.activeDigit !== null
+  const showActive = !state.solved && state.activeDigit !== null
 
   const size = currentPuzzle().size
   let numRows
@@ -971,16 +940,15 @@ function handleCellClick(row, col) {
 
   if (cell.value !== null) {
     const deletedValue = cell.value
+    usedUndoOrReset = true
     pushMoveHistory()
     cell.value = null
-    state.selected = null
     state.activeDigit = deletedValue
-    state.activeDigitFromUser = true
     render()
     return
   }
 
-  if (shouldShowHints() && state.activeDigit !== null) {
+  if (!state.solved && state.activeDigit !== null) {
     applyDigitToCell(row, col, state.activeDigit)
   }
 }
@@ -997,21 +965,11 @@ function handleKeyPress(num) {
       .map(c => c.value)
   )
 
-  if (shouldShowHints() && state.activeDigit === num && !playerUsed.has(num)) return
+  if (!state.solved && state.activeDigit === num && !playerUsed.has(num)) return
 
-  if (state.selected) {
-    const cell = state.cells.find(c => c.row === state.selected.row && c.col === state.selected.col)
-    if (cell && !cell.isClue) {
-      applyDigitToCell(cell.row, cell.col, num)
-      return
-    }
-  }
-
-  // Used (gray) keys need a selected cell to move a value; otherwise pick a free digit as the pen
   if (playerUsed.has(num)) return
 
   state.activeDigit = num
-  state.activeDigitFromUser = true
   render()
 }
 
@@ -1025,8 +983,6 @@ function handleClearAll() {
   for (const cell of state.cells) {
     if (!cell.isClue) cell.value = null
   }
-  state.selected = null
-  state.activeDigitFromUser = false
   state.activeDigit = computeActiveDigitMinMissing()
   render()
 }
@@ -1056,7 +1012,6 @@ function handleKeyboard(e) {
     if (isBlockingModalOpen?.()) return
     e.preventDefault()
     notifyPathTraceUserInput()
-    state.selected = null
     if (state.activeDigit === null) state.activeDigit = computeActiveDigitMinMissing()
     render()
     return
@@ -1076,31 +1031,6 @@ function handleKeyboard(e) {
       handleKeyPress(10)
     }
   }
-}
-
-/**
- * Folds-style: tap “chrome” or any non-action spot clears selection + pen.
- * Player hex clicks use stopPropagation; clue hexes and SVG padding bubble here.
- */
-function handleDocumentBackgroundClick(e) {
-  if (state.solved) return
-  if (e.target.closest && e.target.closest('#instructions-overlay')) return
-  if (e.target.closest && e.target.closest('#keyboard')) return
-  if (e.target.closest && e.target.closest('#puzzle-boxes')) return
-  if (e.target.closest && e.target.closest('.level-nav')) return
-  if (e.target.closest && e.target.closest('.topbar-shell')) return
-  if (e.target.closest && e.target.closest('.floating-modal-backdrop')) return
-
-  if (e.target.closest && e.target.closest('#hex-grid')) {
-    const g = e.target.closest('g.hex-cell')
-    if (g && !g.classList.contains('given')) return
-  }
-
-  if (state.selected === null) return
-
-  notifyPathTraceUserInput()
-  state.selected = null
-  render()
 }
 
   function onResize() {
@@ -1125,13 +1055,11 @@ function handleDocumentBackgroundClick(e) {
   }
 
   document.addEventListener('keydown', handleKeyboard)
-  document.addEventListener('click', handleDocumentBackgroundClick)
   document.addEventListener('touchend', onTouchEnd, { passive: false })
   window.addEventListener('resize', onResize)
 
   function destroy() {
     document.removeEventListener('keydown', handleKeyboard)
-    document.removeEventListener('click', handleDocumentBackgroundClick)
     document.removeEventListener('touchend', onTouchEnd)
     window.removeEventListener('resize', onResize)
     clearPathFadeTimeout()
