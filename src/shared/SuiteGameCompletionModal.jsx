@@ -16,6 +16,8 @@ const COMPLETION_HEADLINE = Object.freeze({
     [GAME_KEYS.SCURRY]: 'SCURRIED!',
     [GAME_KEYS.CLUELESS]: 'CLUED IN!',
     [GAME_KEYS.FACTORFALL]: 'FACTORFELL!',
+    [GAME_KEYS.SUMTILES]: 'AWE-SUM!',
+    [GAME_KEYS.PRODUCTILES]: 'PRODUCTIVE!',
 })
 
 function pluralUnit(n, singular, plural) {
@@ -32,9 +34,11 @@ export default function SuiteGameCompletionModal({ show, onClose, gameKey, dateK
     const modalTitle = COMPLETION_HEADLINE[gameKey] ?? `${gameTitle.toUpperCase()}!`
 
     const stats = useMemo(() => {
-        if (!show || !gameKey) return { played: 0, streak: 0, stars: 0 }
+        if (!show || !gameKey) return { played: 0, streak: 0, stars: 0, avgMoves: '' }
         return computeSimpleGameStats(gameKey)
     }, [show, gameKey])
+
+    const isTileGame = gameKey === GAME_KEYS.SUMTILES || gameKey === GAME_KEYS.PRODUCTILES
 
     const [shareToast, setShareToast] = useState(false)
     const toastTimeoutRef = useRef(null)
@@ -113,11 +117,19 @@ export default function SuiteGameCompletionModal({ show, onClose, gameKey, dateK
                     <div className="simple-game-stats-value">{stats.streak}</div>
                     <div className="simple-game-stats-unit">{pluralUnit(stats.streak, 'day', 'days')}</div>
                 </div>
-                <div className="simple-game-stats-col">
-                    <div className="simple-game-stats-label">Stars</div>
-                    <div className="simple-game-stats-value">{stats.stars}</div>
-                    <div className="simple-game-stats-unit">{pluralUnit(stats.stars, 'time', 'times')}</div>
-                </div>
+                {isTileGame ? (
+                    <div className="simple-game-stats-col">
+                        <div className="simple-game-stats-label">AVG MOVES</div>
+                        <div className="simple-game-stats-value">{stats.avgMoves || '–|–|–'}</div>
+                        <div className="simple-game-stats-unit"></div>
+                    </div>
+                ) : (
+                    <div className="simple-game-stats-col">
+                        <div className="simple-game-stats-label">Stars</div>
+                        <div className="simple-game-stats-value">{stats.stars}</div>
+                        <div className="simple-game-stats-unit">{pluralUnit(stats.stars, 'time', 'times')}</div>
+                    </div>
+                )}
             </div>
 
             <div className="suite-completion-share-block">

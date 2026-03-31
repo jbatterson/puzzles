@@ -4,6 +4,8 @@ import TopBar from '../../src/shared/TopBar.jsx'
 import { tileGameFillColor } from '../../src/shared/tileGamePalette.js'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
+import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
+import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -259,6 +261,10 @@ export default function Productiles() {
         closeInstructions,
     } = useInstructionsGate('productiles:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'productiles' })
     const [showLinks, setShowLinks] = useState(false)
+    const [showStats, setShowStats] = useState(false)
+    const [showCompletionModal, setShowCompletionModal] = useState(false)
+    const allDailyDoneCompletionRef = useRef(null)
+    const pendingSuiteModalAfterAnimRef = useRef(false)
 
     const currentPuzzleData = useMemo(() => {
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
@@ -389,6 +395,25 @@ export default function Productiles() {
         }
     }, [isSolved])
 
+    useEffect(() => {
+        if (mode !== 'daily') return
+        const done = completions.every(Boolean)
+        if (allDailyDoneCompletionRef.current === null) {
+            allDailyDoneCompletionRef.current = done
+            return
+        }
+        if (done && !allDailyDoneCompletionRef.current) {
+            pendingSuiteModalAfterAnimRef.current = true
+            const s = stateRef.current
+            if (!s?.solveAnim) {
+                pendingSuiteModalAfterAnimRef.current = false
+                setTimeout(() => setShowCompletionModal(true), 500)
+            }
+        }
+        if (!done) pendingSuiteModalAfterAnimRef.current = false
+        allDailyDoneCompletionRef.current = done
+    }, [mode, completions])
+
     // Draw loop
     useEffect(() => {
         const canvas = canvasRef.current
@@ -432,7 +457,13 @@ export default function Productiles() {
                 } else if (s.solveAnim.phase==='final') {
                     const a = Math.max(0, 1-elapsed/SOLVE_FINAL_MS)
                     ctx.fillStyle=`rgba(34,197,94,${0.15*a})`; ctx.fillRect(0,0,canvas.width,canvas.height)
-                    if (elapsed >= SOLVE_FINAL_MS) s.solveAnim = null
+                    if (elapsed >= SOLVE_FINAL_MS) {
+                        s.solveAnim = null
+                        if (pendingSuiteModalAfterAnimRef.current && modeRef.current === 'daily') {
+                            pendingSuiteModalAfterAnimRef.current = false
+                            setTimeout(() => setShowCompletionModal(true), 500)
+                        }
+                    }
                 }
             }
             for (const t of s.tiles) {
@@ -602,6 +633,7 @@ export default function Productiles() {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
+                onStats={() => setShowStats(true)}
             />
 
             {mode === 'tutorial' ? (
@@ -698,6 +730,17 @@ export default function Productiles() {
             </SharedModalShell>
 
             <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
+            <SimpleGameStatsModal
+                show={showStats}
+                onClose={() => setShowStats(false)}
+                gameKey={GAME_KEYS.PRODUCTILES}
+            />
+            <SuiteGameCompletionModal
+                show={showCompletionModal}
+                onClose={() => setShowCompletionModal(false)}
+                gameKey={GAME_KEYS.PRODUCTILES}
+                dateKey={daily.key}
+            />
         </div>
     )
 }

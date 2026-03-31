@@ -727,7 +727,9 @@ const Factorfall = () => {
             return
         }
         if (done && !allDailyDoneCompletionRef.current) {
-            queueMicrotask(() => setShowCompletionModal(true))
+            setTimeout(() => {
+                setShowCompletionModal(true)
+            }, 500)
         }
         allDailyDoneCompletionRef.current = done
     }, [mode, completions])

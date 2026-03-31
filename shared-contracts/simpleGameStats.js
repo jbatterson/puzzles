@@ -101,6 +101,44 @@ function aggregateMultiGameFromStorage(gameKey) {
     return { played: playedDates.size, stars }
 }
 
+function aggregateTileMovesFromStorage(gameKey) {
+    const playedDates = new Set()
+    const totals = [0, 0, 0]
+    const counts = [0, 0, 0]
+    const escaped = gameKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(`^${escaped}:(\\d{4}-\\d{2}-\\d{2}):([0-2]):moves$`)
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i)
+            if (!k) continue
+            const m = k.match(re)
+            if (!m) continue
+            const date = m[1]
+            const idxStr = m[2]
+            const idx = parseInt(idxStr, 10)
+            const v = lsGet(k)
+            if (v == null) continue
+            const moves = parseInt(v, 10)
+            if (!Number.isFinite(moves) || moves <= 0) continue
+            if (idx < 0 || idx > 2) continue
+            playedDates.add(date)
+            totals[idx] += moves
+            counts[idx] += 1
+        }
+    } catch {
+        // ignore
+    }
+    const parts = totals.map((sum, i) => {
+        const c = counts[i]
+        if (!c) return '–'
+        return String(Math.round(sum / c))
+    })
+    return {
+        played: playedDates.size,
+        avgMoves: parts.join('|'),
+    }
+}
+
 function collectCluelessDateKeysFromStorage() {
     const dates = new Set()
     try {
@@ -132,8 +170,8 @@ function aggregateCluelessFromStorage() {
 }
 
 /**
- * @param {string} gameKey One of `GAME_KEYS` for scurry, folds, factorfall, clueless.
- * @returns {{ played: number, streak: number, stars: number }}
+ * @param {string} gameKey One of `GAME_KEYS` for suite games.
+ * @returns {{ played: number, streak: number, stars: number, avgMoves?: string }}
  */
 export function computeSimpleGameStats(gameKey) {
     if (gameKey === GAME_KEYS.CLUELESS) {
@@ -148,6 +186,10 @@ export function computeSimpleGameStats(gameKey) {
     ) {
         const { played, stars } = aggregateMultiGameFromStorage(gameKey)
         return { played, streak: getStreak(gameKey), stars }
+    }
+    if (gameKey === GAME_KEYS.SUMTILES || gameKey === GAME_KEYS.PRODUCTILES) {
+        const { played, avgMoves } = aggregateTileMovesFromStorage(gameKey)
+        return { played, streak: getStreak(gameKey), stars: 0, avgMoves }
     }
     return { played: 0, streak: 0, stars: 0 }
 }

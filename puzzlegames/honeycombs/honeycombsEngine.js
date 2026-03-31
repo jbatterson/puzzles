@@ -1,6 +1,14 @@
 /**
  * Imperative SVG + keyboard game logic for Honeycombs (mounted inside React).
- * @param {{ mount: HTMLElement, puzzles: unknown[], dateKey: string, onRequestNextPuzzle?: () => void, onCompletionsUpdated?: () => void, isBlockingModalOpen?: () => boolean }} options
+ * @param {{
+ *   mount: HTMLElement,
+ *   puzzles: unknown[],
+ *   dateKey: string,
+ *   onRequestNextPuzzle?: () => void,
+ *   onCompletionsUpdated?: () => void,
+ *   isBlockingModalOpen?: () => boolean,
+ *   onWinAnimationComplete?: (puzzleIdx: number) => void,
+ * }} options
  */
 export function createHoneycombsEngine({
   mount,
@@ -9,6 +17,7 @@ export function createHoneycombsEngine({
   onRequestNextPuzzle,
   onCompletionsUpdated,
   isBlockingModalOpen,
+  onWinAnimationComplete,
 }) {
   let svg = mount.querySelector('#hex-grid')
   let keyboard = mount.querySelector('#keyboard')
@@ -588,6 +597,9 @@ function runPathTraceAnimation(trace) {
     if (trace.complete) {
       if (lastBeePoint) startIdleBeeBuzz(beeCtl, lastBeePoint, session)
       scheduleWinLineFade()
+      if (typeof onWinAnimationComplete === 'function') {
+        onWinAnimationComplete(state.puzzleIdx)
+      }
       return
     }
     scheduleLossFade()

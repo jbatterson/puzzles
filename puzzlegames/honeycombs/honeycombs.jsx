@@ -11,11 +11,13 @@ import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
+import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
+import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import HoneycombsIcon from '../../src/shared/icons/HoneycombsIcon.jsx'
 import './honeycombs.css'
@@ -85,6 +87,7 @@ export default function HoneycombsApp() {
   const [perfects, setPerfects] = useState(() => loadPerfects(daily.dateKey))
   const [showLinks, setShowLinks] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [showCompletionModal, setShowCompletionModal] = useState(false)
 
   const {
     showInstructions,
@@ -99,6 +102,8 @@ export default function HoneycombsApp() {
   const engineRef = useRef(null)
   const modalsOpenRef = useRef(false)
   modalsOpenRef.current = showInstructions || showStats || showLinks
+  const pendingSuiteModalRef = useRef(false)
+  const allDailyDoneCompletionRef = useRef(null)
 
   const bumpCompletions = useCallback(() => {
     setCompletions(loadCompletions(daily.dateKey))
@@ -108,6 +113,32 @@ export default function HoneycombsApp() {
   const onRequestNext = useCallback(() => {
     setDailyIdx((i) => Math.min(2, i + 1))
   }, [])
+
+  const handleWinAnimationComplete = useCallback(
+    (puzzleIdx) => {
+      if (!pendingSuiteModalRef.current) return
+      if (puzzleIdx !== dailyIdx) return
+      pendingSuiteModalRef.current = false
+      setTimeout(() => {
+        setShowCompletionModal(true)
+      }, 500)
+    },
+    [dailyIdx],
+  )
+
+  // Track when all three daily Honeycombs are completed; defer actual modal
+  // opening until the engine signals that the win animation has finished.
+  useLayoutEffect(() => {
+    const done = completions.every(Boolean)
+    if (allDailyDoneCompletionRef.current === null) {
+      allDailyDoneCompletionRef.current = done
+      return
+    }
+    if (done && !allDailyDoneCompletionRef.current) {
+      pendingSuiteModalRef.current = true
+    }
+    allDailyDoneCompletionRef.current = done
+  }, [completions])
 
   useLayoutEffect(() => {
     const mount = boardMountRef.current
@@ -119,6 +150,7 @@ export default function HoneycombsApp() {
       onRequestNextPuzzle: onRequestNext,
       onCompletionsUpdated: bumpCompletions,
       isBlockingModalOpen: () => modalsOpenRef.current,
+      onWinAnimationComplete: handleWinAnimationComplete,
     })
     engineRef.current = engine
     return () => {
@@ -130,6 +162,23 @@ export default function HoneycombsApp() {
   useLayoutEffect(() => {
     engineRef.current?.initPuzzle(dailyIdx)
   }, [dailyIdx])
+
+  const nextUnsolvedIdx = useMemo(
+    () => [0, 1, 2].find((i) => i !== dailyIdx && !completions[i]),
+    [dailyIdx, completions],
+  )
+
+  const primaryLabel = useMemo(() => {
+    if (nextUnsolvedIdx !== undefined) return CTA_LABELS.NEXT_PUZZLE
+    if (completions.every(Boolean)) return CTA_LABELS.ALL_PUZZLES
+    return null
+  }, [nextUnsolvedIdx, completions])
+
+  const handlePrimaryClick = useCallback(() => {
+    if (primaryLabel === CTA_LABELS.NEXT_PUZZLE && nextUnsolvedIdx !== undefined) {
+      setDailyIdx(nextUnsolvedIdx)
+    }
+  }, [primaryLabel, nextUnsolvedIdx])
 
   return (
     <div className="game-container">
@@ -194,6 +243,33 @@ export default function HoneycombsApp() {
         show={showStats}
         onClose={() => setShowStats(false)}
         gameKey={GAME_KEYS.HONEYCOMBS}
+      />
+
+      {primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
+        <a
+          href={base}
+          className="btn-primary"
+          style={{
+            textAlign: 'center',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {CTA_LABELS.ALL_PUZZLES}
+        </a>
+      ) : primaryLabel ? (
+        <button type="button" className="btn-primary" onClick={handlePrimaryClick}>
+          {primaryLabel}
+        </button>
+      ) : null}
+
+      <SuiteGameCompletionModal
+        show={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        gameKey={GAME_KEYS.HONEYCOMBS}
+        dateKey={daily.dateKey}
       />
     </div>
   )

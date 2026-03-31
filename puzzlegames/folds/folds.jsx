@@ -431,6 +431,8 @@ const App = () => {
             if (showInstructions || showStats || showLinks) return
             const wrap = canvasWrapperRef.current
             if (!wrap || wrap.contains(e.target)) return
+            const el = e.target instanceof Element ? e.target : e.target?.parentElement
+            if (el && el.closest('[data-fold-confirm]')) return
             clearFoldLineInteractionState()
         }
         window.addEventListener('pointerdown', onPointerDownCapture, true)
@@ -577,7 +579,9 @@ const App = () => {
             return
         }
         if (done && !allDailyDoneCompletionRef.current) {
-            queueMicrotask(() => setShowCompletionModal(true))
+            setTimeout(() => {
+                setShowCompletionModal(true)
+            }, 500)
         }
         allDailyDoneCompletionRef.current = done
     }, [mode, completions])
@@ -777,7 +781,7 @@ const App = () => {
             </div>
 
             {!anim && !isWon && folds > 0 && pendingFoldLine ? (
-                <button className="btn-primary" onClick={confirmPendingFold}>FOLD</button>
+                <button className="btn-primary" data-fold-confirm onClick={confirmPendingFold}>FOLD</button>
             ) : (anim || (!isWon && folds > 0)) ? (
                 <div className="goal-text">Match the Pattern</div>
             ) : primaryLabel === CTA_LABELS.ALL_DONE ? (

@@ -464,7 +464,9 @@ export default function CluelessGame() {
             return
         }
         if (done && !allDifficultiesDoneCompletionRef.current) {
-            queueMicrotask(() => setShowCompletionModal(true))
+            setTimeout(() => {
+                setShowCompletionModal(true)
+            }, 500)
         }
         allDifficultiesDoneCompletionRef.current = done
     }, [attemptsByDiff])
