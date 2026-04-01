@@ -2,6 +2,14 @@
 // Format per puzzle: { size: 'small'|'medium'|'large', clues: [[row, col, value], ...] }
 
 const puzzleData = {
+  tutorial: [
+    { size: 'small', clues: [[0,0,3], [0,1,2], [0,2,1], [2,0,10], [2,1,9], [2,2,8]] },
+    { size: 'small', clues: [[0,0,5], [1,1,6], [1,2,7], [2,1,8], [2,0,9], [1,0,10]] }, //
+    { size: 'small', clues: [[0,2,2], [1,3,3], [1,2,4], [0,0,6], [1,0,7], [2,0,8]] }, //
+    { size: 'small', clues: [[0,1,2], [1,2,3], [1,1,4], [2,1,7]] },
+    { size: 'medium', clues: [[2,1,1], [3,1,2], [3,0,3], [2,0,4], [1,0,5], [1,3,9], [2,2,12]] },
+  ],
+
   easy: [
     { size: 'small', clues: [[0, 2, 2], [1, 3, 3], [0, 0, 6]] },
     { size: 'small', clues: [[0,1,1], [0,2,4], [1,3,5]] },

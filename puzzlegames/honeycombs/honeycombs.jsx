@@ -5,7 +5,7 @@ import React, {
   useRef,
   useLayoutEffect,
 } from 'react'
-import { getDailyHoneycombsPuzzles } from './puzzles.js'
+import puzzleData, { getDailyHoneycombsPuzzles } from './puzzles.js'
 import { createHoneycombsEngine } from './honeycombsEngine.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
@@ -17,6 +17,7 @@ import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
+import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import HoneycombsIcon from '../../src/shared/icons/HoneycombsIcon.jsx'
 import './honeycombs.css'
@@ -81,6 +82,8 @@ export default function HoneycombsApp() {
   const baseRaw = import.meta.env.BASE_URL || '/'
   const base = baseRaw.endsWith('/') ? baseRaw : `${baseRaw}/`
 
+  const [mode, setMode] = useState('daily')
+  const [tutorialIdx, setTutorialIdx] = useState(0)
   const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
   const [completions, setCompletions] = useState(() => loadCompletions(daily.dateKey))
   const [perfects, setPerfects] = useState(() => loadPerfects(daily.dateKey))
@@ -89,6 +92,7 @@ export default function HoneycombsApp() {
   const [showCompletionModal, setShowCompletionModal] = useState(false)
 
   const {
+    hasSeenInstructions,
     showInstructions,
     setShowInstructions,
     closeInstructions,
@@ -100,9 +104,15 @@ export default function HoneycombsApp() {
   const boardMountRef = useRef(null)
   const engineRef = useRef(null)
   const modalsOpenRef = useRef(false)
-  modalsOpenRef.current = showInstructions || showStats || showLinks
   const pendingSuiteModalRef = useRef(false)
   const allDailyDoneCompletionRef = useRef(null)
+  const tutorialPuzzles = useMemo(() => puzzleData.tutorial || [], [])
+
+  const activePuzzles = useMemo(
+    () => (mode === 'tutorial' ? tutorialPuzzles : daily.puzzles),
+    [mode, tutorialPuzzles, daily.puzzles],
+  )
+  const activePuzzleIdx = mode === 'tutorial' ? tutorialIdx : dailyIdx
 
   const bumpCompletions = useCallback(() => {
     setCompletions(loadCompletions(daily.dateKey))
@@ -110,22 +120,43 @@ export default function HoneycombsApp() {
   }, [daily.dateKey])
 
   const onRequestNext = useCallback(() => {
+    if (mode === 'tutorial') {
+      setTutorialIdx((i) => Math.min(Math.max(0, tutorialPuzzles.length - 1), i + 1))
+      return
+    }
     setDailyIdx((i) => Math.min(2, i + 1))
-  }, [])
+  }, [mode, tutorialPuzzles.length])
 
   const handleWinAnimationComplete = useCallback(
     (puzzleIdx) => {
+      if (mode !== 'daily') return
       if (!pendingSuiteModalRef.current) return
       if (puzzleIdx !== dailyIdx) return
       pendingSuiteModalRef.current = false
       setShowCompletionModal(true)
     },
-    [dailyIdx],
+    [mode, dailyIdx],
   )
+
+  const tutorialFinalAction = useMemo(() => {
+    if (mode !== 'tutorial') return null
+    return {
+      label: CTA_LABELS.PLAY_TODAY,
+      onClick: () => {
+        setMode('daily')
+        setDailyIdx(0)
+      },
+    }
+  }, [mode])
+
+  useLayoutEffect(() => {
+    modalsOpenRef.current = showInstructions || showStats || showLinks
+  }, [showInstructions, showStats, showLinks])
 
   // Track when all three daily Honeycombs are completed; defer actual modal
   // opening until the engine signals that the win animation has finished.
   useLayoutEffect(() => {
+    if (mode !== 'daily') return
     const done = completions.every(Boolean)
     if (allDailyDoneCompletionRef.current === null) {
       allDailyDoneCompletionRef.current = done
@@ -135,31 +166,33 @@ export default function HoneycombsApp() {
       pendingSuiteModalRef.current = true
     }
     allDailyDoneCompletionRef.current = done
-  }, [completions])
+  }, [mode, completions])
 
   useLayoutEffect(() => {
     const mount = boardMountRef.current
     if (!mount) return
     const engine = createHoneycombsEngine({
       mount,
-      puzzles: daily.puzzles,
+      puzzles: activePuzzles,
       dateKey: daily.dateKey,
       hubBaseHref: base,
       onRequestNextPuzzle: onRequestNext,
       onCompletionsUpdated: bumpCompletions,
       isBlockingModalOpen: () => modalsOpenRef.current,
       onWinAnimationComplete: handleWinAnimationComplete,
+      trackCompletion: mode === 'daily',
+      finalSolvedAction: tutorialFinalAction,
     })
     engineRef.current = engine
     return () => {
       engine.destroy()
       engineRef.current = null
     }
-  }, [daily.puzzles, daily.dateKey, base, onRequestNext, bumpCompletions, handleWinAnimationComplete])
+  }, [activePuzzles, daily.dateKey, base, onRequestNext, bumpCompletions, handleWinAnimationComplete, mode, tutorialFinalAction])
 
   useLayoutEffect(() => {
-    engineRef.current?.initPuzzle(dailyIdx)
-  }, [dailyIdx])
+    engineRef.current?.initPuzzle(activePuzzleIdx)
+  }, [activePuzzleIdx, mode])
 
   return (
     <div className="game-container">
@@ -172,21 +205,54 @@ export default function HoneycombsApp() {
         onStats={() => setShowStats(true)}
       />
 
-      <div className="level-nav">
-        <div className="left-spacer" />
-        <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
-          <div className="level-label" style={{ textAlign: 'center' }}>
-            <span className="sub">{dateLabel}</span>
+      {mode === 'tutorial' ? (
+        <div className="level-nav">
+          <div className="left-spacer">
+            <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
+              {CTA_LABELS.SKIP_TUTORIAL}
+            </button>
           </div>
-          <PuzzleBoxes
-            current={dailyIdx}
-            completions={completions}
-            perfects={perfects}
-            onChange={setDailyIdx}
-          />
+          <div className="selector-group">
+            <button
+              className={`nav-arrow ${tutorialIdx === 0 ? 'disabled' : ''}`}
+              onClick={() => { if (tutorialIdx > 0) setTutorialIdx((i) => i - 1) }}
+            >
+              ←
+            </button>
+            <div className="level-label">
+              <span className="sub">Tutorial</span>
+              <span className="num">{tutorialIdx + 1}</span>
+            </div>
+            <button
+              className={`nav-arrow ${tutorialIdx === tutorialPuzzles.length - 1 ? 'disabled' : ''}`}
+              onClick={() => { if (tutorialIdx < tutorialPuzzles.length - 1) setTutorialIdx((i) => i + 1) }}
+            >
+              →
+            </button>
+          </div>
+          <div className="stats-group" />
         </div>
-        <div className="stats-group" />
-      </div>
+      ) : (
+        <div className="level-nav">
+          <div className="left-spacer">
+            <button className="skip-link" onClick={() => { setMode('tutorial'); setTutorialIdx(0) }}>
+              {CTA_LABELS.PLAY_TUTORIAL}
+            </button>
+          </div>
+          <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
+            <div className="level-label" style={{ textAlign: 'center' }}>
+              <span className="sub">{dateLabel}</span>
+            </div>
+            <PuzzleBoxes
+              current={dailyIdx}
+              completions={completions}
+              perfects={perfects}
+              onChange={setDailyIdx}
+            />
+          </div>
+          <div className="stats-group" />
+        </div>
+      )}
 
       <div ref={boardMountRef} className="honeycombs-board-mount">
         <div id="play-area">
@@ -214,9 +280,63 @@ export default function HoneycombsApp() {
             in the honeycomb. Orange hexagons are fixed clues on the path.
           </p>
         </div>
-        <button type="button" className="btn-primary" style={{ marginTop: '1.25rem', width: '100%' }} onClick={closeInstructions}>
-          Play
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {!hasSeenInstructions ? (
+            <>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ marginTop: '1.25rem', width: '100%' }}
+                onClick={() => {
+                  closeInstructions()
+                  setMode('tutorial')
+                  setTutorialIdx(0)
+                }}
+              >
+                {CTA_LABELS.PLAY_TUTORIAL}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ width: '100%' }}
+                onClick={() => {
+                  closeInstructions()
+                  setMode('daily')
+                  setDailyIdx(0)
+                }}
+              >
+                {CTA_LABELS.SKIP_TUTORIAL}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ marginTop: '1.25rem', width: '100%' }}
+                onClick={() => {
+                  closeInstructions()
+                  setMode('daily')
+                  setDailyIdx(0)
+                }}
+              >
+                {CTA_LABELS.PLAY_TODAY}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ width: '100%' }}
+                onClick={() => {
+                  closeInstructions()
+                  setMode('tutorial')
+                  setTutorialIdx(0)
+                }}
+              >
+                {CTA_LABELS.TUTORIAL_PUZZLES}
+              </button>
+            </>
+          )}
+        </div>
       </SharedModalShell>
 
       <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />

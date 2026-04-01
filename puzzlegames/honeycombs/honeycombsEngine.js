@@ -11,6 +11,8 @@ import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
  *   onCompletionsUpdated?: () => void,
  *   isBlockingModalOpen?: () => boolean,
  *   onWinAnimationComplete?: (puzzleIdx: number) => void,
+ *   trackCompletion?: boolean,
+ *   finalSolvedAction?: { label: string, href?: string, onClick?: () => void } | null,
  * }} options
  */
 export function createHoneycombsEngine({
@@ -22,6 +24,8 @@ export function createHoneycombsEngine({
   onCompletionsUpdated,
   isBlockingModalOpen,
   onWinAnimationComplete,
+  trackCompletion = true,
+  finalSolvedAction = null,
 }) {
   let svg = mount.querySelector('#hex-grid')
   let keyboard = mount.querySelector('#keyboard')
@@ -180,11 +184,13 @@ let state = {
 let usedUndoOrReset = false
 
 function completionKey(idx) {
+  if (!trackCompletion) return null
   return `honeycombs:${engineDateKey}:${idx}`
 }
 
 function markSolved(idx) {
   const k = completionKey(idx)
+  if (!k) return
   const existing = localStorage.getItem(k)
   if (existing === '2') return
   if (existing === '1' && usedUndoOrReset) return
@@ -198,6 +204,7 @@ function cellKey(r, c) { return `${r},${c}` }
 
 function initPuzzle(idx) {
   const puzzle = enginePuzzles[idx]
+  if (!puzzle) return
   const size = puzzle.size
   setHexGeometry(chooseHexRadius(size))
   const rawCells = buildCells(size)
@@ -893,6 +900,26 @@ function renderKeyboard() {
       onRequestNextPuzzle?.()
     })
     bottom.appendChild(nextBtn)
+  } else if (state.solved && state.puzzleIdx === enginePuzzles.length - 1 && finalSolvedAction?.label) {
+    hasBottom = true
+    if (finalSolvedAction.href) {
+      const actionLink = document.createElement('a')
+      actionLink.href = finalSolvedAction.href
+      actionLink.className = 'kb-next-puzzle'
+      actionLink.textContent = finalSolvedAction.label
+      actionLink.addEventListener('click', (e) => e.stopPropagation())
+      bottom.appendChild(actionLink)
+    } else {
+      const actionBtn = document.createElement('button')
+      actionBtn.type = 'button'
+      actionBtn.className = 'kb-next-puzzle'
+      actionBtn.textContent = finalSolvedAction.label
+      actionBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        finalSolvedAction.onClick?.()
+      })
+      bottom.appendChild(actionBtn)
+    }
   } else if (state.solved && state.puzzleIdx === enginePuzzles.length - 1 && hubBaseHref) {
     hasBottom = true
     const hub = document.createElement('a')
