@@ -447,6 +447,7 @@ export default function CluelessGame() {
     const [axisMode, setAxisMode] = useState('row')
     const [bestAttempts, setBestAttempts] = useState(null)
     const [checkedSignatures, setCheckedSignatures] = useState([])
+  const [hasInteracted, setHasInteracted] = useState(false)
 
     selectedRef.current = selected
 
@@ -513,6 +514,7 @@ export default function CluelessGame() {
         setAxisMode('row')
         setSelectionHighlighted(true)
         setStatusMsg('')
+    setHasInteracted(false)
     }, [daily.key, difficulty, geometry.inputOrder, answers])
 
     // Persist game state when it changes
@@ -541,6 +543,7 @@ export default function CluelessGame() {
     // ── Input handling ─────────────────────────────────────────────────────
 
     const advanceAfterType = useCallback((fromIdx) => {
+        setHasInteracted(true)
         setSelected(advanceAlongAxis(fromIdx, axisMode, geometry.inputOrder, locked))
     }, [axisMode, geometry.inputOrder, locked])
 
@@ -549,6 +552,7 @@ export default function CluelessGame() {
         const next = nextUnlockedNavIndex(geometry.inputOrder, locked, selected, delta)
         if (next == null) return
         if (next !== selected) setAxisMode('row')
+        setHasInteracted(true)
         setSelected(next)
         setSelectionHighlighted(true)
     }, [solved, geometry.inputOrder, locked, selected])
@@ -706,6 +710,7 @@ export default function CluelessGame() {
             setAxisMode('row')
             setSelected(idx)
         }
+        setHasInteracted(true)
     }, [solved, geometry.inputOrder, locked])
 
     // ── Render helpers ─────────────────────────────────────────────────────
@@ -737,9 +742,9 @@ export default function CluelessGame() {
     const WRONG_COLOR = '#b91c1c'
     const CORRECT_COLOR = '#22c55e'
     const CORRECT_BORDER = '#22c55e'
-    const SMALL_TILE_INSET = 7
-    const LARGE_TILE_INSET = 4
-    const ENTRY_BORDER_WIDTH = '0.7vmin'
+    const SMALL_TILE_INSET = 5
+    const LARGE_TILE_INSET = 2
+    const ENTRY_BORDER_WIDTH = '0.6vmin'
     const ACTIVE_CELL_FILL = '#f8e8bd'
 
     const cells = []
@@ -747,7 +752,7 @@ export default function CluelessGame() {
         for (let c = 0; c < 5; c++) {
             const key = `${r},${c}`
 
-            const inBand = selPos != null && (
+            const inBand = hasInteracted && selPos != null && (
                 (axisMode === 'row' && r === selPos.r) ||
                 (axisMode === 'col' && c === selPos.c)
             )
