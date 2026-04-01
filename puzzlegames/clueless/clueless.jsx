@@ -733,6 +733,15 @@ export default function CluelessGame() {
 
     // ── Grid cells ─────────────────────────────────────────────────────────
 
+    const GOLD_FILL = '#f6ae2d'
+    const WRONG_COLOR = '#b91c1c'
+    const CORRECT_COLOR = '#22c55e'
+    const CORRECT_BORDER = '#22c55e'
+    const SMALL_TILE_INSET = 7
+    const LARGE_TILE_INSET = 4
+    const ENTRY_BORDER_WIDTH = '0.7vmin'
+    const ACTIVE_CELL_FILL = '#f8e8bd'
+
     const cells = []
     for (let r = 0; r < 5; r++) {
         for (let c = 0; c < 5; c++) {
@@ -743,72 +752,119 @@ export default function CluelessGame() {
                 (axisMode === 'col' && c === selPos.c)
             )
 
-            if (BLOCKED.has(key)) {
-                cells.push(
-                    <div key={key} style={{
-                        background: PUZZLE_SUITE_INK,
-                        border: `1px solid ${PUZZLE_SUITE_INK}`,
-                    }} />
-                )
-                continue
+            const slotStyle = {
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxSizing: 'border-box',
+                userSelect: 'none',
             }
 
-            if (geometry.clueCells.has(key)) {
+            const sizeForInset = (inset) => `calc(100% - ${inset * 2}px)`
+
+            if (BLOCKED.has(key)) {
                 cells.push(
-                    <div key={key} style={{
-                        border: `1px solid ${PUZZLE_SUITE_INK}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: PUZZLE_SUITE_SURFACE_GIVEN,
-                        color: inBand ? PUZZLE_SUITE_INK : PUZZLE_SUITE_INK_FAINT,
-                        fontWeight: 900,
-                        fontSize: inBand ? CLUELESS_INPUT_FONT : CLUELESS_CLUE_FONT,
-                        transition: 'font-size 0.15s ease',
-                        textTransform: 'uppercase',
-                    }}>
-                        {clues[key] || ''}
+                    <div key={key} style={slotStyle}>
+                        <div style={{
+                            width: sizeForInset(SMALL_TILE_INSET),
+                            height: sizeForInset(SMALL_TILE_INSET),
+                            background: '#ffffff',
+                            boxSizing: 'border-box',
+                        }} />
                     </div>
                 )
                 continue
             }
 
-            // Input cell
+            if (geometry.clueCells.has(key)) {
+                const clueIsLarge = inBand
+                const clueInset = clueIsLarge ? LARGE_TILE_INSET : SMALL_TILE_INSET
+                cells.push(
+                    <div key={key} style={slotStyle}>
+                        <div style={{
+                            width: sizeForInset(clueInset),
+                            height: sizeForInset(clueInset),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: GOLD_FILL,
+                            color: '#ffffff',
+                            border: clueIsLarge ? `${ENTRY_BORDER_WIDTH}px solid ${GOLD_FILL}` : 'none',
+                            fontWeight: 900,
+                            fontSize: clueIsLarge ? CLUELESS_INPUT_FONT : CLUELESS_CLUE_FONT,
+                            transition: 'width 0.15s ease, height 0.15s ease, font-size 0.15s ease',
+                            textTransform: 'uppercase',
+                            boxSizing: 'border-box',
+                        }}>
+                            {clues[key] || ''}
+                        </div>
+                    </div>
+                )
+                continue
+            }
+
             const idx = geometry.inputOrder.findIndex(p => p.r === r && p.c === c)
             const isSelected = idx === selected && !solved
             const isLocked = locked.has(key)
             const isWrong = cellGuessShowsWrong(key, locked, guesses, triedLettersByCell)
             const letter = guesses[key] || ''
 
-            let bg = '#fff'
+            let bg = '#ffffff'
             let color = PUZZLE_SUITE_INK
-            if (isLocked) { bg = '#c6f6d5'; color = '#15803d' }
-            else if (isWrong) { bg = '#fed7d7'; color = '#b91c1c' }
-            if (inBand) color = PUZZLE_SUITE_INK
+            let borderColor = PUZZLE_SUITE_INK
+            let borderWidth = ENTRY_BORDER_WIDTH
+            let tileInset = LARGE_TILE_INSET
+            let tileFontSize = CLUELESS_INPUT_FONT
 
-            const showActiveOutline = isSelected && selectionHighlighted
+            // Base state: correct / wrong / default
+            if (isLocked) {
+                // Correct cells: small solid green tiles with small white letters,
+                // growing to entry size when in the active row/column band.
+                bg = CORRECT_COLOR
+                color = '#ffffff'
+                borderColor = CORRECT_COLOR
+                borderWidth = 0
+                tileInset = inBand ? LARGE_TILE_INSET : SMALL_TILE_INSET
+                tileFontSize = inBand ? CLUELESS_INPUT_FONT : CLUELESS_CLUE_FONT
+            } else if (isWrong) {
+                bg = '#ffffff'
+                color = WRONG_COLOR
+                borderColor = WRONG_COLOR
+            }
+
+            // Selection overlay: pale gold fill on the active cell (except locked)
+            if (isSelected && selectionHighlighted && !isLocked) {
+                bg = ACTIVE_CELL_FILL
+            }
 
             cells.push(
-                <div key={key}
+                <div
+                    key={key}
                     onClick={() => selectCell(idx)}
                     style={{
-                        border: `1px solid ${PUZZLE_SUITE_INK}`,
-                        outline: showActiveOutline ? '6px solid #f6ae2d' : 'none',
-                        outlineOffset: showActiveOutline ? '-6px' : undefined,
+                        ...slotStyle,
+                        cursor: solved || isLocked ? 'default' : 'pointer',
+                    }}
+                >
+                    <div style={{
+                        width: sizeForInset(tileInset),
+                        height: sizeForInset(tileInset),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: bg,
                         color,
+                        border: `${borderWidth} solid ${borderColor}`,
                         fontWeight: 900,
-                        fontSize: CLUELESS_INPUT_FONT,
+                        fontSize: tileFontSize,
                         textTransform: 'uppercase',
-                        cursor: solved ? 'default' : 'pointer',
-                        transition: 'background 0.15s',
-                        userSelect: 'none',
-                    }}
-                >
-                    {letter}
+                        transition: 'width 0.15s ease, height 0.15s ease, font-size 0.15s ease, background 0.15s, border-color 0.15s',
+                        boxSizing: 'border-box',
+                    }}>
+                        {letter}
+                    </div>
                 </div>
             )
         }
@@ -883,7 +939,7 @@ export default function CluelessGame() {
                 fontSize: '0.85rem',
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
-                color: solved ? '#15803d' : PUZZLE_SUITE_INK,
+                color: solved ? CORRECT_COLOR : PUZZLE_SUITE_INK,
             }}>
                 {solved ? 'Solved!' : statusMsg}
             </div>
@@ -909,7 +965,6 @@ export default function CluelessGame() {
                     aspectRatio: '1 / 1',
                     position: 'relative',
                     background: '#fff',
-                    border: `2px solid ${PUZZLE_SUITE_INK}`,
                     minWidth: '200px',
                 }}>
                     <div style={{
@@ -958,10 +1013,10 @@ export default function CluelessGame() {
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
                                     height: 'clamp(32px, 7vh, 50px)',
-                                    border: `2px solid ${PUZZLE_SUITE_INK}`,
+                                    border: 'none',
                                     borderRadius: '4px',
-                                    background: '#fff',
-                                    color: PUZZLE_SUITE_INK,
+                                    background: PUZZLE_SUITE_INK,
+                                    color: '#fff',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -982,10 +1037,10 @@ export default function CluelessGame() {
                                     style={{
                                         minWidth: 'clamp(24px, 7vw, 36px)',
                                         height: 'clamp(32px, 7vh, 50px)',
-                                        border: `2px solid ${PUZZLE_SUITE_INK}`,
+                                        border: 'none',
                                         borderRadius: '4px',
-                                        background: isTried ? '#fed7d7' : '#fff',
-                                        color: isTried ? '#b91c1c' : PUZZLE_SUITE_INK,
+                                        background: isTried ? WRONG_COLOR : PUZZLE_SUITE_INK,
+                                        color: '#fff',
                                         fontFamily: 'Outfit, sans-serif',
                                         fontWeight: 700,
                                         fontSize: 'clamp(0.7rem, 2.5vw, 1rem)',
@@ -1009,10 +1064,10 @@ export default function CluelessGame() {
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
                                     height: 'clamp(32px, 7vh, 50px)',
-                                    border: `2px solid ${PUZZLE_SUITE_INK}`,
+                                    border: 'none',
                                     borderRadius: '4px',
-                                    background: '#fff',
-                                    color: PUZZLE_SUITE_INK,
+                                    background: PUZZLE_SUITE_INK,
+                                    color: '#fff',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -1030,7 +1085,7 @@ export default function CluelessGame() {
                                     style={{
                                         minWidth: 'clamp(36px, 9vw, 52px)',
                                         height: 'clamp(32px, 7vh, 50px)',
-                                        border: `2px solid ${PUZZLE_SUITE_INK}`,
+                                        border: 'none',
                                         borderRadius: '4px',
                                         background: checkActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_DISABLED,
                                         color: checkActive ? '#fff' : PUZZLE_SUITE_INK_ON_DISABLED,
