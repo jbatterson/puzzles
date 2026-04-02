@@ -559,7 +559,7 @@ export default function Home() {
                     cursor: pointer;
                     transition: background 140ms ease, filter 140ms ease;
                 }
-                .hp-shareBtn:hover { filter: brightness(0.92); }
+                .hp-shareBtn:hover { background: var(--puzzle-ink-hover); }
                 .hp-shareBtn:focus-visible {
                     outline: 3px solid rgba(24, 53, 94, 0.45);
                     outline-offset: 2px;

@@ -9,6 +9,7 @@
     --black: #000000;
     /** Primary dark ink for shared modals and game chrome (aligned with All Ten). */
     --puzzle-ink: #18355E;
+    --puzzle-ink-hover: #465D7E;
     --puzzle-ink-muted: rgba(24, 53, 94, 0.62);
     --puzzle-ink-soft: rgba(24, 53, 94, 0.78);
     --puzzle-ink-faint: rgba(24, 53, 94, 0.5);
@@ -206,7 +207,7 @@ html, body {
     font-size: 1.2rem;
 }
 .titlebar-iconbtn:active { transform: scale(0.9); }
-.titlebar-iconbtn:hover { background: #465D7E; }
+.titlebar-iconbtn:hover { background: var(--puzzle-ink-hover); }
 .titlebar-iconbtn:focus-visible { outline: 3px solid rgba(24, 53, 94, 0.25); outline-offset: 2px; }
 .titlebar-cubebtn:focus-visible { outline: 3px solid rgba(24, 53, 94, 0.25); outline-offset: 2px; border-radius: 6px; }
 
@@ -465,7 +466,7 @@ html, body {
     transition: filter 0.14s ease;
 }
 .suite-completion-share-btn:hover {
-    filter: brightness(0.92);
+    background: var(--puzzle-ink-hover);
 }
 .suite-completion-share-btn:focus-visible {
     outline: 3px solid rgba(24, 53, 94, 0.45);
@@ -702,6 +703,54 @@ html, body {
 .game-container.clueless .clueless-status {
     min-height: 1em;
     margin-bottom: 0.25rem;
+}
+
+/* Clueless on-screen keyboard */
+.clueless-key {
+    border: none;
+    border-radius: 4px;
+    background: var(--puzzle-ink);
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s;
+}
+.clueless-key.clueless-key--tried {
+    background: #b91c1c;
+    cursor: not-allowed;
+}
+.clueless-key:hover:not(.clueless-key--tried) {
+    background: var(--puzzle-ink-hover);
+}
+
+.clueless-action-key {
+    border: none;
+    border-radius: 4px;
+    background: var(--puzzle-ink);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s;
+}
+.clueless-action-key:hover:not(:disabled) {
+    background: var(--puzzle-ink-hover);
+}
+.clueless-check-key {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.clueless-action-key:disabled {
+    background: var(--puzzle-surface-disabled);
+    color: rgba(24, 53, 94, 0.52);
+    cursor: not-allowed;
 }
 
 /* =============================================================================
@@ -968,7 +1017,7 @@ html, body {
     }
 
     .btn-primary:not(:disabled):hover {
-        filter: brightness(1.08);
+        background: var(--puzzle-ink-hover);
         transform: translateY(-1px);
     }
 

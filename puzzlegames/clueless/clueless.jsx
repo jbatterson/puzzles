@@ -13,8 +13,6 @@ import {
     PUZZLE_SUITE_INK,
     PUZZLE_SUITE_INK_FAINT,
     PUZZLE_SUITE_SURFACE_INCOMPLETE,
-    PUZZLE_SUITE_SURFACE_DISABLED,
-    PUZZLE_SUITE_INK_ON_DISABLED,
 } from '../../shared-contracts/chromeUi.js'
 import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
@@ -1013,18 +1011,11 @@ export default function CluelessGame() {
                             <button
                                 type="button"
                                 aria-label="Clear all entries"
+                                className="clueless-action-key"
                                 onClick={clearAllUnlockedEntries}
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
                                     height: 'clamp(32px, 7vh, 50px)',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    background: PUZZLE_SUITE_INK,
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
                                 }}
                             >
                                 <i className="fas fa-arrow-rotate-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
@@ -1038,21 +1029,11 @@ export default function CluelessGame() {
                                     type="button"
                                     disabled={isTried}
                                     onClick={() => { if (!isTried) handleKey(ch) }}
+                                    className={isTried ? 'clueless-key clueless-key--tried' : 'clueless-key'}
                                     style={{
                                         minWidth: 'clamp(24px, 7vw, 36px)',
                                         height: 'clamp(32px, 7vh, 50px)',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        background: isTried ? WRONG_COLOR : PUZZLE_SUITE_INK,
-                                        color: '#fff',
-                                        fontFamily: 'Outfit, sans-serif',
-                                        fontWeight: 700,
                                         fontSize: 'clamp(0.7rem, 2.5vw, 1rem)',
-                                        textTransform: 'uppercase',
-                                        cursor: isTried ? 'not-allowed' : 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
                                     }}
                                 >
                                     {ch}
@@ -1064,18 +1045,11 @@ export default function CluelessGame() {
                             <button
                                 type="button"
                                 aria-label="Backspace"
+                                className="clueless-action-key"
                                 onClick={() => handleKey('Backspace')}
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
                                     height: 'clamp(32px, 7vh, 50px)',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    background: PUZZLE_SUITE_INK,
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
                                 }}
                             >
                                 <i className="fa-solid fa-delete-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
@@ -1084,23 +1058,13 @@ export default function CluelessGame() {
                             const checkActive = allFilled && !solved && !boardAlreadyChecked
                             return (
                                 <button
+                                    className="clueless-action-key clueless-check-key"
                                     onClick={checkActive ? checkAnswerRef.current : undefined}
                                     disabled={!checkActive}
                                     style={{
                                         minWidth: 'clamp(36px, 9vw, 52px)',
                                         height: 'clamp(32px, 7vh, 50px)',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        background: checkActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_DISABLED,
-                                        color: checkActive ? '#fff' : PUZZLE_SUITE_INK_ON_DISABLED,
-                                        fontWeight: 700,
                                         fontSize: 'clamp(0.55rem, 1.8vw, 0.75rem)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        cursor: checkActive ? 'pointer' : 'not-allowed',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
                                     }}
                                 >CHECK</button>
                             )

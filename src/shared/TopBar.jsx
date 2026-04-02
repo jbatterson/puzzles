@@ -43,8 +43,6 @@ const styles = {
         height: '32px',
         borderRadius: '999px',
         border: '2px solid transparent',
-        background: '#18355E',
-        color: '#FFF',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -142,6 +140,7 @@ export default function TopBar({
                     {showHome && (
                         <button
                             type="button"
+                            className="titlebar-iconbtn"
                             style={styles.iconBtn}
                             onClick={actions[HEADER_ACTIONS.HOME]}
                             aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HOME]}
@@ -180,6 +179,7 @@ export default function TopBar({
                     {showStats && (
                         <button
                             type="button"
+                            className="titlebar-iconbtn"
                             style={styles.iconBtn}
                             onClick={actions[HEADER_ACTIONS.STATS]}
                             aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.STATS]}
@@ -189,6 +189,7 @@ export default function TopBar({
                     )}
                     <button
                         type="button"
+                        className="titlebar-iconbtn"
                         style={styles.iconBtn}
                         onClick={actions[HEADER_ACTIONS.HELP]}
                         aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HELP]}
