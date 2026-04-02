@@ -35,7 +35,7 @@ export default function Icon({ size = 28, className = '' }) {
             </g>
 
             <polygon
-                fill="#f6ae2d"
+                fill="#ffba08"
                 points="100.76 43.02 49.24 43.02 23.47 87.64 49.24 132.27 100.76 132.27 126.53 87.64 100.76 43.02"
             />
 
