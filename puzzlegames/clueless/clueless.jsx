@@ -12,7 +12,6 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import {
     PUZZLE_SUITE_INK,
     PUZZLE_SUITE_INK_FAINT,
-    PUZZLE_SUITE_SURFACE_GIVEN,
     PUZZLE_SUITE_SURFACE_INCOMPLETE,
     PUZZLE_SUITE_SURFACE_DISABLED,
     PUZZLE_SUITE_INK_ON_DISABLED,

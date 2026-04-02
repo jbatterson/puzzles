@@ -4,16 +4,10 @@
  */
 export const TILE_GAME_PALETTE = {
     ltpurple: '#c066c7',
-    purple: '#84338a',
-    dkpurple: '#522056',
-    blue: '#33658a',
-    dkblue: '#2f4858',
-    green: '#398a33',
+    blue: '#4587ba',
     amber: '#f26419',
-    dkamber: '#C64D0C',
-
-    red: '#ff3b30',
     dkred: '#a30800',
+
 
 }
 

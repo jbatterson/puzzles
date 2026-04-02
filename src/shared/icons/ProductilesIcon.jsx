@@ -16,7 +16,7 @@ export default function Icon({ size = 28, className = '' }) {
                     width="37.57"
                     height="37.57"
                     transform="translate(-30.59 74.8) rotate(-45)"
-                    fill="#33658a"
+                    fill="#4587ba"
                 />
                 <path d="M75,51.3l23.03,23.03-23.03,23.03-23.03-23.03,23.03-23.03M75,44.23l-30.1,30.1,30.1,30.1,30.1-30.1-30.1-30.1h0Z"/>
             </g>
@@ -28,7 +28,7 @@ export default function Icon({ size = 28, className = '' }) {
                     width="37.57"
                     height="37.57"
                     transform="translate(-63.04 61.36) rotate(-45)"
-                    fill="#33658a"
+                    fill="#4587ba"
                 />
                 <path d="M42.54,83.75l23.03,23.03-23.03,23.03-23.03-23.03,23.03-23.03M42.54,76.68l-30.1,30.1,30.1,30.1,30.1-30.1-30.1-30.1h0Z"/>
             </g>
@@ -40,7 +40,7 @@ export default function Icon({ size = 28, className = '' }) {
                     width="37.57"
                     height="37.57"
                     transform="translate(1.87 88.25) rotate(-45)"
-                    fill="#33658a"
+                    fill="#4587ba"
                 />
                 <path d="M107.45,18.84l23.03,23.03-23.03,23.03-23.03-23.03,23.03-23.03M107.45,11.77l-30.1,30.1,30.1,30.1,30.1-30.1-30.1-30.1h0Z"/>
             </g>
@@ -52,7 +52,7 @@ export default function Icon({ size = 28, className = '' }) {
                     width="37.57"
                     height="37.57"
                     transform="translate(-17.14 42.35) rotate(-45)"
-                    fill="#33658a"
+                    fill="#4587ba"
                 />
                 <path d="M42.55,18.84l23.03,23.03-23.03,23.03-23.03-23.03,23.03-23.03M42.55,11.77l-30.1,30.1,30.1,30.1,30.1-30.1-30.1-30.1h0Z"/>
             </g>
@@ -64,7 +64,7 @@ export default function Icon({ size = 28, className = '' }) {
                     width="37.57"
                     height="37.57"
                     transform="translate(-44.03 107.26) rotate(-45)"
-                    fill="#33658a"
+                    fill="#4587ba"
                 />
                 <path d="M107.45,83.75l23.03,23.03-23.03,23.03-23.03-23.03,23.03-23.03M107.45,76.68l-30.1,30.1,30.1,30.1,30.1-30.1-30.1-30.1h0Z"/>
             </g>

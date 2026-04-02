@@ -15,9 +15,6 @@ export const PUZZLE_SUITE_INK_FAINT = "rgba(24, 53, 94, 0.5)";
 /** Incomplete daily / difficulty tile background (cool gray tinted with navy). */
 export const PUZZLE_SUITE_SURFACE_INCOMPLETE = "#d4d9e5";
 
-/** Clueless pre-filled clue cells */
-export const PUZZLE_SUITE_SURFACE_GIVEN = "#e4e8f2";
-
 /** Disabled control surface (e.g. CHECK until active) */
 export const PUZZLE_SUITE_SURFACE_DISABLED = "#c5cbd8";
 
