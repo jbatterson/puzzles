@@ -16,6 +16,8 @@ import {
 } from '../../shared-contracts/chromeUi.js'
 import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
+import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
 
@@ -170,7 +172,10 @@ function saveGameState(dateKey, difficulty, state) {
 
 /** Letter pattern for all input cells (fixed order); used to dedupe redundant CHECKs. */
 function boardCheckSignature(inputOrder, guesses) {
-    return inputOrder.map(({ r, c }) => guesses[`${r},${c}`] || '').join('')
+    return inputOrder.map(({ r, c }) => {
+        const g = guesses[`${r},${c}`]
+        return g && /^[a-z]$/.test(g) ? g : '.'
+    }).join('')
 }
 
 // ── Grid geometry ────────────────────────────────────────────────────────────
@@ -452,6 +457,11 @@ export default function CluelessGame() {
         return DIFFS.map(d => loadBestAttempts(daily.key, d))
     }, [daily.key, difficulty, bestAttempts])
 
+    const canShareHub = useMemo(
+        () => hasShareableHubProgress(GAME_KEYS.CLUELESS, daily.key),
+        [daily.key, attemptsByDiff],
+    )
+
     useEffect(() => {
         const done = attemptsByDiff.every(a => a != null)
         if (allDifficultiesDoneCompletionRef.current === null) {
@@ -632,20 +642,21 @@ export default function CluelessGame() {
 
         const newCorrect = []
         const newWrong = []
-        let allFilled = true
+        let hadAnyGuess = false
 
         for (const { r, c } of geometry.inputOrder) {
             const k = `${r},${c}`
             if (locked.has(k)) continue
             const guess = guesses[k]
             const answer = answers[k]
-            if (!guess) { allFilled = false; break }
+            if (!guess) continue
+            hadAnyGuess = true
             if (guess === answer) newCorrect.push(k)
             else newWrong.push(k)
         }
 
-        if (!allFilled) {
-            setStatusMsg('Fill all cells first')
+        if (!hadAnyGuess) {
+            setStatusMsg('Enter at least one letter')
             return
         }
 
@@ -661,13 +672,18 @@ export default function CluelessGame() {
         setLocked(newLocked)
 
         if (newWrong.length === 0) {
-            // All correct!
-            const attemptsUsed = Math.min(nextGuessCount, 99)
-            markComplete(daily.key, difficulty, attemptsUsed)
-            setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
-            setSolved(true)
-            setSelected(-1)
-            setStatusMsg('')
+            const allInputsLocked = geometry.inputOrder.every(({ r, c }) =>
+                newLocked.has(`${r},${c}`))
+            if (allInputsLocked) {
+                const attemptsUsed = Math.min(nextGuessCount, 99)
+                markComplete(daily.key, difficulty, attemptsUsed)
+                setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
+                setSolved(true)
+                setSelected(-1)
+                setStatusMsg('')
+            } else {
+                setStatusMsg('Looking good — keep going')
+            }
         } else {
             setStatusMsg('Not quite — try again')
             // Record wrong letters per cell for keyboard highlighting
@@ -712,9 +728,9 @@ export default function CluelessGame() {
 
     // ── Render helpers ─────────────────────────────────────────────────────
 
-    const allFilled = geometry.inputOrder.every(({ r, c }) => {
+    const hasCheckableLetter = geometry.inputOrder.some(({ r, c }) => {
         const k = `${r},${c}`
-        return locked.has(k) || !!guesses[k]
+        return !locked.has(k) && !!guesses[k]
     })
 
     const currentBoardSig = boardCheckSignature(geometry.inputOrder, guesses)
@@ -894,38 +910,46 @@ export default function CluelessGame() {
                     <div className="level-label" style={{ textAlign: 'center' }}>
                         <span className="sub">{dateLabel}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                        {['Easy', 'Med', 'Hard'].map((label, i) => {
-                            const isActive = i === difficultyIdx
-                            const a = attemptsByDiff[i]
-                            const done = a != null
-                            const content = done ? (a === 1 ? '★' : String(Math.min(a, 99))) : <DiceFace count={i + 1} size={20} />
-                            return (
-                                <button
-                                    key={label}
-                                    type="button"
-                                    onClick={() => setDifficultyIdx(i)}
-                                    style={{
-                                        width: '28px',
-                                        height: '28px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        background: done ? '#22c55e' : (isActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE),
-                                        color: done || isActive ? '#fff' : PUZZLE_SUITE_INK,
-                                        fontWeight: 900,
-                                        fontSize: '0.94rem',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    aria-label={`Select ${label}`}
-                                >
-                                    {content}
-                                </button>
-                            )
-                        })}
+                    <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
+                        <div className="game-dice-share-phantom" aria-hidden />
+                        <div className="game-dice-share-gap" aria-hidden />
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            {['Easy', 'Med', 'Hard'].map((label, i) => {
+                                const isActive = i === difficultyIdx
+                                const a = attemptsByDiff[i]
+                                const done = a != null
+                                const content = done ? (a === 1 ? '★' : String(Math.min(a, 99))) : <DiceFace count={i + 1} size={20} />
+                                return (
+                                    <button
+                                        key={label}
+                                        type="button"
+                                        onClick={() => setDifficultyIdx(i)}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            background: done ? '#22c55e' : (isActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE),
+                                            color: done || isActive ? '#fff' : PUZZLE_SUITE_INK,
+                                            fontWeight: 900,
+                                            fontSize: '0.94rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'all 0.2s',
+                                            transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                                            transformOrigin: 'center center',
+                                        }}
+                                        aria-label={`Select ${label}`}
+                                    >
+                                        {content}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                        <div className="game-dice-share-gap" aria-hidden />
+                        <GameShareNavButton gameKey={GAME_KEYS.CLUELESS} dateKey={daily.key} canShare={canShareHub} />
                     </div>
                 </div>
                 <div className="stats-group">
@@ -1055,7 +1079,7 @@ export default function CluelessGame() {
                                 <i className="fa-solid fa-delete-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
                             </button>
                             {(() => {
-                            const checkActive = allFilled && !solved && !boardAlreadyChecked
+                            const checkActive = hasCheckableLetter && !solved && !boardAlreadyChecked
                             return (
                                 <button
                                     className="clueless-action-key clueless-check-key"
@@ -1088,7 +1112,7 @@ export default function CluelessGame() {
                     Each puzzle uses six common five-letter, classroom-appropriate words - no plurals, proper nouns, abbreviations, or acronyms. The third puzzle may include some less familiar words.
                     </p>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                        Fill every blank and use the <strong>CHECK</strong> button to reveal which letters are correct.
+                        Use the <strong>CHECK</strong> button to reveal which letters are correct.
                     </p>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
                         If multiple letters can fill a blank, the puzzle uses the one that creates the most common pair.

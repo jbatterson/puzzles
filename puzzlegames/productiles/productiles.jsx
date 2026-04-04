@@ -13,6 +13,8 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
+import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import ProductilesIcon from '../../src/shared/icons/ProductilesIcon.jsx'
 
 const SNAP_SPEED = 0.25
@@ -212,7 +214,7 @@ function computeProducts(tiles, size) {
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
 function PuzzleBoxes({ current, completions, perfects, moveCounts, onChange }) {
     return (
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             {[0, 1, 2].map(i => (
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
@@ -220,6 +222,8 @@ function PuzzleBoxes({ current, completions, perfects, moveCounts, onChange }) {
                     background: completions[i] ? '#22c55e' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
                     color: completions[i] || current === i ? '#fff' : PUZZLE_SUITE_INK,
                     fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer', transition: 'all 0.2s',
+                    transform: current === i ? 'scale(1.1)' : 'scale(1)',
+                    transformOrigin: 'center center',
                 }}>
                     {completions[i] ? (moveCounts && moveCounts[i] != null ? String(Math.min(moveCounts[i], MAX_MOVE_DISPLAY)) : '✓') : <DiceFace count={i + 1} size={20} />}
                 </button>
@@ -252,6 +256,10 @@ export default function Productiles() {
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects]       = useState(() => loadPerfects(daily.key))
     const [moveCounts, setMoveCounts]   = useState(() => loadMoveCounts(daily.key))
+    const canShareHub = useMemo(
+        () => hasShareableHubProgress(GAME_KEYS.PRODUCTILES, daily.key),
+        [daily.key, completions],
+    )
     const [isSolved, setIsSolved]       = useState(false)
     const [historyLen, setHistoryLen]   = useState(0)
     const {
@@ -669,7 +677,13 @@ export default function Productiles() {
                         <div className="level-label" style={{ textAlign: 'center' }}>
                             <span className="sub">{dateLabel}</span>
                         </div>
-                        <PuzzleBoxes current={dailyIdx} completions={completions} perfects={perfects} moveCounts={moveCounts} onChange={setDailyIdx} />
+                        <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
+                            <div className="game-dice-share-phantom" aria-hidden />
+                            <div className="game-dice-share-gap" aria-hidden />
+                            <PuzzleBoxes current={dailyIdx} completions={completions} perfects={perfects} moveCounts={moveCounts} onChange={setDailyIdx} />
+                            <div className="game-dice-share-gap" aria-hidden />
+                            <GameShareNavButton gameKey={GAME_KEYS.PRODUCTILES} dateKey={daily.key} canShare={canShareHub} />
+                        </div>
                     </div>
                     <div className="stats-group">
                         <span className="stats-label">Moves</span>

@@ -19,6 +19,8 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
+import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import HoneycombsIcon from '../../src/shared/icons/HoneycombsIcon.jsx'
 import './honeycombs.css'
 
@@ -42,7 +44,7 @@ function loadPerfects(dateKey) {
 
 function PuzzleBoxes({ current, completions, perfects, onChange }) {
   return (
-    <div id="puzzle-boxes" style={{ display: 'flex', gap: '6px' }}>
+    <div id="puzzle-boxes" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
       {[0, 1, 2].map((i) => (
         <button
           key={i}
@@ -66,6 +68,8 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
             fontSize: '1.06rem',
             cursor: 'pointer',
             transition: 'all 0.2s',
+            transform: current === i ? 'scale(1.1)' : 'scale(1)',
+            transformOrigin: 'center center',
           }}
         >
           {completions[i] ? (perfects[i] ? '★' : '✓') : <DiceFace count={i + 1} size={20} />}
@@ -87,6 +91,10 @@ export default function HoneycombsApp() {
   const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
   const [completions, setCompletions] = useState(() => loadCompletions(daily.dateKey))
   const [perfects, setPerfects] = useState(() => loadPerfects(daily.dateKey))
+  const canShareHub = useMemo(
+    () => hasShareableHubProgress(GAME_KEYS.HONEYCOMBS, daily.dateKey),
+    [daily.dateKey, completions],
+  )
   const [showLinks, setShowLinks] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
@@ -243,12 +251,18 @@ export default function HoneycombsApp() {
             <div className="level-label" style={{ textAlign: 'center' }}>
               <span className="sub">{dateLabel}</span>
             </div>
-            <PuzzleBoxes
-              current={dailyIdx}
-              completions={completions}
-              perfects={perfects}
-              onChange={setDailyIdx}
-            />
+            <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="game-dice-share-phantom" aria-hidden />
+              <div className="game-dice-share-gap" aria-hidden />
+              <PuzzleBoxes
+                current={dailyIdx}
+                completions={completions}
+                perfects={perfects}
+                onChange={setDailyIdx}
+              />
+              <div className="game-dice-share-gap" aria-hidden />
+              <GameShareNavButton gameKey={GAME_KEYS.HONEYCOMBS} dateKey={daily.dateKey} canShare={canShareHub} />
+            </div>
           </div>
           <div className="stats-group" />
         </div>

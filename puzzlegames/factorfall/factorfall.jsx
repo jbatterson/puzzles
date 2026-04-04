@@ -12,6 +12,8 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
+import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -236,7 +238,7 @@ function loadGameState(dateKey, puzzleIndex, puzzle) {
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
 function PuzzleBoxes({ current, completions, perfects, onChange }) {
     return (
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             {[0, 1, 2].map(i => (
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
@@ -245,6 +247,8 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
                     color: completions[i] || current === i ? '#fff' : PUZZLE_SUITE_INK,
                     fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer',
                     transition: 'all 0.2s',
+                    transform: current === i ? 'scale(1.1)' : 'scale(1)',
+                    transformOrigin: 'center center',
                 }}>
                     {completions[i] ? (perfects && perfects[i] ? '★' : '✓') : <DiceFace count={i + 1} size={20} />}
                 </button>
@@ -293,6 +297,10 @@ const Factorfall = () => {
     const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
+    const canShareHub = useMemo(
+        () => hasShareableHubProgress(GAME_KEYS.FACTORFALL, daily.key),
+        [daily.key, completions],
+    )
     const {
         hasSeenInstructions,
         showInstructions,
@@ -1000,7 +1008,13 @@ const Factorfall = () => {
                         <div className="level-label" style={{ textAlign: 'center' }}>
                             <span className="sub">{dateLabel}</span>
                         </div>
-                        <PuzzleBoxes current={dailyIdx} completions={completions} perfects={perfects} onChange={setDailyIdx} />
+                        <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
+                            <div className="game-dice-share-phantom" aria-hidden />
+                            <div className="game-dice-share-gap" aria-hidden />
+                            <PuzzleBoxes current={dailyIdx} completions={completions} perfects={perfects} onChange={setDailyIdx} />
+                            <div className="game-dice-share-gap" aria-hidden />
+                            <GameShareNavButton gameKey={GAME_KEYS.FACTORFALL} dateKey={daily.key} canShare={canShareHub} />
+                        </div>
                     </div>
                     <div className="stats-group">
                         <span className="stats-label">Target</span>

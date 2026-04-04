@@ -19,6 +19,7 @@ import {
 import { hubHrefFirstUnfinishedClueless, hubHrefFirstUnfinishedThree } from '../shared-contracts/hubEntry.js'
 import { buildHubSharePlaintext } from '../shared-contracts/hubSharePlaintext.js'
 import ShareIcon from './shared/ShareIcon.jsx'
+import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './shared/ShareResultToast.jsx'
 
 const base = import.meta.env.BASE_URL
 
@@ -289,21 +290,19 @@ function CluelessBoxes({ attempts }) {
 // single: true = one puzzle per day (uses clueless:YYYY-MM-DD storage key pattern)
 
 const GAMES = [
-    { key: 'allten',      href: `${base}puzzlegames/allten/`,      Icon: AllTenIcon,       title: 'All Ten',     desc: 'Use the given numbers to make each target from 1 to 10.' },
-    { key: 'scurry',      href: `${base}puzzlegames/scurry/`,      Icon: BugIcon,         title: 'Scurry',      desc: 'Place bugs to fill every highlighted square.' },
-    { key: 'clueless',    href: `${base}puzzlegames/clueless/`,     Icon: CluelessIcon,    title: 'Clueless',    desc: 'Fill in the missing letters to complete six crossing words.', single: false },
+    { key: 'allten',      href: `${base}puzzlegames/allten/`,      Icon: AllTenIcon,       title: 'All Ten',     desc: 'Make each target from 1 to 10.' },
+    { key: 'scurry',      href: `${base}puzzlegames/scurry/`,      Icon: BugIcon,         title: 'Scurry',      desc: 'Place bugs to fill every target square.' },
+    { key: 'clueless',    href: `${base}puzzlegames/clueless/`,     Icon: CluelessIcon,    title: 'Clueless',    desc: 'Complete six crossing words without clues.', single: false },
     { key: 'folds',       href: `${base}puzzlegames/folds/`,       Icon: FoldsIcon,       title: 'Folds',       desc: 'Reflect triangles to match the target pattern.' },
-    { key: 'honeycombs',  href: `${base}puzzlegames/honeycombs/`,  Icon: HoneycombsIcon,  title: 'Honeycombs',  desc: 'Fill each honeycomb so te numbered hexagons form a connected path.' },
+    { key: 'honeycombs',  href: `${base}puzzlegames/honeycombs/`,  Icon: HoneycombsIcon,  title: 'Honeycombs',  desc: 'Fill each honeycomb to form a connected path.' },
     { key: 'sumtiles',    href: `${base}puzzlegames/sumtiles/`,    Icon: SumTilesIcon,    title: 'Sum Tiles',   desc: 'Slide tiles so every row and column hits its sum.' },
     { key: 'productiles', href: `${base}puzzlegames/productiles/`, Icon: ProductilesIcon, title: 'Productiles', desc: 'Slide tiles so every row and column hits its product.' },
-    { key: 'factorfall',  href: `${base}puzzlegames/factorfall/`,  Icon: FactorfallIcon,  title: 'Factorfall',  desc: 'Drop factors into the grid. Clear same-color groups that multiply to the target.' },
+    { key: 'factorfall',  href: `${base}puzzlegames/factorfall/`,  Icon: FactorfallIcon,  title: 'Factorfall',  desc: 'Drop factors to clear groups that multiply to the target.' },
 ]
 
 const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric'
 })
-
-const TOAST_MS = 2000
 
 export default function Home() {
     const dateKey = useMemo(() => getDailyKey(), [])
@@ -340,7 +339,7 @@ export default function Home() {
 
     const allTenTodayCount = useMemo(() => loadAllTenSolvedCountForHubDateKey(dateKey), [dateKey, streakRefresh])
 
-    const [shareToastKey, setShareToastKey] = useState(null)
+    const [shareToast, setShareToast] = useState(null)
     const [showInstructions, setShowInstructions] = useState(false)
     const [showLinks, setShowLinks] = useState(false)
     const toastTimeoutRef = useRef(null)
@@ -383,13 +382,21 @@ export default function Home() {
             : buildHubSharePlaintext(key, dateKey, base)
         navigator.clipboard.writeText(text).then(() => {
             if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
-            setShareToastKey(key)
+            setShareToast({ key, preview: text, fadeOut: false })
             toastTimeoutRef.current = setTimeout(() => {
-                setShareToastKey(null)
+                setShareToast(prev => (prev ? { ...prev, fadeOut: true } : null))
                 toastTimeoutRef.current = null
-            }, TOAST_MS)
+            }, SHARE_RESULT_TOAST_MS)
         })
     }, [dateKey, allTenTodayCount])
+
+    const dismissShareToast = useCallback(() => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current)
+            toastTimeoutRef.current = null
+        }
+        setShareToast(null)
+    }, [])
 
     const hasAnyCompletion = useCallback((key, single) => {
         if (key === 'allten') return allTenTodayCount > 0
@@ -555,7 +562,7 @@ export default function Home() {
                     border-radius: 8px;
                     font-size: 12px;
                     font-weight: 700;
-                    letter-spacing: 0.06em;
+                    letter-spacing: 0.02em;
                     cursor: pointer;
                     transition: background 140ms ease, filter 140ms ease;
                 }
@@ -575,16 +582,6 @@ export default function Home() {
                     z-index: 50;
                 }
                 .toast-text { font-size: 0.9rem; line-height: 1.4; }
-                .hp-shareToast.toast-panel {
-                    position: absolute;
-                    bottom: 100%;
-                    right: 0;
-                    margin-bottom: 6px;
-                    left: auto;
-                    transform: none;
-                }
-                .hp-shareToast .toast-text { font-size: 0.85rem; }
-
                 .hp-instructions-overlay {
                     position: fixed;
                     top: 0;
@@ -721,12 +718,16 @@ export default function Home() {
                                 </div>
                             </a>
                             {hasAnyCompletion(key, single) && (
-                                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                    {shareToastKey === key && (
-                                        <div className="toast-panel hp-shareToast">
-                                            <div className="toast-text">RESULTS COPIED TO CLIPBOARD</div>
-                                        </div>
-                                    )}
+                                <div
+                                    style={{
+                                        position: 'relative',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        /* Don’t stretch to card height — toast uses top:100% of this box */
+                                        alignSelf: 'flex-start',
+                                    }}
+                                >
                                     <button
                                         type="button"
                                         className="hp-shareBtn"
@@ -734,8 +735,20 @@ export default function Home() {
                                         aria-label="Share results"
                                     >
                                         <ShareIcon size={18} />
-                                        SHARE
+                                        Share
                                     </button>
+                                    {shareToast?.key === key && (
+                                        <ShareResultToast
+                                            preview={shareToast.preview}
+                                            fadeOut={shareToast.fadeOut}
+                                            align="end"
+                                            onDismiss={dismissShareToast}
+                                            onTransitionEnd={(e) => {
+                                                if (e.target !== e.currentTarget || e.propertyName !== 'opacity') return
+                                                setShareToast(prev => (prev?.fadeOut ? null : prev))
+                                            }}
+                                        />
+                                    )}
                                 </div>
                             )}
                         </div>

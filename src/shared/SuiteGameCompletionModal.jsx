@@ -7,8 +7,7 @@ import { isNowSchoolTime } from '../../shared-contracts/schoolTime.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import ShareIcon from './ShareIcon.jsx'
-
-const TOAST_MS = 2000
+import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './ShareResultToast.jsx'
 
 /** Win-modal headings (uppercase + punctuation per design). */
 const COMPLETION_HEADLINE = Object.freeze({
@@ -41,22 +40,37 @@ export default function SuiteGameCompletionModal({ show, onClose, gameKey, dateK
 
     const isTileGame = gameKey === GAME_KEYS.SUMTILES || gameKey === GAME_KEYS.PRODUCTILES
 
-    const [shareToast, setShareToast] = useState(false)
+    const [shareToast, setShareToast] = useState(null)
     const toastTimeoutRef = useRef(null)
 
     useEffect(() => () => {
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
     }, [])
 
+    useEffect(() => {
+        if (!show) {
+            if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+            setShareToast(null)
+        }
+    }, [show])
+
+    const dismissShareToast = useCallback(() => {
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current)
+            toastTimeoutRef.current = null
+        }
+        setShareToast(null)
+    }, [])
+
     const handleShare = useCallback(() => {
         const text = buildHubSharePlaintext(gameKey, dateKey, base)
         navigator.clipboard.writeText(text).then(() => {
             if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
-            setShareToast(true)
+            setShareToast({ preview: text, fadeOut: false })
             toastTimeoutRef.current = setTimeout(() => {
-                setShareToast(false)
+                setShareToast(prev => (prev ? { ...prev, fadeOut: true } : null))
                 toastTimeoutRef.current = null
-            }, TOAST_MS)
+            }, SHARE_RESULT_TOAST_MS)
         })
     }, [gameKey, dateKey, base])
 
@@ -134,15 +148,22 @@ export default function SuiteGameCompletionModal({ show, onClose, gameKey, dateK
             </div>
 
             <div className="suite-completion-share-block">
-                {shareToast && (
-                    <div className="toast-panel suite-completion-share-toast" role="status">
-                        <div className="toast-text">RESULTS COPIED TO CLIPBOARD</div>
-                    </div>
-                )}
                 <button type="button" className="suite-completion-share-btn" onClick={handleShare} aria-label="Share results">
-                    SHARE
+                    Share
                     <ShareIcon size={18} />
                 </button>
+                {shareToast != null && (
+                    <ShareResultToast
+                        preview={shareToast.preview}
+                        fadeOut={shareToast.fadeOut}
+                        align="center"
+                        onDismiss={dismissShareToast}
+                        onTransitionEnd={(e) => {
+                            if (e.target !== e.currentTarget || e.propertyName !== 'opacity') return
+                            setShareToast(prev => (prev?.fadeOut ? null : prev))
+                        }}
+                    />
+                )}
             </div>
 
             <a

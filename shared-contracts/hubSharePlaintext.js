@@ -129,6 +129,24 @@ function buildCluelessShareText(title, href, attempts) {
 const SINGLE_PUZZLE_GAMES = new Set()
 
 /**
+ * Whether the hub would show an enabled share for this game/date (any completion / Clueless attempt).
+ * Align with `src/home.jsx` hasAnyCompletion for non–All Ten games.
+ * @param {string} gameKey
+ * @param {string} dateKey
+ * @returns {boolean}
+ */
+export function hasShareableHubProgress(gameKey, dateKey) {
+	if (!GAME_TITLES[gameKey]) return false
+	if (gameKey === 'clueless') {
+		return loadCluelessAttempts(dateKey).some(a => a != null)
+	}
+	if (SINGLE_PUZZLE_GAMES.has(gameKey)) {
+		return loadSingleCompletion(gameKey, dateKey)
+	}
+	return loadCompletions(gameKey, dateKey).some(Boolean)
+}
+
+/**
  * Plaintext copied by hub share and suite completion modals (not All Ten — use allTenSharePlaintext).
  * @param {string} gameKey — e.g. scurry, folds, clueless
  * @param {string} dateKey — PST calendar YYYY-MM-DD

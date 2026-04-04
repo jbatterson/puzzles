@@ -23,7 +23,7 @@ export const {
 			lightGray: "#E0E3E4",
 			cyan: "#368FB2",
 			bg: "$white",
-			bgTransparent: "rgba(255, 255, 255, 0.5)",
+			bgTransparent: "rgba(0, 0, 0, 0.6)",
 			start: "#D6002C",
 			impossible: "$start",
 			op: "$main",
