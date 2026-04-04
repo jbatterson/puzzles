@@ -14,7 +14,7 @@ import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
-import BugIcon from '../../src/shared/icons/BugIcon.jsx'
+import BugIconPuzzle from '../../src/shared/icons/BugIconPuzzle.jsx'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
 function getDailyKey() {
@@ -117,7 +117,7 @@ function saveScurryWip(dateKey, idx, level, bugs, bugsPlacedCount, history) {
 // ── Bug component ────────────────────────────────────────────────────────────
 const Bug = ({ isMoving, isFalling, isCelebrating, size = 42 }) => (
     <div className={`${isFalling ? 'falling-bug' : ''} ${isCelebrating ? 'celebrating-bug' : ''}`}>
-        <BugIcon size={size} className={isMoving ? 'moving-bug' : ''} />
+        <BugIconPuzzle size={size} className={isMoving ? 'moving-bug' : ''} />
     </div>
 )
 
@@ -489,7 +489,7 @@ const BugPuzzle = () => {
                 <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Scurry</h1>
                 <div style={{ flex: 1, textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                        <BugIcon size={80} />
+                        <BugIconPuzzle size={80} />
                     </div>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
                         Place bugs to fill all of the highlighted squares.

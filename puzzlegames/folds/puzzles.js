@@ -201,6 +201,58 @@ easy: [
         target: {"3,1":"dkblue","3,2":"dkblue","2,2":"dkblue","3,0":"purple","2,3":"purple","1,3":"purple","0,1":"dkblue","0,2":"dkblue","1,2":"dkblue","0,0":"purple"},
         folds: 1},
 
+        { start: {"2,1":"red","2,2":"red","3,2":"red","3,3":"red","4,3":"red","4,4":"purple","4,5":"purple","3,5":"purple","3,6":"purple","2,6":"purple"},
+        target: {"2,1":"red","2,2":"red","3,2":"red","3,3":"red","4,3":"red","4,4":"purple","4,5":"purple","3,5":"purple","3,6":"purple","2,6":"purple","0,6":"red","1,6":"red","1,7":"red","2,7":"red","2,8":"red","3,8":"purple","3,7":"purple","3,4":"purple"},
+        folds: 1 },
+
+        { start: {"3,0":"dkblue","3,1":"dkblue","3,2":"dkblue","3,3":"dkblue","3,4":"dkblue","3,5":"dkblue","2,4":"dkblue"},
+        target: {"3,0":"dkblue","3,1":"dkblue","3,2":"dkblue","3,3":"dkblue","3,4":"dkblue","3,5":"dkblue","2,4":"dkblue","4,4":"dkblue","4,3":"dkblue","2,2":"dkblue","2,1":"dkblue","2,3":"dkblue"},
+        folds: 1 },
+
+        { start: {"2,0":"amber","3,0":"amber","3,1":"amber","4,1":"amber","3,5":"amber","2,6":"amber","3,6":"amber"},
+        target: {"2,0":"amber","3,0":"amber","3,1":"amber","4,1":"amber","3,5":"amber","2,6":"amber","3,6":"amber","4,5":"amber","4,4":"amber","4,3":"amber","4,2":"amber","2,1":"amber","1,2":"amber","1,1":"amber"},
+        folds: 1 },
+
+        { start: {"2,1":"green","2,0":"green","3,0":"green","3,1":"green","4,1":"green","4,5":"purple","3,5":"purple","3,6":"purple","2,6":"purple","3,7":"purple"},
+        target: {"2,1":"green","2,0":"green","3,0":"green","3,1":"green","4,1":"green","4,5":"purple","3,5":"purple","3,6":"purple","2,6":"purple","3,7":"purple","4,8":"green","5,8":"green","5,7":"green","5,6":"green","5,5":"green","3,3":"purple","3,4":"purple","2,4":"purple","2,5":"purple","2,3":"purple"},
+        folds: 1 },
+
+        { start: {"2,2":"red","3,2":"red","3,3":"red","3,5":"green","4,5":"green","4,4":"green","5,4":"green"},
+        target: {"2,2":"red","3,2":"red","3,3":"red","3,5":"green","4,5":"green","4,4":"green","5,4":"green","2,3":"red","2,4":"red","3,4":"red","4,3":"green","4,6":"green"},
+        folds: 1 },
+
+        { start: {"1,3":"purple","1,4":"purple","1,5":"purple","2,5":"purple","5,4":"purple","5,5":"purple","5,6":"purple","4,6":"purple"},
+        target: {"1,3":"purple","1,4":"purple","1,5":"purple","2,5":"purple","5,4":"purple","5,5":"purple","5,6":"purple","4,6":"purple","3,8":"purple","2,8":"purple","2,7":"purple","2,6":"purple","4,2":"purple","4,1":"purple","3,1":"purple","3,2":"purple"},
+        folds: 1 },
+
+        { start: {"2,2":"green","2,3":"green","3,2":"green","1,2":"green","1,3":"green","5,3":"dkblue","6,3":"dkblue","5,4":"dkblue","5,5":"dkblue"},
+        target: {"2,2":"green","2,3":"green","3,2":"green","1,2":"green","1,3":"green","5,3":"dkblue","6,3":"dkblue","5,4":"dkblue","5,5":"dkblue","1,6":"green","1,5":"green","1,7":"green","0,4":"green","1,4":"green","3,10":"dkblue","3,11":"dkblue","3,9":"dkblue","4,9":"dkblue"},
+        folds: 1 },
+
+        { start: {"2,1":"red","2,2":"red","3,2":"red","3,1":"red","3,0":"red","3,6":"red","3,7":"red","4,7":"red","4,6":"red","4,5":"red"},
+        target: {"2,1":"red","2,2":"red","3,2":"red","3,1":"red","3,0":"red","3,6":"red","3,7":"red","4,7":"red","4,6":"red","4,5":"red","1,3":"red","2,3":"red","2,4":"red","2,5":"red","1,5":"red","4,2":"red","5,2":"red","5,3":"red","5,4":"red","4,4":"red"},
+        folds: 1 },
+
+        { start: {"1,1":"purple","2,1":"purple","2,2":"purple","3,5":"amber","4,5":"amber","4,6":"amber"},
+        target: {"1,1":"purple","2,1":"purple","2,2":"purple","3,5":"amber","4,5":"amber","4,6":"amber","4,9":"purple","4,8":"purple","4,7":"purple","3,4":"amber","3,3":"amber","3,2":"amber"},
+        folds: 1 },
+
+        { start: {"3,3":"red","3,4":"red","2,4":"red","2,3":"red","1,3":"red","6,5":"red","5,5":"red","5,4":"red","5,3":"red"},
+        target: {"3,3":"red","3,4":"red","2,4":"red","2,3":"red","1,3":"red","6,5":"red","5,5":"red","5,4":"red","5,3":"red","4,5":"red","3,5":"red","3,6":"red","3,7":"red","3,8":"red","4,0":"red","4,1":"red","4,2":"red","5,2":"red"},
+        folds: 1 },
+
+        { start: {"3,0":"green","1,3":"green","2,7":"green","2,6":"green","3,1":"green","1,2":"green"},
+        target: {"3,0":"green","1,3":"green","2,7":"green","2,6":"green","3,1":"green","1,2":"green","5,7":"green","3,8":"green","1,5":"green","2,5":"green","5,6":"green","3,9":"green"},
+        folds: 1 },
+
+        { start: {"2,1":"dkblue","2,0":"dkblue","3,0":"dkblue","2,5":"purple","2,6":"purple","2,7":"purple","4,6":"amber","4,5":"amber","4,4":"amber"},
+        target: {"2,1":"dkblue","2,0":"dkblue","3,0":"dkblue","2,5":"purple","2,6":"purple","2,7":"purple","4,6":"amber","4,5":"amber","4,4":"amber","4,8":"dkblue","5,8":"dkblue","5,7":"dkblue","1,5":"purple","3,2":"amber","3,3":"amber","4,3":"amber"},
+        folds: 1 },
+
+        { start: {"2,5":"green","2,6":"green","3,6":"amber","3,7":"amber","4,7":"amber","4,8":"amber","2,7":"green","2,8":"green"},
+        target: {"2,5":"green","2,6":"green","3,6":"amber","3,7":"amber","4,7":"amber","4,8":"amber","2,7":"green","2,8":"green","2,4":"amber","2,3":"amber","2,2":"amber","2,1":"amber","1,5":"green","1,4":"green"},
+        folds: 1 },
+
 
 ],
 
@@ -385,6 +437,10 @@ easy: [
         {start: {"4,6":"dkblue","4,7":"red"}, //medium
         target: {"4,6":"dkblue","4,7":"red","3,10":"dkblue","3,9":"red","4,5":"dkblue","3,5":"red","1,5":"dkblue","2,5":"red","3,2":"dkblue","2,2":"red","0,2":"dkblue","1,2":"red","3,3":"dkblue","3,4":"red","2,7":"dkblue","2,6":"red"},
         folds: 3 },
+
+        { start: {"2,0":"green","2,5":"purple","4,0":"amber"},
+        target: {"2,0":"green","2,5":"purple","4,0":"amber","3,0":"green","3,5":"purple","1,0":"amber","4,5":"green","1,3":"purple","5,2":"amber","4,4":"green","2,1":"purple","3,7":"amber"},
+        folds: 2 },
 
         ],
 

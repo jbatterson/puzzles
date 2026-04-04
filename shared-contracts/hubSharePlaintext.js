@@ -115,8 +115,8 @@ function buildCluelessShareText(title, href, attempts) {
 	for (let i = 0; i < 3; i++) {
 		const a = attempts?.[i] ?? null
 		if (a != null) {
-			const score = a === 1 ? '★' : String(Math.min(a, 99))
-			out += `${labels[i]}   🟩 ${score}\n`
+			const suffix = a === 1 ? ' (⭐ First try!)' : ` ${String(Math.min(a, 99))}`
+			out += `${labels[i]}   🟩${suffix}\n`
 		} else {
 			out += `${labels[i]}   ⬜\n`
 		}
