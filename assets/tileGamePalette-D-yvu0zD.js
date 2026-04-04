@@ -1,0 +1,1 @@
+const t={ltpurple:"#744b77",blue:"#4587ba",amber:"#ea9a19",dkred:"#9d270c"},l={"2,2":"dkred","3,1":"ltpurple","1,3":"ltpurple","2,1":"amber","1,2":"amber"};function n(r){if(r==null)return t.sky;if(typeof r=="string"&&r.startsWith("#"))return r;const e=t[r];return e||t.blue}function u(r){const e=l[`${r.w},${r.h}`]??"sky";return n(e)}export{u as t};
