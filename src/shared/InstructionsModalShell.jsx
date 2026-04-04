@@ -2,7 +2,10 @@ import React from 'react'
 import { getModalCloseAriaLabel } from '../../shared-contracts/modalIntents.js'
 import { useModalEscape } from './useModalEscape.js'
 
-/** Full-page instructions overlay (`#instructions-overlay` + white sheet). */
+/**
+ * Full-page instructions overlay (`#instructions-overlay` + white sheet).
+ * Kept for optional revert: point `SharedModalShell.jsx` at this module instead of `FloatingModalShell`.
+ */
 export default function InstructionsModalShell({ show = false, onClose, children, closeAriaLabel, intent, contentClassName = '' }) {
     useModalEscape(show, onClose)
 

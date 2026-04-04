@@ -758,7 +758,7 @@ export default function CluelessGame() {
     const SMALL_TILE_INSET = 5
     const LARGE_TILE_INSET = 2
     const ENTRY_BORDER_WIDTH = '0.6vmin'
-    const ACTIVE_CELL_FILL = '#f8e8bd'
+    const ACTIVE_CELL_FILL = '#fff0cb'
 
     const cells = []
     for (let r = 0; r < 5; r++) {

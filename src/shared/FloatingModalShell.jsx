@@ -2,9 +2,7 @@ import React from 'react'
 import { getModalCloseAriaLabel } from '../../shared-contracts/modalIntents.js'
 import { useModalEscape } from './useModalEscape.js'
 
-/**
- * Centered card + translucent backdrop (All Ten stats/share style). Do not use `#instructions-overlay`.
- */
+/** Centered card + translucent backdrop (stats, links, completion, suite instructions). */
 export default function FloatingModalShell({ show = false, onClose, children, closeAriaLabel, intent, contentClassName = '' }) {
     useModalEscape(show, onClose)
 

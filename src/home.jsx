@@ -365,9 +365,17 @@ export default function Home() {
         }
     }, [])
 
-    const handleShare = useCallback((e, key) => {
+    const hasAnyCompletion = useCallback((key, single) => {
+        if (key === 'allten') return allTenTodayCount > 0
+        if (key === 'clueless') return cluelessAttempts.some(a => a != null)
+        if (single) return singleCompletions[key]
+        return completions[key]?.some(Boolean)
+    }, [allTenTodayCount, cluelessAttempts, completions, singleCompletions])
+
+    const handleShare = useCallback((e, key, single) => {
         e.preventDefault()
         e.stopPropagation()
+        if (!hasAnyCompletion(key, single)) return
         const game = GAMES.find(g => g.key === key)
         if (!game) return
         const text = key === 'allten'
@@ -388,7 +396,7 @@ export default function Home() {
                 toastTimeoutRef.current = null
             }, SHARE_RESULT_TOAST_MS)
         })
-    }, [dateKey, allTenTodayCount])
+    }, [dateKey, allTenTodayCount, hasAnyCompletion])
 
     const dismissShareToast = useCallback(() => {
         if (toastTimeoutRef.current) {
@@ -397,13 +405,6 @@ export default function Home() {
         }
         setShareToast(null)
     }, [])
-
-    const hasAnyCompletion = useCallback((key, single) => {
-        if (key === 'allten') return allTenTodayCount > 0
-        if (key === 'clueless') return cluelessAttempts.some(a => a != null)
-        if (single) return singleCompletions[key]
-        return completions[key]?.some(Boolean)
-    }, [allTenTodayCount, cluelessAttempts, completions, singleCompletions])
 
     return (
         <>
@@ -566,10 +567,19 @@ export default function Home() {
                     cursor: pointer;
                     transition: background 140ms ease, filter 140ms ease;
                 }
-                .hp-shareBtn:hover { background: var(--puzzle-ink-hover); }
+                .hp-shareBtn:hover:not(:disabled) { background: var(--puzzle-ink-hover); }
                 .hp-shareBtn:focus-visible {
                     outline: 3px solid rgba(26, 61, 91, 0.45);
                     outline-offset: 2px;
+                }
+                .hp-shareBtn:disabled {
+                    background: var(--puzzle-surface-incomplete, #d4d9e5);
+                    color: var(--puzzle-ink, #1a3d5b);
+                    cursor: default;
+                    filter: none;
+                }
+                .hp-shareBtn:disabled:hover {
+                    background: var(--puzzle-surface-incomplete, #d4d9e5);
                 }
 
                 .toast-panel {
@@ -660,6 +670,7 @@ export default function Home() {
                                   : key === 'clueless'
                                     ? hubHrefFirstUnfinishedClueless(href, cluelessAttempts)
                                     : hubHrefFirstUnfinishedThree(href, completions[key])
+                        const canShare = hasAnyCompletion(key, single)
                         return (
                         <div key={href} className="hp-cardWrapper">
                             <a className="hp-card" href={cardHref}>
@@ -717,40 +728,39 @@ export default function Home() {
                                     </div>
                                 </div>
                             </a>
-                            {hasAnyCompletion(key, single) && (
-                                <div
-                                    style={{
-                                        position: 'relative',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        /* Don’t stretch to card height — toast uses top:100% of this box */
-                                        alignSelf: 'flex-start',
-                                    }}
+                            <div
+                                style={{
+                                    position: 'relative',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    /* Don’t stretch to card height — toast uses top:100% of this box */
+                                    alignSelf: 'flex-start',
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    className="hp-shareBtn"
+                                    disabled={!canShare}
+                                    onClick={(e) => handleShare(e, key, single)}
+                                    aria-label={canShare ? 'Share results' : 'Share results (no progress yet)'}
                                 >
-                                    <button
-                                        type="button"
-                                        className="hp-shareBtn"
-                                        onClick={(e) => handleShare(e, key)}
-                                        aria-label="Share results"
-                                    >
-                                        <ShareIcon size={18} />
-                                        Share
-                                    </button>
-                                    {shareToast?.key === key && (
-                                        <ShareResultToast
-                                            preview={shareToast.preview}
-                                            fadeOut={shareToast.fadeOut}
-                                            align="end"
-                                            onDismiss={dismissShareToast}
-                                            onTransitionEnd={(e) => {
-                                                if (e.target !== e.currentTarget || e.propertyName !== 'opacity') return
-                                                setShareToast(prev => (prev?.fadeOut ? null : prev))
-                                            }}
-                                        />
-                                    )}
-                                </div>
-                            )}
+                                    <ShareIcon size={18} />
+                                    Share
+                                </button>
+                                {shareToast?.key === key && (
+                                    <ShareResultToast
+                                        preview={shareToast.preview}
+                                        fadeOut={shareToast.fadeOut}
+                                        align="end"
+                                        onDismiss={dismissShareToast}
+                                        onTransitionEnd={(e) => {
+                                            if (e.target !== e.currentTarget || e.propertyName !== 'opacity') return
+                                            setShareToast(prev => (prev?.fadeOut ? null : prev))
+                                        }}
+                                    />
+                                )}
+                            </div>
                         </div>
                         )
                     })}

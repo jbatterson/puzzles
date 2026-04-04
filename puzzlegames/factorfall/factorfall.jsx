@@ -20,11 +20,12 @@ import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
 const COLS = 5, ROWS = 5
 const BASE_CELL = 72   
 const BALL_RADIUS_RATIO = 0.37
-const GRID_COLOR = 'rgba(0,0,0,0.9)'
+/** Interior rules — same as Scurry `.grid-line` / `:root --puzzle-grid-line` */
+const GRID_COLOR = 'rgba(26, 61, 91, 0.14)'
 const GRID_LINE_W = 1.5
 const BORDER_W = 2
-const BORDER_COLOR = 'rgba(0,0,0,0.9)'
-const HIGHLIGHT_COLOR = '#ffecb3'
+const BORDER_COLOR = PUZZLE_SUITE_INK
+const HIGHLIGHT_COLOR = '#fff0cb'
 /** Same as Productiles/Sum Tiles `.target.solved` in shared/style.css */
 const MATCH_POPUP_COLOR = '#6b9b3b'
 const GRAVITY = 1.2, TERMINAL_VEL = 16
@@ -250,7 +251,7 @@ function QueuePreview({ queue }) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: i === 0 ? '14px' : '10px',
                     fontWeight: 900,
-                    border: i === 0 ? '2px solid #333' : 'none',
+                    border: i === 0 ? `2px solid ${PUZZLE_SUITE_INK}` : 'none',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                     transition: 'all 0.3s ease',
                 }}>

@@ -334,6 +334,19 @@ html, body {
         1px 1px 4px 1px rgba(15, 10, 8, 0.04);
 }
 
+/* Instructions via SharedModalShell (floating card) — mirrors former #instructions-overlay typography */
+.floating-modal-panel.game-instructions-modal h1.title,
+.floating-modal-panel.game-instructions-modal .title {
+    color: var(--puzzle-ink);
+}
+.floating-modal-panel.game-instructions-modal p {
+    color: var(--puzzle-ink-soft);
+}
+.floating-modal-panel.game-instructions-modal b {
+    color: var(--puzzle-ink);
+    font-weight: 900;
+}
+
 /* Suite game stats (All Ten–style three-column summary, shared modal shell) */
 .simple-game-stats-title {
     margin: 0 0 1.5rem;
@@ -771,7 +784,7 @@ html, body {
 }
 
 .target-square {
-    background-color: #ffd681 !important;
+    background-color: #ffe7b7 !important;
 }
 
 /* Bugs are absolutely positioned over the grid */
@@ -882,8 +895,8 @@ html, body {
 }
 
 /* =============================================================================
-   MODALS (Instructions + Menu)
-   Full-screen overlay using the same #instructions-overlay element.
+   MODALS (Menu + optional full-bleed instructions)
+   `#instructions-overlay` — full white sheet (MenuModal; revert SharedModalShell to InstructionsModalShell to use for help).
    ============================================================================= */
 
 #instructions-overlay {
