@@ -20,30 +20,14 @@ import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
 const COLS = 5, ROWS = 5
 const BASE_CELL = 72   
 const BALL_RADIUS_RATIO = 0.37
-const COLORS = { RED: '#ff5f5f', BLUE: '#3273dc' }
 const GRID_COLOR = 'rgba(0,0,0,0.9)'
 const GRID_LINE_W = 1.5
 const BORDER_W = 2
 const BORDER_COLOR = 'rgba(0,0,0,0.9)'
 const HIGHLIGHT_COLOR = '#ffecb3'
 /** Same as Productiles/Sum Tiles `.target.solved` in shared/style.css */
-const MATCH_POPUP_COLOR = '#22c55e'
+const MATCH_POPUP_COLOR = '#6b9b3b'
 const GRAVITY = 1.2, TERMINAL_VEL = 16
-const ENDLESS_ROUND_SIZE = 7
-
-const TARGET_CONFIGS = {
-    "12": [1,2,2,2,3,3,4,6], "18": [1,3,3,3,2,2,9,6], "20": [1,2,2,2,5,5,4,10],
-    "28": [1,2,2,2,7,7,4,14], "44": [1,2,2,2,11,11,4,22], "45": [1,3,3,3,5,5,9,15],
-    "50": [1,5,5,5,2,2,25,10], "63": [1,3,3,3,7,7,9,21], "75": [1,5,5,5,3,3,25,15],
-    "24": [1,2,2,2,3,3,4,6,8,12], "40": [1,2,2,2,5,5,4,10,8,20],
-    "54": [1,3,3,3,2,2,9,6,27,18], "56": [1,2,2,2,7,7,4,14,8,28],
-    "88": [1,2,2,2,11,11,4,22,8,44], "36": [1,2,2,3,3,4,9,6],
-    "100": [1,2,2,5,5,4,25,10], "30": [1,2,2,3,3,5,5,6,15,10],
-    "42": [1,2,2,3,3,7,7,6,21,14], "66": [1,2,2,3,3,11,11,6,33,22],
-    "70": [1,2,2,5,5,7,7,10,35,14], "60": [1,2,2,3,5,4,3,5,2,6,5,2,2,15],
-    "84": [1,2,2,3,7,4,3,7,2,6,7,2,2,21], "90": [1,3,3,2,5,9,2,5,3,6,5,3,3,10],
-    "99": [1,3,3,3,11,11,9,33], "72": [1,2,2,3,3,4,9,6,8,12],
-}
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
 function getDailyKey() {
@@ -148,12 +132,6 @@ function relayoutBallPositions(gs) {
         gs.pendingBall.x = gs.mouseX || (COLS * cs / 2)
         gs.pendingBall.targetY = 0
     }
-    for (let c = 0; c < gs.shiftingNewRow.length; c++) {
-        const b = gs.shiftingNewRow[c]
-        b.x = c * cs + cs / 2
-        b.y = canvasH + cs / 2
-        b.targetY = 0
-    }
 }
 
 function clearGameState(dateKey, puzzleIndex) {
@@ -166,12 +144,11 @@ function clearGameState(dateKey, puzzleIndex) {
 
 function saveGameState(dateKey, puzzleIndex, puzzle, gs, usedUndoOrReset, ui) {
     try {
-        if (!puzzle || gs.isEndless) return
+        if (!puzzle) return
         const payload = {
             version: GAME_STATE_VERSION,
             fingerprint: puzzleFingerprint(puzzle),
             target: gs.target,
-            isEndless: false,
             grid: slimGrid(gs.grid),
             queue: gs.queue.map(b => ({ v: b.v, c: b.c })),
             gameState: gs.gameState,
@@ -202,7 +179,6 @@ function loadGameState(dateKey, puzzleIndex, puzzle) {
         const d = JSON.parse(raw)
         if (!d || d.version !== GAME_STATE_VERSION) return null
         if (d.fingerprint !== puzzleFingerprint(puzzle) || d.target !== puzzle.target) return null
-        if (d.isEndless) return null
         if (!Array.isArray(d.grid) || d.grid.length !== COLS) return null
         for (let c = 0; c < COLS; c++) {
             const col = d.grid[c]
@@ -243,7 +219,7 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: completions[i] ? '#22c55e' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                    background: completions[i] ? '#6b9b3b' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
                     color: completions[i] || current === i ? '#fff' : PUZZLE_SUITE_INK,
                     fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer',
                     transition: 'all 0.2s',
@@ -324,14 +300,10 @@ const Factorfall = () => {
         mouseX: 0,
         history: [],
         score: 0,
-        turnPops: 0,
         highlightQueue: [],
         activeHighlight: null,
         ballsToPopAtEnd: new Set(),
         floatingScores: [],
-        isEndless: false,
-        shiftingNewRow: [],
-        shiftYOffset: 0,
         target: 24,
         cellSize: BASE_CELL,
     })
@@ -408,14 +380,10 @@ const Factorfall = () => {
         gs.history = []
         gs.score = 0
         gs.target = puzzle.target
-        gs.isEndless = false
-        gs.turnPops = 0
         gs.highlightQueue = []
         gs.activeHighlight = null
         gs.ballsToPopAtEnd = new Set()
         gs.floatingScores = []
-        gs.shiftingNewRow = []
-        gs.shiftYOffset = 0
 
         const canvasH = (ROWS + 1) * cs
         gs.grid = puzzle.board.map((col, c) =>
@@ -481,7 +449,6 @@ const Factorfall = () => {
             gs.pendingBall = { val: b.v, color: b.c, y: cs / 2, vy: 0, x: gs.mouseX || (COLS * cs / 2), targetY: 0 }
         } else {
             gs.pendingBall = null
-            if (gs.isEndless) initiateShift(gs)
         }
     }
 
@@ -490,14 +457,10 @@ const Factorfall = () => {
         usedUndoOrResetRef.current = !!saved.usedUndoOrReset
         gs.cellSize = cs
         gs.target = saved.target
-        gs.isEndless = false
-        gs.turnPops = 0
         gs.highlightQueue = []
         gs.activeHighlight = null
         gs.ballsToPopAtEnd = new Set()
         gs.floatingScores = []
-        gs.shiftingNewRow = []
-        gs.shiftYOffset = 0
         gs.grid = gridFromSlim(saved.grid, cs)
         gs.queue = saved.queue.map(b => ({ v: b.v, c: b.c }))
         gs.gameState = saved.gameState
@@ -515,7 +478,7 @@ const Factorfall = () => {
         }
         setUiQueue([...gs.queue])
         setUiTarget(puzzle.target)
-        setUndoDisabled(gs.history.length === 0 || gs.isEndless)
+        setUndoDisabled(gs.history.length === 0)
         setBoardCleared(saved.ui.boardCleared)
         setGridFull(saved.ui.gridFull)
         setOutOfBalls(saved.ui.outOfBalls)
@@ -529,52 +492,6 @@ const Factorfall = () => {
         saveGameState(key, idx, p, gsRef.current, usedUndoOrResetRef.current, overrideUi ?? uiSnapshotRef.current)
     }
     persistDailyGameStateRef.current = persistDaily
-
-    function generateRandomBallData(gs) {
-        const pool = TARGET_CONFIGS[String(gs.target)] || TARGET_CONFIGS["36"]
-        return { v: pool[Math.floor(Math.random() * pool.length)], c: Math.random() < 0.5 ? COLORS.RED : COLORS.BLUE }
-    }
-
-    function refillEndlessQueue(gs) {
-        gs.queue = []
-        for (let i = 0; i < ENDLESS_ROUND_SIZE; i++) gs.queue.push(generateRandomBallData(gs))
-    }
-
-    function initiateShift(gs) {
-        const cs = gs.cellSize
-        const canvasH = (ROWS + 1) * cs
-        gs.shiftingNewRow = []
-        for (let c = 0; c < COLS; c++) {
-            const data = generateRandomBallData(gs)
-            gs.shiftingNewRow.push({ val: data.v, color: data.c, x: c * cs + cs / 2, y: canvasH + cs / 2, vy: 0, targetY: 0 })
-        }
-        gs.gameState = 'SHIFTING'
-        gs.shiftYOffset = 0
-    }
-
-    function finalizeShift(gs) {
-        const cs = gs.cellSize
-        const canvasH = (ROWS + 1) * cs
-        let hitTop = false
-        for (let c = 0; c < COLS; c++) {
-            if (gs.grid[c].length >= ROWS) hitTop = true
-            gs.grid[c].unshift(gs.shiftingNewRow[c])
-            gs.grid[c].forEach((b, r) => {
-                b.y = canvasH - (r * cs + cs / 2)
-                b.targetY = b.y
-                b.vy = 0
-            })
-        }
-        gs.shiftingNewRow = []
-        if (hitTop) {
-            gs.gameState = 'GAMEOVER'
-            setGridFull(true)
-        } else {
-            refillEndlessQueue(gs)
-            setUiQueue([...gs.queue])
-            gs.gameState = 'ANIMATING'
-        }
-    }
 
     // ── Match detection ──────────────────────────────────────────────────────
     function checkMatches(gs) {
@@ -629,7 +546,7 @@ const Factorfall = () => {
             gs.highlightQueue.forEach(g => g.forEach(k => gs.ballsToPopAtEnd.add(k)))
             runHighlights(gs)
         } else {
-            if (gs.queue.length === 0 && !gs.isEndless) {
+            if (gs.queue.length === 0) {
                 setTimeout(() => {
                     const empty = gs.grid.every(col => col.length === 0)
                     gs.gameState = 'GAMEOVER'
@@ -647,8 +564,6 @@ const Factorfall = () => {
                         persistDailyGameStateRef.current({ boardCleared: false, gridFull: false, outOfBalls: true })
                     }
                 }, 300)
-            } else if (gs.isEndless && gs.queue.length === 0) {
-                initiateShift(gs)
             } else {
                 gs.gameState = 'READY'
                 nextFromQueue(gs)
@@ -663,10 +578,6 @@ const Factorfall = () => {
             return
         }
         gs.activeHighlight = gs.highlightQueue.shift()
-        gs.turnPops++
-        if (gs.isEndless) {
-            gs.score += gs.turnPops
-        }
         const cs = gs.cellSize
         const canvasH = (ROWS + 1) * cs
         const [c, r] = gs.activeHighlight[0].split(',').map(Number)
@@ -746,7 +657,7 @@ const Factorfall = () => {
     const undoMove = useCallback(() => {
         usedUndoOrResetRef.current = true
         const gs = gsRef.current
-        if (gs.history.length === 0 || gs.isEndless) return
+        if (gs.history.length === 0) return
         const fromClearedWin = boardCleared && gs.gameState === 'GAMEOVER'
         if (gs.gameState !== 'READY' && !fromClearedWin) return
         const last = gs.history.pop()
@@ -761,7 +672,7 @@ const Factorfall = () => {
             setOutOfBalls(false)
         }
         nextFromQueue(gs)
-        setUndoDisabled(gs.history.length === 0 || gs.isEndless)
+        setUndoDisabled(gs.history.length === 0)
         persistDailyGameStateRef.current()
     }, [boardCleared])
 
@@ -795,7 +706,7 @@ const Factorfall = () => {
         }
         gs.history.push(state)
         if (gs.history.length > 20) gs.history.shift()
-        setUndoDisabled(gs.isEndless)
+        setUndoDisabled(false)
 
         const ball = gs.pendingBall
         ball.x = col * cs + cs / 2
@@ -804,7 +715,6 @@ const Factorfall = () => {
         gs.queue.shift()
         setUiQueue([...gs.queue])
         gs.gameState = 'ANIMATING'
-        gs.turnPops = 0
     }, [])
 
     // Mouse: hover to aim, click to drop
@@ -909,7 +819,6 @@ const Factorfall = () => {
             }
 
             gs.grid.forEach(col => col.forEach(b => drawBall(b.x, b.y, b.val, b.color)))
-            if (gs.gameState === 'SHIFTING') gs.shiftingNewRow.forEach(b => drawBall(b.x, b.y, b.val, b.color))
             if (gs.gameState === 'READY' && gs.pendingBall) drawBall(gs.pendingBall.x, gs.pendingBall.y, gs.pendingBall.val, gs.pendingBall.color)
 
             // Floating scores
@@ -931,26 +840,18 @@ const Factorfall = () => {
             gs.floatingScores = gs.floatingScores.filter(f => f.life > 0)
 
             // Physics
-            if (gs.gameState === 'SHIFTING') {
-                const s = 4
-                gs.shiftYOffset += s
-                gs.grid.forEach(col => col.forEach(b => b.y -= s))
-                gs.shiftingNewRow.forEach(b => b.y -= s)
-                if (gs.shiftYOffset >= cs) finalizeShift(gs)
-            } else {
-                let moving = false
-                gs.grid.forEach(col => col.forEach(b => {
-                    if (Math.abs(b.y - b.targetY) > 0.5) {
-                        b.vy = Math.min(b.vy + GRAVITY, TERMINAL_VEL)
-                        b.y += b.vy
-                        if (b.y >= b.targetY) { b.y = b.targetY; b.vy = 0 }
-                        moving = true
-                    }
-                }))
-                if (gs.gameState === 'ANIMATING' && !moving) {
-                    gs.gameState = 'SETTLING'
-                    setTimeout(() => checkMatches(gs), 50)
+            let moving = false
+            gs.grid.forEach(col => col.forEach(b => {
+                if (Math.abs(b.y - b.targetY) > 0.5) {
+                    b.vy = Math.min(b.vy + GRAVITY, TERMINAL_VEL)
+                    b.y += b.vy
+                    if (b.y >= b.targetY) { b.y = b.targetY; b.vy = 0 }
+                    moving = true
                 }
+            }))
+            if (gs.gameState === 'ANIMATING' && !moving) {
+                gs.gameState = 'SETTLING'
+                setTimeout(() => checkMatches(gs), 50)
             }
 
             animId = requestAnimationFrame(draw)

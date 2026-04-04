@@ -751,10 +751,10 @@ export default function CluelessGame() {
 
     // ── Grid cells ─────────────────────────────────────────────────────────
 
-    const GOLD_FILL = '#f6ae2d'
-    const WRONG_COLOR = '#b91c1c'
-    const CORRECT_COLOR = '#22c55e'
-    const CORRECT_BORDER = '#22c55e'
+    const GOLD_FILL = '#faa80a'
+    const WRONG_COLOR = '#9d270c'
+    const CORRECT_COLOR = '#6b9b3b'
+    const CORRECT_BORDER = '#6b9b3b'
     const SMALL_TILE_INSET = 5
     const LARGE_TILE_INSET = 2
     const ENTRY_BORDER_WIDTH = '0.6vmin'
@@ -929,7 +929,7 @@ export default function CluelessGame() {
                                             height: '28px',
                                             borderRadius: '6px',
                                             border: 'none',
-                                            background: done ? '#22c55e' : (isActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE),
+                                            background: done ? '#6b9b3b' : (isActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE),
                                             color: done || isActive ? '#fff' : PUZZLE_SUITE_INK,
                                             fontWeight: 900,
                                             fontSize: '0.94rem',

@@ -228,7 +228,7 @@ const Instructions: React.FC<Props> = function (props: Props) {
 					rel="noopener noreferrer"
 					style={{
 						fontSize: "0.85rem",
-						color: "rgba(24, 53, 94, 0.55)",
+						color: "rgba(26, 61, 91, 0.55)",
 						textAlign: "center",
 					}}
 				>

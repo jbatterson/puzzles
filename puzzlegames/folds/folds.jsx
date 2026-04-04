@@ -288,7 +288,7 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: completions[i] ? '#22c55e' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                    background: completions[i] ? '#6b9b3b' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
                     color: completions[i] || current === i ? '#fff' : PUZZLE_SUITE_INK,
                     fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer', transition: 'all 0.2s',
                     transform: current === i ? 'scale(1.1)' : 'scale(1)',

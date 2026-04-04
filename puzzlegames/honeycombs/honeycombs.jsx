@@ -59,7 +59,7 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
             alignItems: 'center',
             justifyContent: 'center',
             background: completions[i]
-              ? '#22c55e'
+              ? '#6b9b3b'
               : current === i
                 ? PUZZLE_SUITE_INK
                 : PUZZLE_SUITE_SURFACE_INCOMPLETE,

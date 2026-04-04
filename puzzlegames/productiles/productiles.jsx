@@ -219,7 +219,7 @@ function PuzzleBoxes({ current, completions, perfects, moveCounts, onChange }) {
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: completions[i] ? '#22c55e' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                    background: completions[i] ? '#6b9b3b' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
                     color: completions[i] || current === i ? '#fff' : PUZZLE_SUITE_INK,
                     fontWeight: 900, fontSize: '1.06rem', cursor: 'pointer', transition: 'all 0.2s',
                     transform: current === i ? 'scale(1.1)' : 'scale(1)',
@@ -439,7 +439,7 @@ export default function Productiles() {
                 if (rEl) rEl.classList.toggle('solved', curR[i]===s.targets.rows[i])
                 if (cEl) cEl.classList.toggle('solved', curC[i]===s.targets.cols[i])
             }
-            ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.lineWidth=1
+            ctx.strokeStyle = 'rgba(26, 61, 91, 0.14)'; ctx.lineWidth = 1
             for (let j=1; j<s.size; j++) {
                 ctx.beginPath(); ctx.moveTo(j*gs,0); ctx.lineTo(j*gs,canvas.height); ctx.stroke()
                 ctx.beginPath(); ctx.moveTo(0,j*gs); ctx.lineTo(canvas.width,j*gs); ctx.stroke()

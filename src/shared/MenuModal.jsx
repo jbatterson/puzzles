@@ -58,7 +58,7 @@ export default function MenuModal({ onClose }) {
                                     color: PUZZLE_SUITE_INK,
                                     transition: 'background 140ms ease',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(24, 53, 94, 0.06)'}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(26, 61, 91, 0.06)'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                             >
                                 {Icon && (

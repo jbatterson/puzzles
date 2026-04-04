@@ -6,7 +6,7 @@
 import Color from "color";
 
 const colors = {
-  main: "#18355E",
+  main: "#1a3d5b",
   mainLight: "#289ECC",
   white: "#FFF",
   bg: "$white",

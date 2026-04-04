@@ -15,7 +15,7 @@ const styles = {
         margin: 0,
         padding: '10px',
         boxSizing: 'border-box',
-        color: '#18355E',
+        color: '#1a3d5b',
         fontFamily: 'Roboto, sans-serif',
         background: '#fff',
         boxShadow: '1px 2px 16px 4px rgba(15, 10, 8, .05),1px 1px 8px 1px rgba(15, 10, 8, .08),1px 1px 4px 1px rgba(15, 10, 8, .04)',
@@ -77,7 +77,7 @@ const styles = {
         minWidth: 0,
     },
     logoContainer: {
-        borderRight: '2px solid #18355E',
+        borderRight: '2px solid #1a3d5b',
         paddingTop: '0.4em',
         paddingBottom: '0.4em',
         paddingRight: '5px',

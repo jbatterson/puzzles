@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { buildHubSharePlaintext } from '../../shared-contracts/hubSharePlaintext.js'
-import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './ShareResultToast.jsx'
 
 /**
@@ -42,26 +41,12 @@ export default function GameShareNavButton({ gameKey, dateKey, canShare }) {
         <div className="game-nav-share-wrap">
             <button
                 type="button"
+                className="game-nav-share-btn"
                 disabled={!canShare}
                 onClick={handleClick}
                 aria-label={canShare ? 'Share results' : 'Share results (no progress yet)'}
-                style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    padding: 0,
-                    margin: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: canShare ? 'pointer' : 'default',
-                    background: canShare ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
-                    color: canShare ? '#fff' : PUZZLE_SUITE_INK,
-                    transition: 'all 0.2s',
-                }}
             >
-                <i className="fa-solid fa-share-nodes" style={{ fontSize: 14, lineHeight: 1 }} aria-hidden="true" />
+                <i className="fa-solid fa-share-nodes" aria-hidden="true" />
             </button>
             {shareToast != null && (
                 <ShareResultToast

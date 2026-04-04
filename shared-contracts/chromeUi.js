@@ -1,16 +1,16 @@
 import { HEADER_ACTIONS } from "./headerActions.js";
 
 /** Primary ink for puzzle text, borders, and chrome (matches All Ten `main` / Beast Academy navy). */
-export const PUZZLE_SUITE_INK = "#18355E";
+export const PUZZLE_SUITE_INK = "#1a3d5b";
 
 /** Date row, stats labels, and other secondary chrome (navy-tinted). */
-export const PUZZLE_SUITE_INK_MUTED = "rgba(24, 53, 94, 0.62)";
+export const PUZZLE_SUITE_INK_MUTED = "rgba(26, 61, 91, 0.62)";
 
 /** Instruction body copy (readable navy-gray). */
-export const PUZZLE_SUITE_INK_SOFT = "rgba(24, 53, 94, 0.78)";
+export const PUZZLE_SUITE_INK_SOFT = "rgba(26, 61, 91, 0.78)";
 
 /** Softer secondary text (e.g. clue cells when not in band). */
-export const PUZZLE_SUITE_INK_FAINT = "rgba(24, 53, 94, 0.5)";
+export const PUZZLE_SUITE_INK_FAINT = "rgba(26, 61, 91, 0.5)";
 
 /** Incomplete daily / difficulty tile background (cool gray tinted with navy). */
 export const PUZZLE_SUITE_SURFACE_INCOMPLETE = "#d4d9e5";
@@ -19,7 +19,7 @@ export const PUZZLE_SUITE_SURFACE_INCOMPLETE = "#d4d9e5";
 export const PUZZLE_SUITE_SURFACE_DISABLED = "#c5cbd8";
 
 /** Label text on disabled gray controls */
-export const PUZZLE_SUITE_INK_ON_DISABLED = "rgba(24, 53, 94, 0.52)";
+export const PUZZLE_SUITE_INK_ON_DISABLED = "rgba(26, 61, 91, 0.52)";
 
 export const CHROME_ASSET_URLS = Object.freeze({
 	CUBE_ICON: "https://beastacademy.com/u/AllTen/cube.svg",

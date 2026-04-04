@@ -6246,7 +6246,7 @@
 							style: rowMarginStyle,
 							children: "Size 16, white on dark",
 						}),
-						makeRow(16, "white", "#18355E"),
+						makeRow(16, "white", "#1a3d5b"),
 						(0, react_jsx_runtime__WEBPACK_IMPORTED_MODULE_4__.jsx)("div", {
 							style: rowMarginStyle,
 							children: "Size 60",
@@ -6264,7 +6264,7 @@
 				{
 					storySource: {
 						source:
-							'() => {\n\tconst rowMarginStyle = {marginTop: 12};\n\n\treturn (\n\t\t<div>\n\t\t\t<div style={rowMarginStyle}>Size 12</div>\n\t\t\t{makeRow(12)}\n\t\t\t<div style={rowMarginStyle}>Size 20</div>\n\t\t\t{makeRow(20)}\n\t\t\t<div style={rowMarginStyle}>Size 16, interm1</div>\n\t\t\t{makeRow(16, "interm1")}\n\t\t\t<div style={rowMarginStyle}>Size 16, white on dark</div>\n\t\t\t{makeRow(16, "white", "#18355E")}\n\t\t\t<div style={rowMarginStyle}>Size 60</div>\n\t\t\t{makeRow(60)}\n\t\t</div>\n\t);\n}',
+							'() => {\n\tconst rowMarginStyle = {marginTop: 12};\n\n\treturn (\n\t\t<div>\n\t\t\t<div style={rowMarginStyle}>Size 12</div>\n\t\t\t{makeRow(12)}\n\t\t\t<div style={rowMarginStyle}>Size 20</div>\n\t\t\t{makeRow(20)}\n\t\t\t<div style={rowMarginStyle}>Size 16, interm1</div>\n\t\t\t{makeRow(16, "interm1")}\n\t\t\t<div style={rowMarginStyle}>Size 16, white on dark</div>\n\t\t\t{makeRow(16, "white", "#1a3d5b")}\n\t\t\t<div style={rowMarginStyle}>Size 60</div>\n\t\t\t{makeRow(60)}\n\t\t</div>\n\t);\n}',
 					},
 				},
 				GridOfCases.parameters
@@ -8544,7 +8544,7 @@
 					.Th)({
 					theme: {
 						colors: {
-							main: "#18355E",
+							main: "#1a3d5b",
 							mainLight: "#289ECC",
 							white: "#FFF",
 							gray: "#AAA",

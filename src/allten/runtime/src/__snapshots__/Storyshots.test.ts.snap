@@ -4211,7 +4211,7 @@ exports[`Storyshots Components/RationalDisplay Grid Of Cases 1`] = `
     style={
       Object {
         "alignItems": "center",
-        "backgroundColor": "#18355E",
+        "backgroundColor": "#1a3d5b",
         "display": "flex",
         "flexDirection": "row",
         "fontSize": "16pt",

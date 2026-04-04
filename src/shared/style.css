@@ -6,20 +6,18 @@
    ============================================================================= */
 
 :root {
-    --black: #000000;
     /** Primary dark ink for shared modals and game chrome (aligned with All Ten). */
-    --puzzle-ink: #18355E;
+    --puzzle-ink: #1a3d5b;
     --puzzle-ink-hover: #465D7E;
-    --puzzle-ink-muted: rgba(24, 53, 94, 0.62);
-    --puzzle-ink-soft: rgba(24, 53, 94, 0.78);
-    --puzzle-ink-faint: rgba(24, 53, 94, 0.5);
-    --puzzle-ink-goal: rgba(24, 53, 94, 0.45);
+    --puzzle-ink-muted: rgba(26, 61, 91, 0.62);
+    --puzzle-ink-soft: rgba(26, 61, 91, 0.78);
+    --puzzle-ink-faint: rgba(26, 61, 91, 0.5);
+    --puzzle-ink-goal: rgba(26, 61, 91, 0.45);
+    /** Incomplete tile / “no progress yet” controls (matches `PUZZLE_SUITE_SURFACE_INCOMPLETE` in chromeUi). */
     --puzzle-surface-incomplete: #d4d9e5;
     --puzzle-surface-disabled: #c5cbd8;
-    --puzzle-grid-line: rgba(24, 53, 94, 0.14);
+    --puzzle-grid-line: rgba(26, 61, 91, 0.14);
     --white: #ffffff;
-    --yellow: #FFD600;
-    --red: #FF3B30;
 
     /* Prevents the grey flash when tapping on iOS */
     -webkit-tap-highlight-color: transparent;
@@ -127,7 +125,7 @@ html, body {
     margin: 0 0 8px 0;
     padding: 10px;
     box-sizing: border-box;
-    color: #18355E;
+    color: #1a3d5b;
     font-family: Roboto, sans-serif;
     background: #fff;
     box-shadow:
@@ -172,7 +170,7 @@ html, body {
     height: 32px;
     border-radius: 999px;
     border: 2px solid transparent;
-    background: #18355E;
+    background: #1a3d5b;
     color: #FFF;
     display: flex;
     align-items: center;
@@ -208,8 +206,8 @@ html, body {
 }
 .titlebar-iconbtn:active { transform: scale(0.9); }
 .titlebar-iconbtn:hover { background: var(--puzzle-ink-hover); }
-.titlebar-iconbtn:focus-visible { outline: 3px solid rgba(24, 53, 94, 0.25); outline-offset: 2px; }
-.titlebar-cubebtn:focus-visible { outline: 3px solid rgba(24, 53, 94, 0.25); outline-offset: 2px; border-radius: 6px; }
+.titlebar-iconbtn:focus-visible { outline: 3px solid rgba(26, 61, 91, 0.25); outline-offset: 2px; }
+.titlebar-cubebtn:focus-visible { outline: 3px solid rgba(26, 61, 91, 0.25); outline-offset: 2px; border-radius: 6px; }
 
 .titlebar-title {
     display: flex;
@@ -220,7 +218,7 @@ html, body {
 }
 
 .titlebar-logoContainer {
-    border-right: 2px solid #18355E;
+    border-right: 2px solid #1a3d5b;
     padding-top: 0.4em;
     padding-bottom: 0.4em;
     padding-right: 5px;
@@ -303,7 +301,7 @@ html, body {
     cursor: pointer;
     line-height: 1;
     padding: 4px;
-    color: var(--puzzle-ink, #18355e);
+    color: var(--puzzle-ink, #1a3d5b);
 }
 
 /* Floating card modal (cube / Beast Academy links)—matches All Ten runtime Modal backdrop + Body */
@@ -342,7 +340,7 @@ html, body {
     text-align: center;
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--puzzle-ink, #18355e);
+    color: var(--puzzle-ink, #1a3d5b);
 }
 .simple-game-stats-row {
     display: flex;
@@ -364,7 +362,7 @@ html, body {
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.06em;
-    color: var(--puzzle-ink-muted, rgba(24, 53, 94, 0.62));
+    color: var(--puzzle-ink-muted, rgba(26, 61, 91, 0.62));
     text-transform: uppercase;
     margin-bottom: 0.2rem;
 }
@@ -372,13 +370,13 @@ html, body {
     font-size: 30px;
     font-weight: 700;
     line-height: 1.15;
-    color: var(--puzzle-ink, #18355e);
+    color: var(--puzzle-ink, #1a3d5b);
 }
 .simple-game-stats-unit {
     margin-top: 0.1rem;
     font-size: 0.82rem;
     font-weight: 600;
-    color: var(--puzzle-ink-faint, rgba(24, 53, 94, 0.5));
+    color: var(--puzzle-ink-faint, rgba(26, 61, 91, 0.5));
 }
 
 /* Suite game completion modal (All Ten Results–style: promo + stats + share + hub CTA) */
@@ -397,7 +395,7 @@ html, body {
     font-size: 1.35rem;
     font-weight: 800;
     letter-spacing: 0.04em;
-    color: var(--puzzle-ink, #18355e);
+    color: var(--puzzle-ink, #1a3d5b);
 }
 .suite-completion-promo {
     display: flex;
@@ -414,7 +412,7 @@ html, body {
 .suite-completion-promo-title {
     font-size: 1.05rem;
     font-weight: 800;
-    color: var(--puzzle-ink, #18355e);
+    color: var(--puzzle-ink, #1a3d5b);
     margin: 0 0 10px;
     line-height: 1.25;
 }
@@ -423,7 +421,7 @@ html, body {
     font-size: 0.88rem;
     font-weight: 500;
     line-height: 1.45;
-    color: var(--puzzle-ink, #18355e);
+    color: var(--puzzle-ink, #1a3d5b);
     max-width: 42ch;
 }
 .suite-completion-cta {
@@ -460,7 +458,7 @@ html, body {
     align-items: center;
     gap: 6px;
     padding: 10px 14px;
-    background: var(--puzzle-ink, #18355e);
+    background: var(--puzzle-ink, #1a3d5b);
     color: var(--white, #fff);
     border: none;
     border-radius: 8px;
@@ -474,7 +472,7 @@ html, body {
     background: var(--puzzle-ink-hover);
 }
 .suite-completion-share-btn:focus-visible {
-    outline: 3px solid rgba(24, 53, 94, 0.45);
+    outline: 3px solid rgba(26, 61, 91, 0.45);
     outline-offset: 2px;
 }
 .suite-completion-all-puzzles {
@@ -542,7 +540,7 @@ html, body {
 }
 .allten-links-copy {
     margin: 0;
-    color: var(--ink, #18355e);
+    color: var(--ink, #1a3d5b);
     font-size: 1.05rem;
     line-height: 1.5;
     font-weight: 700;
@@ -726,7 +724,7 @@ html, body {
     transition: background 0.12s;
 }
 .clueless-key.clueless-key--tried {
-    background: #b91c1c;
+    background: #9d270c;
     cursor: not-allowed;
 }
 .clueless-key:hover:not(.clueless-key--tried) {
@@ -754,7 +752,7 @@ html, body {
 }
 .clueless-action-key:disabled {
     background: var(--puzzle-surface-disabled);
-    color: rgba(24, 53, 94, 0.52);
+    color: rgba(26, 61, 91, 0.52);
     cursor: not-allowed;
 }
 
@@ -773,7 +771,7 @@ html, body {
 }
 
 .target-square {
-    background-color: var(--yellow) !important;
+    background-color: #ffd681 !important;
 }
 
 /* Bugs are absolutely positioned over the grid */
@@ -808,10 +806,11 @@ html, body {
 .target {
     text-align: center;
     width: 100%;
+    color: var(--puzzle-ink);
     transition: color 0.25s ease, transform 0.25s ease;
 }
 
-.target.solved { color: #22c55e; }
+.target.solved { color: #6b9b3b; }
 
 /* =============================================================================
    BUTTONS
@@ -866,8 +865,8 @@ html, body {
 .btn-secondary:disabled {
     opacity: 0.35;
     cursor: not-allowed;
-    border-color: rgba(24, 53, 94, 0.22);
-    color: rgba(24, 53, 94, 0.36);
+    border-color: rgba(26, 61, 91, 0.22);
+    color: rgba(26, 61, 91, 0.36);
     background-color: var(--white);
     transform: none;
 }
@@ -986,11 +985,11 @@ html, body {
     max-width: min(94vw, 560px);
     display: block;
     overflow: visible;
-    background: rgba(24, 53, 94, 0.95);
+    background: rgba(26, 61, 91, 0.95);
     color: var(--white, #fff);
     padding: 14px 16px;
     border-radius: 12px;
-    box-shadow: 0 10px 28px rgba(24, 53, 94, 0.25);
+    box-shadow: 0 10px 28px rgba(26, 61, 91, 0.25);
     opacity: 1;
     transition: opacity 0.35s ease-out;
     z-index: 10050;
@@ -1070,6 +1069,46 @@ html, body {
     vertical-align: middle;
 }
 
+/* 28×28 share control beside difficulty dice — navy + token hover (desktop), incomplete surface when disabled */
+.game-nav-share-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        transform 0.08s ease,
+        background-color 0.12s ease,
+        filter 0.12s ease;
+}
+.game-nav-share-btn .fa-share-nodes {
+    font-size: 14px;
+    line-height: 1;
+}
+.game-nav-share-btn:enabled {
+    cursor: pointer;
+    background: var(--puzzle-ink, #1a3d5b);
+    color: var(--white, #fff);
+}
+.game-nav-share-btn:disabled {
+    cursor: default;
+    background: var(--puzzle-surface-incomplete, #d4d9e5);
+    color: var(--puzzle-ink, #1a3d5b);
+}
+.game-nav-share-btn:enabled:active {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+}
+.game-nav-share-btn:focus-visible {
+    outline: 3px solid rgba(26, 61, 91, 0.45);
+    outline-offset: 2px;
+}
+
 /* =============================================================================
    ANIMATIONS
    ============================================================================= */
@@ -1085,7 +1124,7 @@ html, body {
 }
 
 @keyframes touchPulse {
-    0%   { background-color: rgba(24, 53, 94, 0.12); }
+    0%   { background-color: rgba(26, 61, 91, 0.12); }
     100% { background-color: transparent; }
 }
 
@@ -1108,7 +1147,8 @@ html, body {
     .btn-secondary,
     .nav-arrow,
     .home-btn,
-    .help-btn {
+    .help-btn,
+    .game-nav-share-btn:enabled {
         transition:
             transform 0.08s ease,
             filter 0.12s ease,
@@ -1121,8 +1161,13 @@ html, body {
         transform: translateY(-1px);
     }
 
+    .game-nav-share-btn:enabled:hover {
+        background: var(--puzzle-ink-hover, #465D7E);
+        transform: translateY(-1px);
+    }
+
     .btn-secondary:not(:disabled):hover {
-        background-color: rgba(24, 53, 94, 0.07);
+        background-color: rgba(26, 61, 91, 0.07);
         transform: translateY(-1px);
     }
 

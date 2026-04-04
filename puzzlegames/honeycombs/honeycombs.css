@@ -74,18 +74,18 @@
   .hex-cell { cursor: pointer; }
   .hex-cell.given { cursor: default; }
   .hex-cell polygon {
-    stroke: #f6ae2d;
+    stroke: #faa80a;
     stroke-width: 2.5;
     transition: fill 0.15s;
   }
   .hex-cell.empty polygon    { fill: #fff; }
-  .hex-cell.given polygon    { fill: #f6ae2d; }
+  .hex-cell.given polygon    { fill: #faa80a; }
   .hex-cell.filled polygon   { fill: #fff; }
   .hex-label {
     font-family: 'Outfit', sans-serif;
     font-weight: 700;
     font-size: 20px;
-    fill: #18355E;
+    fill: #1a3d5b;
     dominant-baseline: central;
     text-anchor: middle;
     pointer-events: none;
@@ -136,7 +136,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .kb-key.available {
-    background: #18355E;
+    background: var(--puzzle-ink, #1a3d5b);
     color: #fff;
   }
   .kb-key.used {
@@ -146,7 +146,7 @@
   }
   .kb-key.used:hover { background: #d1d5db; }
   .kb-key.kb-clue {
-    background: #f6ae2d;
+    background: #faa80a;
     color: #fff;
     cursor: default;
   }
@@ -154,7 +154,7 @@
     background: #4587ba;
     color: #fff;
   }
-  .kb-key.available:hover { background: #374151; }
+  .kb-key.available:hover { background: var(--puzzle-ink-hover, #465D7E); }
   .kb-key.kb-active:hover { background: #3a7399; }
 
   /* Undo / Reset row */
@@ -169,9 +169,9 @@
   .kb-action-btn-secondary {
     min-height: 52px;
     border-radius: 4px;
-    border: 2px solid #18355E;
+    border: 2px solid #1a3d5b;
     background: #fff;
-    color: #18355E;
+    color: #1a3d5b;
     font-family: 'Outfit', sans-serif;
     font-weight: 900;
     font-size: 0.68rem;
@@ -194,7 +194,7 @@
   }
   @media (hover: hover) {
     .kb-action-btn-secondary:hover {
-      background-color: rgba(24, 53, 94, 0.07);
+      background-color: rgba(26, 61, 91, 0.07);
       transform: translateY(-1px);
     }
   }
@@ -202,7 +202,7 @@
     min-height: 52px;
     border-radius: 4px;
     border: none;
-    background: #18355E;
+    background: var(--puzzle-ink, #1a3d5b);
     color: #fff;
     font-family: 'Outfit', sans-serif;
     font-weight: 900;
@@ -215,6 +215,7 @@
     justify-content: center;
     transition:
       transform 0.08s ease,
+      background-color 0.12s ease,
       filter 0.12s ease,
       opacity 0.12s ease;
     -webkit-tap-highlight-color: transparent;
@@ -225,7 +226,7 @@
   }
   @media (hover: hover) {
     .kb-action-btn-primary:not(:disabled):hover {
-      filter: brightness(1.08);
+      background: var(--puzzle-ink-hover, #465D7E);
       transform: translateY(-1px);
     }
   }
@@ -258,7 +259,7 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     font-variant-numeric: tabular-nums;
-    color: #18355E;
+    color: #1a3d5b;
     padding: 0 8px;
     line-height: 1.35;
   }
@@ -281,7 +282,7 @@
     min-height: 52px;
     border-radius: 4px;
     border: none;
-    background: #18355E;
+    background: var(--puzzle-ink, #1a3d5b);
     color: #fff;
     font-family: 'Outfit', sans-serif;
     font-weight: 900;
@@ -294,6 +295,7 @@
     justify-content: center;
     transition:
       transform 0.08s ease,
+      background-color 0.12s ease,
       filter 0.12s ease,
       opacity 0.12s ease;
     -webkit-tap-highlight-color: transparent;
@@ -304,15 +306,15 @@
   }
   @media (hover: hover) {
     .kb-next-puzzle:hover {
-      filter: brightness(1.08);
+      background: var(--puzzle-ink-hover, #465D7E);
       transform: translateY(-1px);
     }
   }
   .kb-action-btn-secondary:disabled {
     opacity: 0.35;
     cursor: not-allowed;
-    border-color: rgba(24, 53, 94, 0.22);
-    color: rgba(24, 53, 94, 0.36);
+    border-color: rgba(26, 61, 91, 0.22);
+    color: rgba(26, 61, 91, 0.36);
     background: #fff;
     transform: none;
     filter: none;

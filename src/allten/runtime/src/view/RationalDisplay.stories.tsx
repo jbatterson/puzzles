@@ -53,7 +53,7 @@ export const GridOfCases = () => {
 			<div style={rowMarginStyle}>Size 16, interm1</div>
 			{makeRow(16, "interm1")}
 			<div style={rowMarginStyle}>Size 16, white on dark</div>
-			{makeRow(16, "white", "#18355E")}
+			{makeRow(16, "white", "#1a3d5b")}
 			<div style={rowMarginStyle}>Size 60</div>
 			{makeRow(60)}
 		</div>

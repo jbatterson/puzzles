@@ -135,7 +135,7 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
                         borderRadius: '6px',
                         border: 'none',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: completions[i] ? '#22c55e' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                        background: completions[i] ? '#6b9b3b' : current === i ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE,
                         color: completions[i] || current === i ? '#fff' : PUZZLE_SUITE_INK,
                         fontWeight: 900,
                         fontSize: '1.06rem',

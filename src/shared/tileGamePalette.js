@@ -3,10 +3,10 @@
  * Shape → token mapping is fixed; edit hex values here to retheme both games.
  */
 export const TILE_GAME_PALETTE = {
-    ltpurple: '#c066c7',
+    ltpurple: '#744b77',
     blue: '#4587ba',
-    amber: '#f26419',
-    dkred: '#a30800',
+    amber: '#ea9a19',
+    dkred: '#9d270c',
 
 
 }

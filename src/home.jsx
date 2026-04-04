@@ -203,7 +203,7 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
                             width: '28px',
                             height: '28px',
                             borderRadius: '6px',
-                            background: done ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                            background: done ? '#6b9b3b' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
                             color: done ? '#fff' : PUZZLE_SUITE_INK,
                             fontWeight: 900,
                             fontSize: '1rem',
@@ -229,7 +229,7 @@ function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
     const done = useAttempts ? (attempts != null) : completed
     const showSuccess = useAttempts && attempts != null
     const showFailed = useAttempts && failed && attempts == null
-    const bg = showSuccess ? '#22c55e' : (showFailed ? '#374151' : (done ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE))
+    const bg = showSuccess ? '#6b9b3b' : (showFailed ? '#374151' : (done ? '#6b9b3b' : PUZZLE_SUITE_SURFACE_INCOMPLETE))
     const content = useAttempts
         ? (attempts != null ? (attempts === 1 ? '★' : String(Math.min(attempts, 99))) : (failed ? '•' : '1'))
         : (completed ? (perfect ? '★' : '✓') : '1')
@@ -268,7 +268,7 @@ function CluelessBoxes({ attempts }) {
                             width: '28px',
                             height: '28px',
                             borderRadius: '6px',
-                            background: done ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                            background: done ? '#6b9b3b' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
                             color: done ? '#fff' : PUZZLE_SUITE_INK,
                             fontWeight: 900,
                             fontSize: '1rem',
@@ -417,7 +417,7 @@ export default function Home() {
                     --hairline: #e7e7e7;
                     --tile: #f4f4f4;
                     --tileHover: #eeeeee;
-                    --shadow: 0 1px 0 rgba(24, 53, 94, 0.06);
+                    --shadow: 0 1px 0 rgba(26, 61, 91, 0.06);
                     --radius: 10px;
                 }
 
@@ -498,7 +498,7 @@ export default function Home() {
                 }
 
                 a.hp-card:hover {
-                    background: rgba(24, 53, 94, 0.06);
+                    background: rgba(26, 61, 91, 0.06);
                     transform: translateY(-1px);
                 }
 
@@ -538,7 +538,7 @@ export default function Home() {
                 }
 
                 a.hp-card:focus-visible {
-                    outline: 3px solid rgba(24, 53, 94, 0.35);
+                    outline: 3px solid rgba(26, 61, 91, 0.35);
                     outline-offset: 3px;
                 }
 
@@ -568,17 +568,17 @@ export default function Home() {
                 }
                 .hp-shareBtn:hover { background: var(--puzzle-ink-hover); }
                 .hp-shareBtn:focus-visible {
-                    outline: 3px solid rgba(24, 53, 94, 0.45);
+                    outline: 3px solid rgba(26, 61, 91, 0.45);
                     outline-offset: 2px;
                 }
 
                 .toast-panel {
                     max-width: 420px;
-                    background: rgba(24, 53, 94, 0.95);
+                    background: rgba(26, 61, 91, 0.95);
                     color: var(--white);
                     padding: 14px 16px;
                     border-radius: 12px;
-                    box-shadow: 0 10px 28px rgba(24, 53, 94, 0.25);
+                    box-shadow: 0 10px 28px rgba(26, 61, 91, 0.25);
                     z-index: 50;
                 }
                 .toast-text { font-size: 0.9rem; line-height: 1.4; }
@@ -678,7 +678,7 @@ export default function Home() {
                                                             width: '28px',
                                                             height: '28px',
                                                             borderRadius: '6px',
-                                                            background: allTenTodayCount >= 10 ? '#22c55e' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                                                            background: allTenTodayCount >= 10 ? '#6b9b3b' : PUZZLE_SUITE_SURFACE_INCOMPLETE,
                                                             color: allTenTodayCount >= 10 ? '#fff' : PUZZLE_SUITE_INK,
                                                             fontWeight: 900,
                                                             fontSize: '1rem',

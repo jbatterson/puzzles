@@ -1,4 +1,5 @@
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
+import { HONEYCOMBS_BEE_ART_INNER_HTML } from '../../src/shared/icons/honeycombsBeeArtSvg.js'
 
 /**
  * Imperative SVG + keyboard game logic for Honeycombs (mounted inside React).
@@ -377,7 +378,7 @@ const BEE_ART = `
   <rect x="67.8" y="25.83" width="32.86" height="7.04" rx="3.52" ry="3.52" transform="translate(25.81 96.75) rotate(-68.3)"/>
   <circle cx="90.16" cy="14.43" r="6.73"/>
 </g>
-<polygon fill="#f6ae2d" points="100.76 41.16 49.24 41.16 23.47 85.78 49.24 130.41 100.76 130.41 126.53 85.78 100.76 41.16"/>
+<polygon fill="#faa80a" points="100.76 41.16 49.24 41.16 23.47 85.78 49.24 130.41 100.76 130.41 126.53 85.78 100.76 41.16"/>
 <path d="M144.41,85.42c-2.41-4.9-6.32-10.04-11.72-15.45-5.4-5.4-40.08-8.98-40.08-8.98,0,0,1.21,12.23,3.32,23.34h-41.76c2.11-11.12,3.32-23.34,3.32-23.34,0,0-34.68,3.57-40.08,8.98-5.4,5.4-9.31,10.54-11.72,15.45-2.41,4.88-3.38,9.47-2.91,13.74.47,4.27,2.32,8,5.53,11.22,3.21,3.21,6.92,5.06,11.11,5.53,4.2.47,8.78-.49,13.74-2.91.72-.35,1.44-.74,2.17-1.15l5.2,8.91h67.16l5.86-9.61c1.13.69,2.25,1.31,3.37,1.85,4.96,2.42,9.55,3.38,13.74,2.91,4.2-.47,7.91-2.33,11.11-5.53,3.22-3.22,5.06-6.95,5.53-11.22.47-4.27-.5-8.86-2.91-13.74ZM41.97,107.35c2.18-1.73,4.39-3.7,6.64-5.94.73-.72,1.41-2,2.07-3.63h48.73c.65,1.64,1.34,2.91,2.07,3.63,2.25,2.25,4.46,4.22,6.64,5.94H41.97Z"/>
 `
 
@@ -420,7 +421,7 @@ function shortestAngleDeltaDeg(fromDeg, toDeg) {
 function createBeeSprite(traceG, start, initialHeadingDeg) {
   const bee = document.createElementNS(SVG_NS, 'g')
   bee.setAttribute('class', 'trace-bee')
-  bee.innerHTML = BEE_ART
+  bee.innerHTML = HONEYCOMBS_BEE_ART_INNER_HTML
   const beeSize = Math.max(18, HEX_R * 1.15)
   const scale = beeSize / 150
   let angle = initialHeadingDeg + BEE_FORWARD_OFFSET_DEG
@@ -573,8 +574,8 @@ function runPathTraceAnimation(trace) {
 
   const { offX, offY } = computeGridOffsets()
   const drawColor = 'rgba(107, 114, 128, 0.5)'
-  const okColor = '#22c55e'
-  const badColor = '#b91c1c'
+  const okColor = '#6b9b3b'
+  const badColor = '#9d270c'
 
   const scheduleWinModalAfterPulse = () => {
     const idx = state.puzzleIdx
