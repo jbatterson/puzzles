@@ -267,7 +267,6 @@ function pushMoveHistory() {
 }
 
 function handleUndo() {
-  if (state.solved) return
   if (!state.moveHistory.length) return
   usedUndoOrReset = true
   notifyPathTraceUserInput()
@@ -275,6 +274,7 @@ function handleUndo() {
   for (let i = 0; i < state.cells.length; i++) {
     state.cells[i].value = prev[i]
   }
+  state.solved = false
   state.activeDigit = computeActiveDigitMinMissing()
   render()
 }
@@ -871,7 +871,7 @@ function renderKeyboard() {
   undoBtn.className = 'kb-action-btn-secondary'
   undoBtn.textContent = 'Undo'
   undoBtn.title = 'Undo last move'
-  undoBtn.disabled = state.solved || state.moveHistory.length === 0
+  undoBtn.disabled = state.moveHistory.length === 0
   undoBtn.addEventListener('click', (e) => { e.stopPropagation(); handleUndo() })
 
   const rst = document.createElement('button')
@@ -879,7 +879,7 @@ function renderKeyboard() {
   rst.className = 'kb-action-btn-secondary'
   rst.textContent = 'Reset'
   rst.title = 'Clear all player entries'
-  rst.disabled = state.solved
+  rst.disabled = state.moveHistory.length === 0
   rst.addEventListener('click', (e) => { e.stopPropagation(); handleClearAll() })
 
   actions.appendChild(undoBtn)
@@ -1002,7 +1002,6 @@ function handleKeyPress(num) {
 }
 
 function handleClearAll() {
-  if (state.solved) return
   const hasPlayer = state.cells.some(c => !c.isClue && c.value !== null)
   if (!hasPlayer) return
   usedUndoOrReset = true
@@ -1011,6 +1010,7 @@ function handleClearAll() {
   for (const cell of state.cells) {
     if (!cell.isClue) cell.value = null
   }
+  state.solved = false
   state.activeDigit = computeActiveDigitMinMissing()
   render()
 }
