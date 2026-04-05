@@ -28,7 +28,7 @@ import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
 import './honeycombs.css'
 
 const HONEYCOMBS_TUTORIAL_HINT_PATH =
-  'Tap empty hexagons to place the missing numbers to make a continuous path from 1-10.'
+  'Tap empty hexagons to place the missing numbers.\nMake a continuous path from 1-10.'
 const HONEYCOMBS_TUTORIAL_HINT_KEYBOARD =
   'Tap a dark-blue keyboard key to set it to active. \n Try starting this puzzle by placing the 5 and 6.'
 const HONEYCOMBS_TUTORIAL_HINT_ERASE =
