@@ -234,6 +234,24 @@ function clueValues() {
   return new Set(currentPuzzle().clues.map(([, , v]) => v))
 }
 
+/** Restore cell values to the current puzzle's clues-only baseline (same source as initPuzzle). */
+function resetCellsToPuzzleBaseline() {
+  const puzzle = currentPuzzle()
+  if (!puzzle) return
+  const clueMap = {}
+  for (const [r, c, v] of puzzle.clues) clueMap[cellKey(r, c)] = v
+  for (const cell of state.cells) {
+    const k = cellKey(cell.row, cell.col)
+    if (Object.prototype.hasOwnProperty.call(clueMap, k)) {
+      cell.value = clueMap[k]
+      cell.isClue = true
+    } else {
+      cell.value = null
+      cell.isClue = false
+    }
+  }
+}
+
 function placedValues() {
   return new Set(state.cells.map(c => c.value).filter(v => v !== null))
 }
@@ -1002,14 +1020,11 @@ function handleKeyPress(num) {
 }
 
 function handleClearAll() {
-  const hasPlayer = state.cells.some(c => !c.isClue && c.value !== null)
-  if (!hasPlayer) return
+  if (!state.moveHistory.length) return
   usedUndoOrReset = true
   notifyPathTraceUserInput()
-  pushMoveHistory()
-  for (const cell of state.cells) {
-    if (!cell.isClue) cell.value = null
-  }
+  resetCellsToPuzzleBaseline()
+  state.moveHistory = []
   state.solved = false
   state.activeDigit = computeActiveDigitMinMissing()
   render()

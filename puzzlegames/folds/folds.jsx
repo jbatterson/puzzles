@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react'
 import puzzleData from './puzzles.js'
 import { fillColor } from './palette.js'
 import TopBar from '../../src/shared/TopBar.jsx'
@@ -16,6 +16,7 @@ import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import FoldsIcon from '../../src/shared/icons/FoldsIcon.jsx'
+import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
 
 // ── Geometry (unchanged) ─────────────────────────────────────────────────────
 const S = 62, H = S * Math.sqrt(3) / 2, PAD = 40, N = 4, ANIM_MS = 450
@@ -30,7 +31,7 @@ const pts = (r, c) => {
 const easeIO = (t) => (t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2)
 const BROWN = '#653700'
 /** Emphasized fold line / touch confirm (lighter than suite ink for legibility on the grid). */
-const FOLD_LINE_ACCENT = '#3473CB'
+const FOLD_LINE_ACCENT = '#205786'
 
 const HEX_POLY = (() => {
     const L = N * S, V0 = { x: PAD + S / 2, y: PAD }, V1 = { x: V0.x + L, y: V0.y }, V2 = { x: V1.x + L / 2, y: V1.y + N * H }
@@ -183,6 +184,44 @@ const ALL_LINES = (() => {
     return lines
 })()
 
+/** Half of fold-hit strokeWidth (22) in grid space — a sample counts only if within this distance of a segment. */
+const FOLD_PICK_TOL = 11
+const FOLD_PICK_TOL_SQ = FOLD_PICK_TOL * FOLD_PICK_TOL
+/** Squared grid displacement from first sample; below this, skip multi-sample refinement (tap-like). */
+const FOLD_TRACE_MIN_DISP_SQ = 12 * 12
+const FOLD_TRACE_MIN_SAMPLES = 5
+const FOLD_TRACE_MIN_FRACTION = 0.42
+const FOLD_TRACE_MIN_COUNT_LEAD = 2
+
+/**
+ * Pick the fold line best supported by stroke samples. Only lines within FOLD_PICK_TOL count.
+ * Returns null if ambiguous or weak evidence (no global closest-line fallback).
+ */
+function pickLineFromStrokePoints(points, lines = ALL_LINES) {
+    if (!points || points.length < FOLD_TRACE_MIN_SAMPLES) return null
+    const n = points.length
+    const scored = lines.map(line => {
+        let cnt = 0
+        let sumD = 0
+        for (const p of points) {
+            const d2 = pointToSegmentDistSq(p.x, p.y, line.x1, line.y1, line.x2, line.y2)
+            if (d2 <= FOLD_PICK_TOL_SQ) {
+                cnt++
+                sumD += Math.sqrt(d2)
+            }
+        }
+        return { line, cnt, meanD: cnt > 0 ? sumD / cnt : Infinity }
+    })
+    scored.sort((a, b) => b.cnt - a.cnt || a.meanD - b.meanD)
+    const win = scored[0]
+    const second = scored[1]
+    if (!win || win.cnt === 0) return null
+    if (win.cnt / n < FOLD_TRACE_MIN_FRACTION) return null
+    if (second && win.cnt - second.cnt < FOLD_TRACE_MIN_COUNT_LEAD) return null
+    const last = points[points.length - 1]
+    return { lineKey: win.line.lineKey, anchor: last }
+}
+
 // ── Daily helpers ────────────────────────────────────────────────────────────
 function getDailyKey() {
     const now = new Date()
@@ -280,6 +319,13 @@ function saveFoldsWip(dateKey, idx, puzzle, board, folds, history) {
     }
 }
 
+function boardsMatchTarget(board, target) {
+    const tK = Object.keys(target), bK = Object.keys(board)
+    if (bK.length !== tK.length) return false
+    for (const k of tK) if (board[k] !== target[k]) return false
+    return true
+}
+
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
 function PuzzleBoxes({ current, completions, perfects, onChange }) {
     return (
@@ -300,6 +346,10 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
         </div>
     )
 }
+
+const FOLDS_TUTORIAL_HINT_TOUCH = 'Tap or trace a fold line to select it, then use the FOLD button to fold the colored triangles onto the faded ones.'
+const FOLDS_TUTORIAL_HINT_FINE_POINTER = 'Select a fold line to fold the colored triangles onto the faded ones.'
+const FOLDS_TUTORIAL_HINT_TWO_FOLDS = 'Use two folds to match the pattern.'
 
 // ── Main component ───────────────────────────────────────────────────────────
 const App = () => {
@@ -328,6 +378,12 @@ const App = () => {
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
 
+    const [tutorialHint1Dismissed, setTutorialHint1Dismissed] = useState(false)
+    /** Puzzle 5 in the UI (tutorial index 4): two-folds hint. */
+    const [tutorialHintTwoFoldsDismissed, setTutorialHintTwoFoldsDismissed] = useState(false)
+    const [coarsePointer, setCoarsePointer] = useState(() =>
+        typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches)
+
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
     const [pendingFoldLine, setPendingFoldLine] = useState(null)
@@ -338,6 +394,13 @@ const App = () => {
     const t0 = useRef(0)
     const hoverDelayRef = useRef(null)
     const ignoreBoardPointerUntilRef = useRef(0)
+    const foldTracePointerIdRef = useRef(null)
+    const foldTraceActiveRef = useRef(false)
+    const foldTraceSamplesRef = useRef([])
+    const foldTraceFirstRef = useRef(null)
+    const foldTraceMaxDispSqRef = useRef(0)
+    const foldTraceListenersRef = useRef(null)
+    const foldTraceHitLineKeyRef = useRef(null)
 
     const clientToGrid = useCallback((clientX, clientY) => {
         const svg = svgRef.current
@@ -354,9 +417,90 @@ const App = () => {
         return { x: cx + rx * cos - ry * sin, y: cy + rx * sin + ry * cos }
     }, [])
 
+    const endFoldTouchTrace = () => {
+        const pid = foldTracePointerIdRef.current
+        const svg = svgRef.current
+        if (svg && pid != null) {
+            try {
+                if (svg.hasPointerCapture?.(pid)) svg.releasePointerCapture(pid)
+            } catch (_) { /* ignore */ }
+        }
+        foldTracePointerIdRef.current = null
+        foldTraceActiveRef.current = false
+        foldTraceHitLineKeyRef.current = null
+        const rm = foldTraceListenersRef.current
+        if (rm) {
+            foldTraceListenersRef.current = null
+            rm()
+        }
+    }
+
+    const beginFoldTouchTrace = (e, grid, hitLineKey) => {
+        endFoldTouchTrace()
+        const svg = svgRef.current
+        if (!svg) return
+        const pointerIdForTrace = e.pointerId
+        foldTracePointerIdRef.current = pointerIdForTrace
+        foldTraceActiveRef.current = true
+        foldTraceHitLineKeyRef.current = hitLineKey
+        foldTraceSamplesRef.current = grid ? [grid] : []
+        foldTraceFirstRef.current = grid || null
+        foldTraceMaxDispSqRef.current = 0
+        try {
+            svg.setPointerCapture(pointerIdForTrace)
+        } catch (_) { /* ignore */ }
+
+        const onMove = (ev) => {
+            if (ev.pointerId !== pointerIdForTrace) return
+            if (foldTracePointerIdRef.current !== pointerIdForTrace) return
+            const g = clientToGrid(ev.clientX, ev.clientY)
+            if (!g) return
+            foldTraceSamplesRef.current.push(g)
+            if (!foldTraceFirstRef.current) foldTraceFirstRef.current = g
+            const fx = foldTraceFirstRef.current
+            if (fx) {
+                const d2 = (g.x - fx.x) ** 2 + (g.y - fx.y) ** 2
+                if (d2 > foldTraceMaxDispSqRef.current) foldTraceMaxDispSqRef.current = d2
+            }
+        }
+
+        const onEnd = (ev) => {
+            if (ev.pointerId !== pointerIdForTrace) return
+            if (foldTracePointerIdRef.current !== pointerIdForTrace) return
+            const gUp = clientToGrid(ev.clientX, ev.clientY)
+            if (gUp) foldTraceSamplesRef.current.push(gUp)
+            const samples = foldTraceSamplesRef.current
+            const maxDispSq = foldTraceMaxDispSqRef.current
+            const hitKey = foldTraceHitLineKeyRef.current
+            endFoldTouchTrace()
+            if (!hitKey) return
+            let lineKey = hitKey
+            let anchor = gUp || (samples.length ? samples[samples.length - 1] : null)
+            if (maxDispSq >= FOLD_TRACE_MIN_DISP_SQ && samples.length >= FOLD_TRACE_MIN_SAMPLES) {
+                const picked = pickLineFromStrokePoints(samples)
+                if (picked) {
+                    lineKey = picked.lineKey
+                    anchor = picked.anchor
+                }
+            }
+            setPendingFoldLine(lineKey)
+            setPendingFoldAnchor(anchor)
+        }
+
+        svg.addEventListener('pointermove', onMove)
+        svg.addEventListener('pointerup', onEnd)
+        svg.addEventListener('pointercancel', onEnd)
+        foldTraceListenersRef.current = () => {
+            svg.removeEventListener('pointermove', onMove)
+            svg.removeEventListener('pointerup', onEnd)
+            svg.removeEventListener('pointercancel', onEnd)
+        }
+    }
+
     /** Clears hover / pending fold UI. Use ignorePointerMs (e.g. 400) after modal close to absorb stray pointer events. */
     const clearFoldLineInteractionState = useCallback((options = {}) => {
         const { ignorePointerMs = false } = options
+        endFoldTouchTrace()
         if (hoverDelayRef.current) {
             clearTimeout(hoverDelayRef.current)
             hoverDelayRef.current = null
@@ -394,32 +538,74 @@ const App = () => {
     const [history, setHistory] = useState([puzzle.start])
     const [folds, setFolds] = useState(puzzle.folds)
     const [anim, setAnim] = useState(null)
+    const [playWinPulse, setPlayWinPulse] = useState(false)
+    /** Previous commit: board already matched target (avoids pulse when reopening a solved puzzle / WIP). */
+    const prevBoardMatchedTargetRef = useRef(false)
+    const boardRef = useRef(board)
+    const puzzleRef = useRef(puzzle)
+    boardRef.current = board
+    puzzleRef.current = puzzle
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         clearFoldLineInteractionState()
+        let nextBoard = puzzle.start
+        let nextHistory = [puzzle.start]
+        let nextFolds = puzzle.folds
         if (mode === 'tutorial') {
-            setBoard(puzzle.start)
-            setHistory([puzzle.start])
-            setFolds(puzzle.folds)
+            setBoard(nextBoard)
+            setHistory(nextHistory)
+            setFolds(nextFolds)
             setAnim(null)
             usedUndoOrResetRef.current = false
+            setPlayWinPulse(false)
+            prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
             return
         }
         const loaded = loadFoldsWip(daily.key, dailyIdx, puzzle)
         if (loaded) {
-            setBoard(loaded.board)
-            setHistory(loaded.history)
-            setFolds(loaded.folds)
+            nextBoard = loaded.board
+            nextHistory = loaded.history
+            nextFolds = loaded.folds
+            setBoard(nextBoard)
+            setHistory(nextHistory)
+            setFolds(nextFolds)
             setAnim(null)
             usedUndoOrResetRef.current = false
+            setPlayWinPulse(false)
+            prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
             return
         }
-        setBoard(puzzle.start)
-        setHistory([puzzle.start])
-        setFolds(puzzle.folds)
+        setBoard(nextBoard)
+        setHistory(nextHistory)
+        setFolds(nextFolds)
         setAnim(null)
         usedUndoOrResetRef.current = false
+        setPlayWinPulse(false)
+        prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
     }, [puzzle, mode, daily.key, dailyIdx, clearFoldLineInteractionState])
+
+    /** Defer transition check to next frame so layout hydration ref + latest board (via ref) stay aligned when switching puzzles. */
+    useEffect(() => {
+        let raf = 0
+        raf = requestAnimationFrame(() => {
+            raf = 0
+            const won = boardsMatchTarget(boardRef.current, puzzleRef.current.target)
+            const wasWon = prevBoardMatchedTargetRef.current
+            if (won && !wasWon) setPlayWinPulse(true)
+            if (!won) setPlayWinPulse(false)
+            prevBoardMatchedTargetRef.current = won
+        })
+        return () => {
+            if (raf) cancelAnimationFrame(raf)
+        }
+    }, [board, puzzle])
+
+    /** pulseWin runs 3 × 0.6s; drop class after so revisits don’t retrigger from leftover state. */
+    useEffect(() => {
+        if (!playWinPulse) return
+        const t = setTimeout(() => setPlayWinPulse(false), 1900)
+        return () => clearTimeout(t)
+    }, [playWinPulse])
 
     useEffect(() => {
         if (mode !== 'daily' || !puzzle || anim) return
@@ -435,7 +621,33 @@ const App = () => {
     }, [pendingFoldLine])
 
     useEffect(() => {
+        if (typeof window === 'undefined') return
+        const mq = window.matchMedia('(pointer: coarse)')
+        const onChange = () => setCoarsePointer(mq.matches)
+        mq.addEventListener('change', onChange)
+        return () => mq.removeEventListener('change', onChange)
+    }, [])
+
+    useEffect(() => {
+        if (mode !== 'tutorial') {
+            setTutorialHint1Dismissed(false)
+            setTutorialHintTwoFoldsDismissed(false)
+        }
+    }, [mode])
+
+    useEffect(() => {
+        if (tutorialIdx !== 0) setTutorialHint1Dismissed(false)
+    }, [tutorialIdx])
+
+    useEffect(() => {
+        if (tutorialIdx !== 4) setTutorialHintTwoFoldsDismissed(false)
+    }, [tutorialIdx])
+
+    useEffect(() => () => endFoldTouchTrace(), [])
+
+    useEffect(() => {
         const onPointerDownCapture = (e) => {
+            if (foldTraceActiveRef.current) return
             if (showInstructions || showStats || showLinks) return
             const wrap = canvasWrapperRef.current
             if (!wrap || wrap.contains(e.target)) return
@@ -449,6 +661,7 @@ const App = () => {
 
     const onSvgPointerDownCapture = useCallback((e) => {
         if (e.pointerType !== 'touch') return
+        if (foldTraceActiveRef.current) return
         if (!pendingFoldLineRef.current) return
         if (showInstructions || showStats || showLinks) return
         if (Date.now() < ignoreBoardPointerUntilRef.current) return
@@ -459,12 +672,7 @@ const App = () => {
         clearFoldLineInteractionState()
     }, [showInstructions, showStats, showLinks, clearFoldLineInteractionState])
 
-    const isWon = useMemo(() => {
-        const tK = Object.keys(puzzle.target), bK = Object.keys(board)
-        if (bK.length !== tK.length) return false
-        for (const k of tK) if (board[k] !== puzzle.target[k]) return false
-        return true
-    }, [board, puzzle])
+    const isWon = useMemo(() => boardsMatchTarget(board, puzzle.target), [board, puzzle])
 
     // Mark complete when won
     useEffect(() => {
@@ -617,9 +825,32 @@ const App = () => {
                     <div className="selector-group">
                         <button className={`nav-arrow ${tutorialIdx === 0 ? 'disabled' : ''}`}
                             onClick={() => { if (tutorialIdx > 0) setTutorialIdx(i => i - 1) }}>←</button>
-                        <div className="level-label">
-                            <span className="sub">Tutorial</span>
-                            <span className="num">{tutorialIdx + 1}</span>
+                        <div
+                            style={{
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <div className="level-label">
+                                <span className="sub">Tutorial</span>
+                                <span className="num">{tutorialIdx + 1}</span>
+                            </div>
+                            {tutorialIdx === 0 && !tutorialHint1Dismissed && (
+                                <DismissibleHintToast
+                                    message={coarsePointer ? FOLDS_TUTORIAL_HINT_TOUCH : FOLDS_TUTORIAL_HINT_FINE_POINTER}
+                                    align="center"
+                                    onDismiss={() => setTutorialHint1Dismissed(true)}
+                                />
+                            )}
+                            {tutorialIdx === 4 && !tutorialHintTwoFoldsDismissed && (
+                                <DismissibleHintToast
+                                    message={FOLDS_TUTORIAL_HINT_TWO_FOLDS}
+                                    align="center"
+                                    onDismiss={() => setTutorialHintTwoFoldsDismissed(true)}
+                                />
+                            )}
                         </div>
                         <button className={`nav-arrow ${tutorialIdx === puzzleData.tutorial.length - 1 ? 'disabled' : ''}`}
                             onClick={() => { if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1) }}>→</button>
@@ -673,7 +904,7 @@ const App = () => {
                             })}
                             {Object.entries(board).map(([k, col]) => {
                                 const [r, c] = k.split(',').map(Number)
-                                return <polygon key={`b-${k}`} points={pts(r, c)} fill={fillColor(col)} className={isWon ? 'pulse-win' : ''} style={{ transformOrigin: `${cent(r,c).x}px ${cent(r,c).y}px` }} />
+                                return <polygon key={`b-${k}`} points={pts(r, c)} fill={fillColor(col)} className={playWinPulse ? 'pulse-win' : ''} style={{ transformOrigin: `${cent(r,c).x}px ${cent(r,c).y}px` }} />
                             })}
                             {anim && (
                                 <g transform={`matrix(${1 + easeIO(anim.rawT) * (Math.cos(2 * anim.line.theta) - 1)} ${easeIO(anim.rawT) * Math.sin(2 * anim.line.theta)} ${easeIO(anim.rawT) * Math.sin(2 * anim.line.theta)} ${1 - easeIO(anim.rawT) * (1 + Math.cos(2 * anim.line.theta))} ${easeIO(anim.rawT) * (anim.line.px * (1 - Math.cos(2 * anim.line.theta)) - anim.line.py * Math.sin(2 * anim.line.theta))} ${easeIO(anim.rawT) * (anim.line.py * (1 + Math.cos(2 * anim.line.theta)) - anim.line.px * Math.sin(2 * anim.line.theta))})`}>
@@ -712,17 +943,13 @@ const App = () => {
                                         }
                                         if (e.pointerType === 'touch') {
                                             const grid = clientToGrid(e.clientX, e.clientY)
-                                            if (pendingFoldLine === null) {
-                                                setPendingFoldLine(l.lineKey)
-                                                setPendingFoldAnchor(grid || null)
-                                            } else if (pendingFoldLine === l.lineKey) {
+                                            if (pendingFoldLine === l.lineKey) {
                                                 setPendingFoldLine(null)
                                                 setPendingFoldAnchor(null)
                                                 handleFold(l.lineKey)
-                                            } else {
-                                                setPendingFoldLine(l.lineKey)
-                                                setPendingFoldAnchor(grid || null)
+                                                return
                                             }
+                                            beginFoldTouchTrace(e, grid, l.lineKey)
                                         }
                                     }}
                                 >
