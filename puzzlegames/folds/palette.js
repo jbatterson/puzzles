@@ -2,10 +2,10 @@ import { PUZZLE_SUITE_INK } from '../../shared-contracts/chromeUi.js'
 
 /** Token → display hex for Folds puzzle cells. Edit here to retheme all puzzles. */
 export const FOLDS_PALETTE = {
-    red: '#e66857',
+    red: '#9d270c',
     green: '#3f6d37',
     dkblue: '#1a3d5b',
-    purple: '#744b77',
+    blue: '#2571b1',
     amber: '#ea9a19',
 }
 
