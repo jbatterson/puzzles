@@ -13,6 +13,7 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import ProductilesIcon from '../../src/shared/icons/ProductilesIcon.jsx'
@@ -247,12 +248,13 @@ export default function Productiles() {
     const dailyKeyRef = useRef(daily.key)
     const dailyIdxRef = useRef(0)
     const modeRef = useRef('daily')
-    const [mode, setMode]               = useState('daily') // 'daily' | 'tutorial'
-    const [tutorialIdx, setTutorialIdx] = useState(0)
+    const [mode, setMode]               = useState(() => getInitialTutorialNav(GAME_KEYS.PRODUCTILES, puzzleData.tutorial ?? []).mode)
+    const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.PRODUCTILES, puzzleData.tutorial ?? []).tutorialIdx)
     const [dailyIdx, setDailyIdx]       = useState(() => parseHubDailyPuzzleParam())
     dailyKeyRef.current = daily.key
     dailyIdxRef.current = dailyIdx
     modeRef.current = mode
+
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects]       = useState(() => loadPerfects(daily.key))
     const [moveCounts, setMoveCounts]   = useState(() => loadMoveCounts(daily.key))
@@ -273,6 +275,10 @@ export default function Productiles() {
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
     const pendingSuiteModalAfterAnimRef = useRef(false)
+
+    useEffect(() => {
+        persistTutorialResumeState(GAME_KEYS.PRODUCTILES, mode, tutorialIdx)
+    }, [mode, tutorialIdx])
 
     const currentPuzzleData = useMemo(() => {
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
@@ -670,7 +676,7 @@ export default function Productiles() {
                 <div className="level-nav">
                     <div className="left-spacer">
                         <button className="skip-link" onClick={() => { setMode('tutorial'); setTutorialIdx(0) }}>
-                            Play Tutorial
+                            {CTA_LABELS.PLAY_TUTORIAL}
                         </button>
                     </div>
                     <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>

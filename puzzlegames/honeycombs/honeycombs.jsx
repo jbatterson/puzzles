@@ -1,5 +1,6 @@
 import React, {
   useState,
+  useEffect,
   useMemo,
   useCallback,
   useRef,
@@ -19,10 +20,19 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import HoneycombsIcon from '../../src/shared/icons/HoneycombsIcon.jsx'
+import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
 import './honeycombs.css'
+
+const HONEYCOMBS_TUTORIAL_HINT_PATH =
+  'Tap empty hexagons to place the missing numbers to make a continuous path from 1-10.'
+const HONEYCOMBS_TUTORIAL_HINT_KEYBOARD =
+  'Tap a dark-blue keyboard key to set it to active. \n Try starting this puzzle by placing the 5 and 6.'
+const HONEYCOMBS_TUTORIAL_HINT_ERASE =
+  'Tap any placed number to erase it and set it to active.'
 
 function getDateLabel() {
   const now = new Date()
@@ -86,8 +96,12 @@ export default function HoneycombsApp() {
   const baseRaw = import.meta.env.BASE_URL || '/'
   const base = baseRaw.endsWith('/') ? baseRaw : `${baseRaw}/`
 
-  const [mode, setMode] = useState('daily')
-  const [tutorialIdx, setTutorialIdx] = useState(0)
+  const [mode, setMode] = useState(() =>
+    getInitialTutorialNav(GAME_KEYS.HONEYCOMBS, puzzleData.tutorial ?? []).mode,
+  )
+  const [tutorialIdx, setTutorialIdx] = useState(() =>
+    getInitialTutorialNav(GAME_KEYS.HONEYCOMBS, puzzleData.tutorial ?? []).tutorialIdx,
+  )
   const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
   const [completions, setCompletions] = useState(() => loadCompletions(daily.dateKey))
   const [perfects, setPerfects] = useState(() => loadPerfects(daily.dateKey))
@@ -98,6 +112,9 @@ export default function HoneycombsApp() {
   const [showLinks, setShowLinks] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [tutorialHintPathDismissed, setTutorialHintPathDismissed] = useState(false)
+  const [tutorialHintKeyboardDismissed, setTutorialHintKeyboardDismissed] = useState(false)
+  const [tutorialHintEraseDismissed, setTutorialHintEraseDismissed] = useState(false)
 
   const {
     hasSeenInstructions,
@@ -115,6 +132,10 @@ export default function HoneycombsApp() {
   const pendingSuiteModalRef = useRef(false)
   const allDailyDoneCompletionRef = useRef(null)
   const tutorialPuzzles = useMemo(() => puzzleData.tutorial || [], [])
+
+  useEffect(() => {
+    persistTutorialResumeState(GAME_KEYS.HONEYCOMBS, mode, tutorialIdx)
+  }, [mode, tutorialIdx])
 
   const activePuzzles = useMemo(
     () => (mode === 'tutorial' ? tutorialPuzzles : daily.puzzles),
@@ -227,9 +248,39 @@ export default function HoneycombsApp() {
             >
               ←
             </button>
-            <div className="level-label">
-              <span className="sub">Tutorial</span>
-              <span className="num">{tutorialIdx + 1}</span>
+            <div
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+              }}
+            >
+              <div className="level-label">
+                <span className="sub">Tutorial</span>
+                <span className="num">{tutorialIdx + 1}</span>
+              </div>
+              {tutorialIdx === 0 && !tutorialHintPathDismissed && (
+                <DismissibleHintToast
+                  message={HONEYCOMBS_TUTORIAL_HINT_PATH}
+                  align="center"
+                  onDismiss={() => setTutorialHintPathDismissed(true)}
+                />
+              )}
+              {tutorialIdx === 3 && !tutorialHintKeyboardDismissed && (
+                <DismissibleHintToast
+                  message={HONEYCOMBS_TUTORIAL_HINT_KEYBOARD}
+                  align="center"
+                  onDismiss={() => setTutorialHintKeyboardDismissed(true)}
+                />
+              )}
+              {tutorialIdx === 4 && !tutorialHintEraseDismissed && (
+                <DismissibleHintToast
+                  message={HONEYCOMBS_TUTORIAL_HINT_ERASE}
+                  align="center"
+                  onDismiss={() => setTutorialHintEraseDismissed(true)}
+                />
+              )}
             </div>
             <button
               className={`nav-arrow ${tutorialIdx === tutorialPuzzles.length - 1 ? 'disabled' : ''}`}

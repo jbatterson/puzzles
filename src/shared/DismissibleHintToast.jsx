@@ -13,7 +13,7 @@ export default function DismissibleHintToast({
 
     return (
         <div
-            className={`toast-panel share-result-toast share-result-toast--below ${alignClass}`}
+            className={`toast-panel share-result-toast dismissible-hint-toast share-result-toast--below ${alignClass}`}
             role="status"
         >
             <div className="toast-row share-result-toast__row">

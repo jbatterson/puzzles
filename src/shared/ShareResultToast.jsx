@@ -14,12 +14,15 @@ export default function ShareResultToast({
     onTransitionEnd,
     onDismiss,
     align = 'end',
+    /** Merged onto root; use for e.g. fixed viewport positioning (in-game share). */
+    style: rootStyle,
 }) {
     const alignClass = align === 'center' ? 'share-result-toast--align-center' : 'share-result-toast--align-end'
 
     return (
         <div
             className={`toast-panel share-result-toast share-result-toast--below ${alignClass}${fadeOut ? ' share-result-toast--fadeOut' : ''}`}
+            style={rootStyle}
             role="status"
             onTransitionEnd={onTransitionEnd}
         >

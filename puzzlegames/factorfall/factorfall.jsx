@@ -12,6 +12,7 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
@@ -269,8 +270,8 @@ const Factorfall = () => {
     const dateLabel = useMemo(() => getDateLabel(), [])
 
     const usedUndoOrResetRef = useRef(false)
-    const [mode, setMode] = useState('daily')
-    const [tutorialIdx, setTutorialIdx] = useState(0)
+    const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.FACTORFALL, puzzleData.tutorial ?? []).mode)
+    const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.FACTORFALL, puzzleData.tutorial ?? []).tutorialIdx)
     const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
@@ -288,6 +289,10 @@ const Factorfall = () => {
     const [showStats, setShowStats] = useState(false)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
+
+    useEffect(() => {
+        persistTutorialResumeState(GAME_KEYS.FACTORFALL, mode, tutorialIdx)
+    }, [mode, tutorialIdx])
 
     const wrapperRef = useRef(null)
     const canvasRef = useRef(null)
@@ -903,7 +908,7 @@ const Factorfall = () => {
                 <div className="level-nav">
                     <div className="left-spacer">
                         <button className="skip-link" onClick={() => { setMode('tutorial'); setTutorialIdx(0) }}>
-                            Play Tutorial
+                            {CTA_LABELS.PLAY_TUTORIAL}
                         </button>
                     </div>
                     <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>

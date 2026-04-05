@@ -12,9 +12,38 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import BugIconPuzzle from '../../src/shared/icons/BugIconPuzzle.jsx'
+import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
+
+const SCURRY_TUTORIAL_HINTS = [
+    {
+        idx: 0,
+        message: 'Tap a yellow square to place a bug in it.\nThe bug on the grid will scurry one square away.',
+    },
+    {
+        idx: 1,
+        message: 'This puzzle takes 2 bugs to solve.\nTry to get all bugs into the target squares.',
+    },
+    {
+        idx: 3,
+        message: 'One bug can push two bugs into target squares.',
+    },
+    {
+        idx: 4,
+        message: 'Use what you learned in the last puzzle to help you solve this one.',
+    },
+    {
+        idx: 6,
+        message: 'Bugs do not need to be placed next to other bugs.',
+    },
+    {
+        idx: 8,
+        message: 'If two bugs are side-by-side, pushing one into the other will move them both.',
+    },
+]
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
 function getDailyKey() {
@@ -159,8 +188,8 @@ const BugPuzzle = () => {
     const dateLabel = useMemo(() => getDateLabel(), [])
 
     const usedUndoOrResetRef = useRef(false)
-    const [mode, setMode] = useState('daily') // 'daily' | 'tutorial'
-    const [tutorialIdx, setTutorialIdx] = useState(0)
+    const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.SCURRY, puzzleData.tutorial ?? []).mode)
+    const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.SCURRY, puzzleData.tutorial ?? []).tutorialIdx)
     const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
@@ -178,6 +207,14 @@ const BugPuzzle = () => {
     const [showStats, setShowStats] = useState(false)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
+
+    const [tutorialHintsDismissed, setTutorialHintsDismissed] = useState(() =>
+        Object.fromEntries(SCURRY_TUTORIAL_HINTS.map(({ idx }) => [idx, false])),
+    )
+
+    useEffect(() => {
+        persistTutorialResumeState(GAME_KEYS.SCURRY, mode, tutorialIdx)
+    }, [mode, tutorialIdx])
 
     const [bugs, setBugs] = useState([])
     const [bugsPlacedCount, setBugsPlacedCount] = useState(0)
@@ -382,9 +419,30 @@ const BugPuzzle = () => {
                     <div className="selector-group">
                         <button className={`nav-arrow ${tutorialIdx === 0 ? 'disabled' : ''}`}
                             onClick={() => { if (tutorialIdx > 0) setTutorialIdx(i => i - 1) }}>←</button>
-                        <div className="level-label">
-                            <span className="sub">Tutorial</span>
-                            <span className="num">{tutorialIdx + 1}</span>
+                        <div
+                            style={{
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <div className="level-label">
+                                <span className="sub">Tutorial</span>
+                                <span className="num">{tutorialIdx + 1}</span>
+                            </div>
+                            {SCURRY_TUTORIAL_HINTS.map(({ idx, message }) =>
+                                tutorialIdx === idx && !tutorialHintsDismissed[idx] ? (
+                                    <DismissibleHintToast
+                                        key={idx}
+                                        message={message}
+                                        align="center"
+                                        onDismiss={() => {
+                                            setTutorialHintsDismissed((d) => ({ ...d, [idx]: true }))
+                                        }}
+                                    />
+                                ) : null,
+                            )}
                         </div>
                         <button className={`nav-arrow ${tutorialIdx === puzzleData.tutorial.length - 1 ? 'disabled' : ''}`}
                             onClick={() => { if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1) }}>→</button>
@@ -398,7 +456,7 @@ const BugPuzzle = () => {
                 <div className="level-nav">
                     <div className="left-spacer">
                         <button className="skip-link" onClick={() => { setMode('tutorial'); setTutorialIdx(0) }}>
-                            Play Tutorial
+                            {CTA_LABELS.PLAY_TUTORIAL}
                         </button>
                     </div>
                     <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>

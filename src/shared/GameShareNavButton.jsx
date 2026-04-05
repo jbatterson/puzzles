@@ -9,11 +9,34 @@ import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './ShareResultToast.jsx'
 export default function GameShareNavButton({ gameKey, dateKey, canShare }) {
     const base = import.meta.env.BASE_URL
     const [shareToast, setShareToast] = useState(null)
+    const [shareToastTop, setShareToastTop] = useState(null)
     const toastTimeoutRef = useRef(null)
+    const wrapRef = useRef(null)
+
+    const measureToastTop = useCallback(() => {
+        const n = wrapRef.current
+        if (!n) return
+        const r = n.getBoundingClientRect()
+        setShareToastTop(r.bottom + 6)
+    }, [])
 
     useEffect(() => () => {
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
     }, [])
+
+    useEffect(() => {
+        if (shareToast == null) {
+            setShareToastTop(null)
+            return
+        }
+        measureToastTop()
+        window.addEventListener('resize', measureToastTop)
+        window.addEventListener('scroll', measureToastTop, true)
+        return () => {
+            window.removeEventListener('resize', measureToastTop)
+            window.removeEventListener('scroll', measureToastTop, true)
+        }
+    }, [shareToast, measureToastTop])
 
     const dismissShareToast = useCallback(() => {
         if (toastTimeoutRef.current) {
@@ -29,6 +52,9 @@ export default function GameShareNavButton({ gameKey, dateKey, canShare }) {
         if (!text) return
         navigator.clipboard.writeText(text).then(() => {
             if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+            const n = wrapRef.current
+            const r = n?.getBoundingClientRect()
+            if (r) setShareToastTop(r.bottom + 6)
             setShareToast({ preview: text, fadeOut: false })
             toastTimeoutRef.current = setTimeout(() => {
                 setShareToast(prev => (prev ? { ...prev, fadeOut: true } : null))
@@ -37,8 +63,21 @@ export default function GameShareNavButton({ gameKey, dateKey, canShare }) {
         })
     }, [canShare, gameKey, dateKey, base])
 
+    const toastViewportStyle =
+        shareToast != null && shareToastTop != null
+            ? {
+                  position: 'fixed',
+                  top: shareToastTop,
+                  left: '50%',
+                  right: 'auto',
+                  transform: 'translateX(-50%)',
+                  marginTop: 0,
+                  zIndex: 10050,
+              }
+            : undefined
+
     return (
-        <div className="game-nav-share-wrap">
+        <div ref={wrapRef} className="game-nav-share-wrap">
             <button
                 type="button"
                 className="game-nav-share-btn"
@@ -53,6 +92,7 @@ export default function GameShareNavButton({ gameKey, dateKey, canShare }) {
                     preview={shareToast.preview}
                     fadeOut={shareToast.fadeOut}
                     align="end"
+                    style={toastViewportStyle}
                     onDismiss={dismissShareToast}
                     onTransitionEnd={(e) => {
                         if (e.target !== e.currentTarget || e.propertyName !== 'opacity') return

@@ -1074,6 +1074,11 @@ html, body {
     line-height: 1.35;
 }
 
+/* Tutorial / dismissible hints: ~45 characters per line (uses current font’s “0” width). */
+.toast-panel.share-result-toast.dismissible-hint-toast .share-result-toast__inner {
+    max-width: 35ch;
+}
+
 /* In-game: toast positions against .game-dice-share-anchor (not this 28px-wide wrap). */
 .game-nav-share-wrap {
     position: static;

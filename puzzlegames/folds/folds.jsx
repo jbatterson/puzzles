@@ -13,6 +13,7 @@ import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import FoldsIcon from '../../src/shared/icons/FoldsIcon.jsx'
@@ -348,8 +349,8 @@ function PuzzleBoxes({ current, completions, perfects, onChange }) {
 }
 
 const FOLDS_TUTORIAL_HINT_TOUCH = 'Tap or trace a fold line to select it, then use the FOLD button to fold the colored triangles onto the faded ones.'
-const FOLDS_TUTORIAL_HINT_FINE_POINTER = 'Select a fold line to fold the colored triangles onto the faded ones.'
-const FOLDS_TUTORIAL_HINT_TWO_FOLDS = 'Use two folds to match the pattern.'
+const FOLDS_TUTORIAL_HINT_FINE_POINTER = 'Select a fold line to fold the colored triangles across so that they land on the faded ones.'
+const FOLDS_TUTORIAL_HINT_TWO_FOLDS = 'It takes two folds to match this pattern.'
 
 // ── Main component ───────────────────────────────────────────────────────────
 const App = () => {
@@ -358,8 +359,8 @@ const App = () => {
     const dateLabel = useMemo(() => getDateLabel(), [])
 
     const usedUndoOrResetRef = useRef(false)
-    const [mode, setMode] = useState('daily') // 'daily' | 'tutorial'
-    const [tutorialIdx, setTutorialIdx] = useState(0)
+    const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.FOLDS, puzzleData.tutorial ?? []).mode)
+    const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.FOLDS, puzzleData.tutorial ?? []).tutorialIdx)
     const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
@@ -383,6 +384,10 @@ const App = () => {
     const [tutorialHintTwoFoldsDismissed, setTutorialHintTwoFoldsDismissed] = useState(false)
     const [coarsePointer, setCoarsePointer] = useState(() =>
         typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches)
+
+    useEffect(() => {
+        persistTutorialResumeState(GAME_KEYS.FOLDS, mode, tutorialIdx)
+    }, [mode, tutorialIdx])
 
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
@@ -864,7 +869,7 @@ const App = () => {
                 <div className="level-nav">
                     <div className="left-spacer">
                         <button className="skip-link" onClick={() => { setMode('tutorial'); setTutorialIdx(0) }}>
-                            Play Tutorial
+                            {CTA_LABELS.PLAY_TUTORIAL}
                         </button>
                     </div>
                     <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
