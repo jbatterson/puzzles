@@ -554,10 +554,6 @@ hard: [
         target: {"1,3":"dkblue","1,2":"dkblue","0,2":"amber","0,1":"amber","0,0":"amber","1,4":"amber","1,5":"amber","2,5":"amber","2,3":"dkblue","2,2":"dkblue","3,2":"amber","3,1":"amber","3,0":"amber","2,4":"amber","3,8":"dkblue","3,9":"dkblue","3,10":"amber","3,11":"amber","4,11":"amber","2,8":"amber","2,7":"amber","2,6":"amber","3,7":"dkblue","4,7":"dkblue","4,6":"amber","5,6":"amber","5,7":"amber","3,6":"amber"},
         folds: 3},
 
-        {start: {"5,8":"dkblue","4,6":"dkblue","4,8":"dkblue","4,7":"green"}, //hard
-        target: {"5,8":"dkblue","4,6":"dkblue","4,8":"dkblue","4,7":"green","2,0":"dkblue","3,2":"dkblue","2,1":"dkblue","2,2":"green","5,6":"dkblue","5,7":"green","7,0":"dkblue","6,2":"dkblue","7,1":"dkblue","7,2":"green","2,8":"dkblue","3,6":"dkblue","3,8":"dkblue","3,7":"green","5,0":"dkblue","4,2":"dkblue","5,1":"dkblue","5,2":"green","2,6":"dkblue","2,7":"green","0,0":"dkblue","1,2":"dkblue","0,1":"dkblue","0,2":"green"},
-        folds: 3},
-
         {start: {"7,8":"dkblue","7,7":"dkblue","6,6":"red","7,6":"red","6,4":"red","7,4":"red","6,5":"red"},
         target: {"7,8":"dkblue","7,7":"dkblue","6,6":"red","7,6":"red","6,4":"red","7,4":"red","6,5":"red","2,8":"dkblue","2,7":"dkblue","3,6":"red","2,6":"red","3,4":"red","2,4":"red","3,5":"red","4,0":"dkblue","5,0":"dkblue","5,2":"red","5,1":"red","6,3":"red","6,2":"red","5,3":"red","3,7":"red","3,8":"red","4,8":"red","4,9":"red","4,7":"red","0,8":"dkblue","0,7":"dkblue","1,6":"red","0,6":"red","1,4":"red","0,4":"red","1,5":"red","5,8":"dkblue","5,7":"dkblue","4,6":"red","5,6":"red","4,4":"red","5,4":"red","4,5":"red","3,0":"dkblue","2,0":"dkblue","2,2":"red","2,1":"red","1,3":"red","1,2":"red","2,3":"red","3,9":"red"},
         folds: 3},
