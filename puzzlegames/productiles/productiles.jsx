@@ -442,7 +442,14 @@ export default function Productiles() {
     // Mark complete when solved
     useEffect(() => {
         if (isSolved && !curateMode && mode === 'daily') {
-            const moves = stateRef.current?.moveHistory?.length ?? 0
+            const s = stateRef.current
+            if (!s?.tiles?.length) return
+            const { curR, curC } = computeProducts(s.tiles, s.size)
+            const won =
+                s.targets.rows.every((v, i) => curR[i] === v) &&
+                s.targets.cols.every((v, i) => curC[i] === v)
+            if (!won) return
+            const moves = s.moveHistory?.length ?? 0
             markComplete(daily.key, dailyIdx, !usedUndoOrResetRef.current, moves)
             setCompletions(loadCompletions(daily.key))
             setPerfects(loadPerfects(daily.key))
