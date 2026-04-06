@@ -18,6 +18,9 @@ import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintex
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import FoldsIcon from '../../src/shared/icons/FoldsIcon.jsx'
 import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
+import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
+import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
+import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 
 // ── Geometry (unchanged) ─────────────────────────────────────────────────────
 const S = 62, H = S * Math.sqrt(3) / 2, PAD = 40, N = 4, ANIM_MS = 450
@@ -357,6 +360,8 @@ const App = () => {
     const chrome = getGameChrome(GAME_KEYS.FOLDS)
     const daily = useMemo(() => getDailyPuzzles(), [])
     const dateLabel = useMemo(() => getDateLabel(), [])
+    const roster = useMemo(() => buildTierRoster(puzzleData), [])
+    const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.FOLDS, puzzleData.tutorial ?? []).mode)
@@ -373,9 +378,14 @@ const App = () => {
         showInstructions,
         setShowInstructions,
         closeInstructions: closeInstructionsBase,
-    } = useInstructionsGate('folds:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'folds' })
+    } = useInstructionsGate('folds:hasSeenInstructions', {
+        openOnMount: !curateMode,
+        completionStoragePrefix: 'folds',
+        initiallyClosed: curateMode,
+    })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
 
@@ -386,8 +396,8 @@ const App = () => {
         typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches)
 
     useEffect(() => {
-        persistTutorialResumeState(GAME_KEYS.FOLDS, mode, tutorialIdx)
-    }, [mode, tutorialIdx])
+        if (!curateMode) persistTutorialResumeState(GAME_KEYS.FOLDS, mode, tutorialIdx)
+    }, [curateMode, mode, tutorialIdx])
 
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
@@ -535,9 +545,10 @@ const App = () => {
     }, [clearFoldLineInteractionState])
 
     const puzzle = useMemo(() => {
+        if (curateMode) return roster[curateIdx]?.puzzle
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
         return daily.puzzles[dailyIdx]
-    }, [mode, tutorialIdx, dailyIdx, daily])
+    }, [curateMode, curateIdx, roster, mode, tutorialIdx, dailyIdx, daily])
 
     const [board, setBoard] = useState(puzzle.start)
     const [history, setHistory] = useState([puzzle.start])
@@ -556,6 +567,22 @@ const App = () => {
         let nextBoard = puzzle.start
         let nextHistory = [puzzle.start]
         let nextFolds = puzzle.folds
+        if (curateMode) {
+            const loaded = loadFoldsWip('curate', curateIdx, puzzle)
+            if (loaded) {
+                nextBoard = loaded.board
+                nextHistory = loaded.history
+                nextFolds = loaded.folds
+            }
+            setBoard(nextBoard)
+            setHistory(nextHistory)
+            setFolds(nextFolds)
+            setAnim(null)
+            usedUndoOrResetRef.current = false
+            setPlayWinPulse(false)
+            prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
+            return
+        }
         if (mode === 'tutorial') {
             setBoard(nextBoard)
             setHistory(nextHistory)
@@ -587,7 +614,7 @@ const App = () => {
         usedUndoOrResetRef.current = false
         setPlayWinPulse(false)
         prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
-    }, [puzzle, mode, daily.key, dailyIdx, clearFoldLineInteractionState])
+    }, [puzzle, curateMode, curateIdx, mode, daily.key, dailyIdx, clearFoldLineInteractionState])
 
     /** Defer transition check to next frame so layout hydration ref + latest board (via ref) stay aligned when switching puzzles. */
     useEffect(() => {
@@ -613,9 +640,14 @@ const App = () => {
     }, [playWinPulse])
 
     useEffect(() => {
-        if (mode !== 'daily' || !puzzle || anim) return
+        if (!puzzle || anim) return
+        if (curateMode) {
+            saveFoldsWip('curate', curateIdx, puzzle, board, folds, history)
+            return
+        }
+        if (mode !== 'daily') return
         saveFoldsWip(daily.key, dailyIdx, puzzle, board, folds, history)
-    }, [mode, daily.key, dailyIdx, puzzle, board, folds, history, anim])
+    }, [curateMode, curateIdx, mode, daily.key, dailyIdx, puzzle, board, folds, history, anim])
 
     useEffect(() => () => {
         if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
@@ -681,12 +713,12 @@ const App = () => {
 
     // Mark complete when won
     useEffect(() => {
-        if (isWon && mode === 'daily') {
+        if (isWon && !curateMode && mode === 'daily') {
             markComplete(daily.key, dailyIdx, !usedUndoOrResetRef.current)
             setCompletions(loadCompletions(daily.key))
             setPerfects(loadPerfects(daily.key))
         }
-    }, [isWon])
+    }, [isWon, curateMode, mode, daily.key, dailyIdx])
 
     const SNAP_TOL = (S * 0.6) ** 2
 
@@ -768,6 +800,11 @@ const App = () => {
 
     const handlePrimaryClick = () => {
         if (isWon) {
+            if (curateMode) {
+                clearFoldsWip('curate', curateIdx)
+                if (curateIdx < roster.length - 1) setCurateIdx(j => j + 1)
+                return
+            }
             if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
             if (mode === 'tutorial') {
                 if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
@@ -778,7 +815,8 @@ const App = () => {
             }
         } else if (folds <= 0) {
             usedUndoOrResetRef.current = true
-            if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
+            if (curateMode) clearFoldsWip('curate', curateIdx)
+            else if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
             setBoard(puzzle.start)
             setHistory([puzzle.start])
             setFolds(puzzle.folds)
@@ -786,14 +824,16 @@ const App = () => {
     }
 
     const primaryLabel = isWon
-        ? mode === 'tutorial'
-            ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
-            : [0, 1, 2].find(i => i !== dailyIdx && !completions[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
+        ? curateMode
+            ? curateIdx < roster.length - 1 ? CTA_LABELS.NEXT_PUZZLE : null
+            : mode === 'tutorial'
+              ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
+              : [0, 1, 2].find(i => i !== dailyIdx && !completions[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
         : folds <= 0 ? 'Retry Puzzle'
         : null
 
     useEffect(() => {
-        if (mode !== 'daily') return
+        if (curateMode || mode !== 'daily') return
         const done = completions.every(Boolean)
         if (allDailyDoneCompletionRef.current === null) {
             allDailyDoneCompletionRef.current = done
@@ -805,9 +845,29 @@ const App = () => {
             }, 500)
         }
         allDailyDoneCompletionRef.current = done
-    }, [mode, completions])
+    }, [curateMode, mode, completions])
 
     const base = import.meta.env.BASE_URL
+
+    const handleStatsClick = useCallback(() => {
+        if (curateMode) {
+            const entry = roster[curateIdx]
+            if (!entry || !puzzle) return
+            const text = formatCurateClipboard('folds', entry.tier, entry.indexInTier + 1, puzzle, 200)
+            void navigator.clipboard.writeText(text).then(
+                () => {
+                    setCurateCopyHint('Copied puzzle id')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+                () => {
+                    setCurateCopyHint('Copy failed')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+            )
+            return
+        }
+        setShowStats(true)
+    }, [curateMode, roster, curateIdx, puzzle])
 
     return (
         <div className="game-container">
@@ -817,10 +877,26 @@ const App = () => {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
-                onStats={() => setShowStats(true)}
+                onStats={handleStatsClick}
             />
 
-            {mode === 'tutorial' ? (
+            <CurateCopyToast message={curateCopyHint} />
+
+            {curateMode ? (
+                <CurateLevelNav
+                    exitCurateHref={exitCurateHref}
+                    curateIdx={curateIdx}
+                    setCurateIdx={setCurateIdx}
+                    roster={roster}
+                    puzzleData={puzzleData}
+                    rightSlot={
+                        <>
+                            <span className="stats-label">Folds Left</span>
+                            <span className="stats-num">{folds}</span>
+                        </>
+                    }
+                />
+            ) : mode === 'tutorial' ? (
                 <div className="level-nav">
                     <div className="left-spacer">
                         <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
@@ -1074,7 +1150,7 @@ const App = () => {
                 gameKey={GAME_KEYS.FOLDS}
             />
             <SuiteGameCompletionModal
-                show={showCompletionModal}
+                show={showCompletionModal && !curateMode}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.FOLDS}
                 dateKey={daily.key}

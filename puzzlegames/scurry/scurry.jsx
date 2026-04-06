@@ -17,6 +17,10 @@ import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintex
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import BugIconPuzzle from '../../src/shared/icons/BugIconPuzzle.jsx'
 import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
+import { buildTierRoster } from '../../src/shared/curateRoster.js'
+import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
+import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
+import { formatScurryPuzzleSourceLine } from './formatScurryPuzzleForCopy.js'
 
 const SCURRY_TUTORIAL_HINTS = [
     {
@@ -186,6 +190,8 @@ const BugPuzzle = () => {
     const chrome = getGameChrome(GAME_KEYS.SCURRY)
     const daily = useMemo(() => getDailyPuzzles(), [])
     const dateLabel = useMemo(() => getDateLabel(), [])
+    const roster = useMemo(() => buildTierRoster(puzzleData), [])
+    const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.SCURRY, puzzleData.tutorial ?? []).mode)
@@ -202,9 +208,14 @@ const BugPuzzle = () => {
         showInstructions,
         setShowInstructions,
         closeInstructions,
-    } = useInstructionsGate('scurry:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'scurry' })
+    } = useInstructionsGate('scurry:hasSeenInstructions', {
+        openOnMount: !curateMode,
+        completionStoragePrefix: 'scurry',
+        initiallyClosed: curateMode,
+    })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
 
@@ -213,8 +224,8 @@ const BugPuzzle = () => {
     )
 
     useEffect(() => {
-        persistTutorialResumeState(GAME_KEYS.SCURRY, mode, tutorialIdx)
-    }, [mode, tutorialIdx])
+        if (!curateMode) persistTutorialResumeState(GAME_KEYS.SCURRY, mode, tutorialIdx)
+    }, [curateMode, mode, tutorialIdx])
 
     const [bugs, setBugs] = useState([])
     const [bugsPlacedCount, setBugsPlacedCount] = useState(0)
@@ -223,9 +234,10 @@ const BugPuzzle = () => {
     const [history, setHistory] = useState([])
 
     const level = useMemo(() => {
+        if (curateMode) return roster[curateIdx]?.puzzle
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
         return daily.puzzles[dailyIdx]
-    }, [mode, tutorialIdx, dailyIdx, daily])
+    }, [curateMode, curateIdx, roster, mode, tutorialIdx, dailyIdx, daily])
 
     const applyFreshBoard = useCallback(() => {
         if (!level) return
@@ -242,11 +254,27 @@ const BugPuzzle = () => {
     }, [level])
 
     const resetLevel = useCallback(() => {
-        if (mode === 'daily') clearScurryWip(daily.key, dailyIdx)
+        if (curateMode) clearScurryWip('curate', curateIdx)
+        else if (mode === 'daily') clearScurryWip(daily.key, dailyIdx)
         applyFreshBoard()
-    }, [mode, daily.key, dailyIdx, applyFreshBoard])
+    }, [curateMode, mode, daily.key, dailyIdx, curateIdx, applyFreshBoard])
 
     useEffect(() => {
+        if (curateMode) {
+            const loaded = loadScurryWip('curate', curateIdx, level)
+            if (loaded) {
+                setBugs(loaded.bugs)
+                setBugsPlacedCount(loaded.bugsPlacedCount)
+                setHistory(loaded.history)
+                setIsAnimating(false)
+                setIsCelebrating(false)
+                usedUndoOrResetRef.current = false
+                return
+            }
+            applyFreshBoard()
+            usedUndoOrResetRef.current = false
+            return
+        }
         if (mode === 'tutorial') {
             applyFreshBoard()
             usedUndoOrResetRef.current = false
@@ -264,12 +292,17 @@ const BugPuzzle = () => {
         }
         applyFreshBoard()
         usedUndoOrResetRef.current = false
-    }, [mode, tutorialIdx, daily.key, dailyIdx, level, applyFreshBoard])
+    }, [curateMode, curateIdx, mode, tutorialIdx, daily.key, dailyIdx, level, applyFreshBoard])
 
     useEffect(() => {
-        if (mode !== 'daily' || !level || isAnimating) return
+        if (!level || isAnimating) return
+        if (curateMode) {
+            saveScurryWip('curate', curateIdx, level, bugs, bugsPlacedCount, history)
+            return
+        }
+        if (mode !== 'daily') return
         saveScurryWip(daily.key, dailyIdx, level, bugs, bugsPlacedCount, history)
-    }, [mode, daily.key, dailyIdx, level, bugs, bugsPlacedCount, history, isAnimating])
+    }, [curateMode, curateIdx, mode, daily.key, dailyIdx, level, bugs, bugsPlacedCount, history, isAnimating])
 
     const allTargetsFilled = level?.targets.length > 0 &&
         level.targets.every(t => bugs.some(b => b.square === t))
@@ -357,6 +390,11 @@ const BugPuzzle = () => {
 
     const handlePrimaryClick = () => {
         if (allTargetsFilled) {
+            if (curateMode) {
+                clearScurryWip('curate', curateIdx)
+                if (curateIdx < roster.length - 1) setCurateIdx((j) => j + 1)
+                return
+            }
             if (mode === 'daily') clearScurryWip(daily.key, dailyIdx)
             if (mode === 'tutorial') {
                 if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
@@ -372,7 +410,7 @@ const BugPuzzle = () => {
     }
 
     useEffect(() => {
-        if (mode !== 'daily') return
+        if (curateMode || mode !== 'daily') return
         const done = completions.every(Boolean)
         if (allDailyDoneCompletionRef.current === null) {
             allDailyDoneCompletionRef.current = done
@@ -384,18 +422,42 @@ const BugPuzzle = () => {
             }, 500)
         }
         allDailyDoneCompletionRef.current = done
-    }, [mode, completions])
+    }, [curateMode, mode, completions])
 
     const primaryLabel = allTargetsFilled
-        ? mode === 'tutorial'
-            ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
-            : mode === 'daily'
-            ? [0,1,2].find(i => i !== dailyIdx && !completions[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
-            : null
+        ? curateMode
+            ? curateIdx < roster.length - 1
+                ? CTA_LABELS.NEXT_PUZZLE
+                : null
+            : mode === 'tutorial'
+              ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
+              : mode === 'daily'
+                ? [0,1,2].find(i => i !== dailyIdx && !completions[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
+                : null
         : isOutOfBugs ? 'Retry Puzzle'
         : null
 
     const base = import.meta.env.BASE_URL
+
+    const handleStatsClick = useCallback(() => {
+        if (curateMode) {
+            const entry = roster[curateIdx]
+            if (!entry || !level) return
+            const text = `scurry ${entry.tier} ${entry.indexInTier + 1}\n${formatScurryPuzzleSourceLine(level)}`
+            void navigator.clipboard.writeText(text).then(
+                () => {
+                    setCurateCopyHint('Copied puzzle id')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+                () => {
+                    setCurateCopyHint('Copy failed')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+            )
+            return
+        }
+        setShowStats(true)
+    }, [curateMode, roster, curateIdx, level])
 
     return (
         <div className="game-container">
@@ -405,11 +467,26 @@ const BugPuzzle = () => {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
-                onStats={() => setShowStats(true)}
+                onStats={handleStatsClick}
             />
+            <CurateCopyToast message={curateCopyHint} />
 
             {/* INFO BAR */}
-            {mode === 'tutorial' ? (
+            {curateMode ? (
+                <CurateLevelNav
+                    exitCurateHref={exitCurateHref}
+                    curateIdx={curateIdx}
+                    setCurateIdx={setCurateIdx}
+                    roster={roster}
+                    puzzleData={puzzleData}
+                    rightSlot={
+                        <>
+                            <span className="stats-label">Bugs</span>
+                            <span className="stats-num">{bugsLeft}</span>
+                        </>
+                    }
+                />
+            ) : mode === 'tutorial' ? (
                 <div className="level-nav">
                     <div className="left-spacer">
                         <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
@@ -531,7 +608,11 @@ const BugPuzzle = () => {
                 >Reset</button>
             </div>
 
-            {primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
+            {curateMode && allTargetsFilled && curateIdx >= roster.length - 1 ? (
+                <div className="goal-text" style={{ textAlign: 'center' }}>
+                    End of list — use ← → to review other puzzles
+                </div>
+            ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
                 <a href={base} className="btn-primary"
                     style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {CTA_LABELS.ALL_PUZZLES}

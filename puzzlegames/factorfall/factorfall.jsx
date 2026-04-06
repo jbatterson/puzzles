@@ -16,6 +16,9 @@ import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
+import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
+import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
+import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const COLS = 5, ROWS = 5
@@ -268,6 +271,12 @@ const Factorfall = () => {
     const chrome = getGameChrome(GAME_KEYS.FACTORFALL)
     const daily = useMemo(() => getDailyPuzzles(), [])
     const dateLabel = useMemo(() => getDateLabel(), [])
+    const roster = useMemo(() => buildTierRoster(puzzleData), [])
+    const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
+    const curateRosterRef = useRef(roster)
+    useEffect(() => {
+        curateRosterRef.current = roster
+    }, [roster])
 
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.FACTORFALL, puzzleData.tutorial ?? []).mode)
@@ -284,15 +293,20 @@ const Factorfall = () => {
         showInstructions,
         setShowInstructions,
         closeInstructions,
-    } = useInstructionsGate('factorfall:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'factorfall' })
+    } = useInstructionsGate('factorfall:hasSeenInstructions', {
+        openOnMount: !curateMode,
+        completionStoragePrefix: 'factorfall',
+        initiallyClosed: curateMode,
+    })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
 
     useEffect(() => {
-        persistTutorialResumeState(GAME_KEYS.FACTORFALL, mode, tutorialIdx)
-    }, [mode, tutorialIdx])
+        if (!curateMode) persistTutorialResumeState(GAME_KEYS.FACTORFALL, mode, tutorialIdx)
+    }, [curateMode, mode, tutorialIdx])
 
     const wrapperRef = useRef(null)
     const canvasRef = useRef(null)
@@ -314,14 +328,14 @@ const Factorfall = () => {
         cellSize: BASE_CELL,
     })
 
-    const dailyStateRef = useRef({ key: daily.key, dailyIdx, mode })
+    const dailyStateRef = useRef({ key: daily.key, dailyIdx, mode, curateMode, curateIdx })
     const dailyRef = useRef(daily)
     const uiSnapshotRef = useRef({ boardCleared: false, gridFull: false, outOfBalls: false })
     const persistDailyGameStateRef = useRef(() => {})
 
     useEffect(() => {
-        dailyStateRef.current = { key: daily.key, dailyIdx, mode }
-    }, [daily.key, dailyIdx, mode])
+        dailyStateRef.current = { key: daily.key, dailyIdx, mode, curateMode, curateIdx }
+    }, [daily.key, dailyIdx, mode, curateMode, curateIdx])
     useEffect(() => {
         dailyRef.current = daily
     }, [daily])
@@ -341,9 +355,10 @@ const Factorfall = () => {
 
     // ── Puzzle resolution ────────────────────────────────────────────────────
     const getPuzzle = useCallback(() => {
+        if (curateMode) return roster[curateIdx]?.puzzle
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
         return daily.puzzles[dailyIdx]
-    }, [mode, tutorialIdx, dailyIdx, daily])
+    }, [curateMode, curateIdx, roster, mode, tutorialIdx, dailyIdx, daily])
 
     // ── Canvas sizing ────────────────────────────────────────────────────────
     useEffect(() => {
@@ -417,6 +432,17 @@ const Factorfall = () => {
         const p = getPuzzle()
         if (!p) return
         const cs = gsRef.current.cellSize
+        if (curateMode) {
+            const saved = loadGameState('curate', curateIdx, p)
+            if (saved) {
+                hydrateFromSaved(saved, p, cs)
+                return
+            }
+            clearGameState('curate', curateIdx)
+            usedUndoOrResetRef.current = false
+            initLevel(p, cs)
+            return
+        }
         if (mode === 'daily') {
             const saved = loadGameState(daily.key, dailyIdx, p)
             if (saved) {
@@ -428,7 +454,7 @@ const Factorfall = () => {
         // Fresh puzzle only (not hydrate). Reset/retry call initLevel directly and must keep usedUndoOrResetRef true.
         usedUndoOrResetRef.current = false
         initLevel(p, cs)
-    }, [getPuzzle, mode, dailyIdx, tutorialIdx, daily.key])
+    }, [getPuzzle, curateMode, curateIdx, mode, dailyIdx, tutorialIdx, daily.key])
 
     useEffect(() => {
         gsRef.current.cellSize = cellSize
@@ -491,7 +517,13 @@ const Factorfall = () => {
     }
 
     function persistDaily(overrideUi) {
-        const { key, dailyIdx: idx, mode: m } = dailyStateRef.current
+        const { key, dailyIdx: idx, mode: m, curateMode: cm, curateIdx: ci } = dailyStateRef.current
+        if (cm) {
+            const p = curateRosterRef.current[ci]?.puzzle
+            if (!p) return
+            saveGameState('curate', ci, p, gsRef.current, usedUndoOrResetRef.current, overrideUi ?? uiSnapshotRef.current)
+            return
+        }
         if (m !== 'daily') return
         const p = dailyRef.current.puzzles[idx]
         if (!p) return
@@ -557,8 +589,8 @@ const Factorfall = () => {
                     const empty = gs.grid.every(col => col.length === 0)
                     gs.gameState = 'GAMEOVER'
                     if (empty) {
-                        const { key, dailyIdx: idx, mode: currentMode } = dailyStateRef.current
-                        if (currentMode === 'daily') {
+                        const { key, dailyIdx: idx, mode: currentMode, curateMode: cm } = dailyStateRef.current
+                        if (currentMode === 'daily' && !cm) {
                             markComplete(key, idx, !usedUndoOrResetRef.current)
                             setCompletions(loadCompletions(key))
                             setPerfects(loadPerfects(key))
@@ -612,6 +644,11 @@ const Factorfall = () => {
     // ── Primary button logic (Scurry-style) ──────────────────────────────────
     const handlePrimaryClick = useCallback(() => {
         if (boardCleared) {
+            if (curateMode) {
+                clearGameState('curate', curateIdx)
+                if (curateIdx < roster.length - 1) setCurateIdx(j => j + 1)
+                return
+            }
             if (mode === 'tutorial') {
                 if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
                 else { setMode('daily'); setDailyIdx(0) }
@@ -622,14 +659,18 @@ const Factorfall = () => {
             }
         } else if (outOfBalls || gridFull) {
             usedUndoOrResetRef.current = true
-            if (mode === 'daily') clearGameState(daily.key, dailyIdx)
+            if (curateMode) clearGameState('curate', curateIdx)
+            else if (mode === 'daily') clearGameState(daily.key, dailyIdx)
             const p = getPuzzle()
             if (p) initLevel(p, gsRef.current.cellSize)
         }
-    }, [boardCleared, outOfBalls, gridFull, mode, tutorialIdx, dailyIdx, daily.key, getPuzzle])
+    }, [boardCleared, outOfBalls, gridFull, curateMode, curateIdx, roster.length, setCurateIdx, mode, tutorialIdx, dailyIdx, daily.key, getPuzzle])
 
     const primaryLabel = useMemo(() => {
         if (boardCleared) {
+            if (curateMode) {
+                return curateIdx < roster.length - 1 ? CTA_LABELS.NEXT_PUZZLE : null
+            }
             if (mode === 'tutorial') {
                 return tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
             }
@@ -642,10 +683,10 @@ const Factorfall = () => {
         if (outOfBalls) return 'Retry Puzzle'
         if (gridFull) return 'Retry Puzzle'
         return null
-    }, [boardCleared, outOfBalls, gridFull, mode, tutorialIdx, dailyIdx, daily.key])
+    }, [boardCleared, outOfBalls, gridFull, curateMode, curateIdx, roster.length, mode, tutorialIdx, dailyIdx, daily.key])
 
     useEffect(() => {
-        if (mode !== 'daily') return
+        if (curateMode || mode !== 'daily') return
         const done = completions.every(Boolean)
         if (allDailyDoneCompletionRef.current === null) {
             allDailyDoneCompletionRef.current = done
@@ -657,7 +698,7 @@ const Factorfall = () => {
             }, 500)
         }
         allDailyDoneCompletionRef.current = done
-    }, [mode, completions])
+    }, [curateMode, mode, completions])
 
     // ── Undo / Reset ─────────────────────────────────────────────────────────
     const undoMove = useCallback(() => {
@@ -684,10 +725,11 @@ const Factorfall = () => {
 
     const resetLevel = useCallback(() => {
         usedUndoOrResetRef.current = true
-        if (mode === 'daily') clearGameState(daily.key, dailyIdx)
+        if (curateMode) clearGameState('curate', curateIdx)
+        else if (mode === 'daily') clearGameState(daily.key, dailyIdx)
         const p = getPuzzle()
         if (p) initLevel(p, gsRef.current.cellSize)
-    }, [getPuzzle, mode, daily.key, dailyIdx])
+    }, [getPuzzle, curateMode, curateIdx, mode, daily.key, dailyIdx])
 
     // ── Canvas interaction ───────────────────────────────────────────────────
     const dropBallInColumn = useCallback((col) => {
@@ -870,6 +912,27 @@ const Factorfall = () => {
     // ── Render ───────────────────────────────────────────────────────────────
     const base = import.meta.env.BASE_URL
 
+    const handleStatsClick = useCallback(() => {
+        if (curateMode) {
+            const entry = roster[curateIdx]
+            const p = getPuzzle()
+            if (!entry || !p) return
+            const text = formatCurateClipboard('factorfall', entry.tier, entry.indexInTier + 1, p, 200)
+            void navigator.clipboard.writeText(text).then(
+                () => {
+                    setCurateCopyHint('Copied puzzle id')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+                () => {
+                    setCurateCopyHint('Copy failed')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+            )
+            return
+        }
+        setShowStats(true)
+    }, [curateMode, roster, curateIdx, getPuzzle])
+
     return (
         <div className="game-container">
             <TopBar
@@ -878,11 +941,27 @@ const Factorfall = () => {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
-                onStats={() => setShowStats(true)}
+                onStats={handleStatsClick}
             />
 
+            <CurateCopyToast message={curateCopyHint} />
+
             {/* ── Info bar ── */}
-            {mode === 'tutorial' ? (
+            {curateMode ? (
+                <CurateLevelNav
+                    exitCurateHref={exitCurateHref}
+                    curateIdx={curateIdx}
+                    setCurateIdx={setCurateIdx}
+                    roster={roster}
+                    puzzleData={puzzleData}
+                    rightSlot={
+                        <>
+                            <span className="stats-label">Target</span>
+                            <span className="stats-num">{uiTarget}</span>
+                        </>
+                    }
+                />
+            ) : mode === 'tutorial' ? (
                 <div className="level-nav">
                     <div className="left-spacer">
                         <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
@@ -960,7 +1039,7 @@ const Factorfall = () => {
                 </a>
             ) : primaryLabel ? (
                 <button className="btn-primary" onClick={handlePrimaryClick}>{primaryLabel}</button>
-            ) : (
+            ) : boardCleared ? null : (
                 <div className="goal-text">Clear the Board</div>
             )}
 
@@ -1007,7 +1086,7 @@ const Factorfall = () => {
                 gameKey={GAME_KEYS.FACTORFALL}
             />
             <SuiteGameCompletionModal
-                show={showCompletionModal}
+                show={showCompletionModal && !curateMode}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.FACTORFALL}
                 dateKey={daily.key}

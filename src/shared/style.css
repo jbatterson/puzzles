@@ -957,6 +957,19 @@ html, body {
     z-index: 50;
 }
 
+/**
+ * Fixed toast with only `top` set: base `.toast-panel` uses `bottom: 24px`, so without
+ * resetting `bottom`, `top` + `bottom` stretch the box to full viewport height.
+ */
+.toast-panel.toast-fixed-chip {
+    bottom: auto;
+    height: auto;
+    width: fit-content;
+    max-width: min(90vw, 320px);
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
 .toast-row {
     display: flex;
     justify-content: space-between;

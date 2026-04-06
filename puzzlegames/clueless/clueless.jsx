@@ -18,6 +18,13 @@ import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
+import { buildFlatPuzzleRoster } from '../../src/shared/curateRoster.js'
+import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
+import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
+import { formatCluelessPuzzleSourceLine } from './formatCluelessPuzzleForCopy.js'
+
+/** Curate uses easy geometry for all roster puzzles (full word on middle row/col). */
+const CURATE_PUZZLE_DIFFICULTY = 'easy'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
 
@@ -403,10 +410,23 @@ export default function CluelessGame() {
     const chrome = getGameChrome(GAME_KEYS.CLUELESS)
     const [difficultyIdx, setDifficultyIdx] = useState(() => parseHubDailyPuzzleParam())
     const difficulty = DIFFS[difficultyIdx] || 'easy'
+    const roster = useMemo(() => buildFlatPuzzleRoster(puzzles, 'puzzles'), [])
+    const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 
-    const daily = useMemo(() => getDailyPuzzle(difficulty), [difficulty])
+    const daily = useMemo(() => {
+        if (curateMode) {
+            const p = roster[curateIdx]?.puzzle
+            return { puzzle: p, key: 'curate', idx: curateIdx }
+        }
+        return getDailyPuzzle(difficulty)
+    }, [curateMode, curateIdx, roster, difficulty])
+
     const dateLabel = useMemo(() => getDateLabel(), [])
-    const { clues, answers } = useMemo(() => getPuzzleData(daily.puzzle, difficulty), [daily, difficulty])
+    const puzzleDifficulty = curateMode ? CURATE_PUZZLE_DIFFICULTY : difficulty
+    const { clues, answers } = useMemo(() => {
+        if (!daily.puzzle) return { clues: {}, answers: {} }
+        return getPuzzleData(daily.puzzle, puzzleDifficulty)
+    }, [daily.puzzle, puzzleDifficulty])
 
     const usedHintRef = useRef(false)
     const selectedRef = useRef(-1)
@@ -420,7 +440,7 @@ export default function CluelessGame() {
                 const key = `${r},${c}`
                 if (BLOCKED.has(key)) continue
                 let isClue = true
-                if (difficulty === 'easy') {
+                if (puzzleDifficulty === 'easy') {
                     const isAcrossMiddle = (r % 2 === 0) && (c === 2)
                     const isDownMiddle = (c % 2 === 0) && (r === 2)
                     isClue = !(isAcrossMiddle || isDownMiddle)
@@ -429,13 +449,13 @@ export default function CluelessGame() {
                     isClue = (indexParity === 1)
                 }
                 // Medium bonus hints: give the top-left and bottom-right corner letters.
-                if (difficulty === 'medium' && (key === '0,0' || key === '4,4')) isClue = true
+                if (puzzleDifficulty === 'medium' && (key === '0,0' || key === '4,4')) isClue = true
                 if (isClue) clueCells.add(key)
                 else inputOrder.push({ r, c })
             }
         }
         return { clueCells, inputOrder }
-    }, [difficulty])
+    }, [puzzleDifficulty])
 
     // Puzzle state (loaded per difficulty via effect below)
     const [guesses, setGuesses] = useState({})
@@ -454,8 +474,9 @@ export default function CluelessGame() {
     selectedRef.current = selected
 
     const attemptsByDiff = useMemo(() => {
+        if (curateMode) return [null, null, null]
         return DIFFS.map(d => loadBestAttempts(daily.key, d))
-    }, [daily.key, difficulty, bestAttempts])
+    }, [curateMode, daily.key, difficulty, bestAttempts])
 
     const canShareHub = useMemo(
         () => hasShareableHubProgress(GAME_KEYS.CLUELESS, daily.key),
@@ -463,6 +484,7 @@ export default function CluelessGame() {
     )
 
     useEffect(() => {
+        if (curateMode) return
         const done = attemptsByDiff.every(a => a != null)
         if (allDifficultiesDoneCompletionRef.current === null) {
             allDifficultiesDoneCompletionRef.current = done
@@ -474,12 +496,14 @@ export default function CluelessGame() {
             }, 500)
         }
         allDifficultiesDoneCompletionRef.current = done
-    }, [attemptsByDiff])
+    }, [curateMode, attemptsByDiff])
 
     // Load/restore state whenever difficulty changes
     useEffect(() => {
-        const saved = loadGameState(daily.key, difficulty, ALL_PLAYABLE_KEYS)
-        const best = loadBestAttempts(daily.key, difficulty)
+        if (!daily.puzzle) return
+        const storageDiff = curateMode ? String(curateIdx) : difficulty
+        const saved = loadGameState(daily.key, storageDiff, ALL_PLAYABLE_KEYS)
+        const best = curateMode ? null : loadBestAttempts(daily.key, difficulty)
 
         let nextLocked = new Set()
         let nextSolved = false
@@ -522,11 +546,13 @@ export default function CluelessGame() {
         setSelectionHighlighted(true)
         setStatusMsg('')
     setHasInteracted(false)
-    }, [daily.key, difficulty, geometry.inputOrder, answers])
+    }, [curateMode, curateIdx, daily.key, daily.puzzle, difficulty, geometry.inputOrder, answers])
 
     // Persist game state when it changes
     useEffect(() => {
-        saveGameState(daily.key, difficulty, {
+        if (!daily.puzzle) return
+        const storageDiff = curateMode ? String(curateIdx) : difficulty
+        saveGameState(daily.key, storageDiff, {
             guesses,
             locked,
             guessCount,
@@ -534,16 +560,20 @@ export default function CluelessGame() {
             triedLettersByCell,
             checkedSignatures,
         })
-    }, [daily.key, difficulty, guesses, locked, guessCount, solved, triedLettersByCell, checkedSignatures])
+    }, [curateMode, curateIdx, daily.key, daily.puzzle, difficulty, guesses, locked, guessCount, solved, triedLettersByCell, checkedSignatures])
 
     // UI
     const {
         showInstructions,
         setShowInstructions,
         closeInstructions,
-    } = useInstructionsGate('clueless:hasSeenInstructions', { openOnMount: false })
+    } = useInstructionsGate('clueless:hasSeenInstructions', {
+        openOnMount: false,
+        initiallyClosed: curateMode,
+    })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDifficultiesDoneCompletionRef = useRef(null)
 
@@ -676,7 +706,7 @@ export default function CluelessGame() {
                 newLocked.has(`${r},${c}`))
             if (allInputsLocked) {
                 const attemptsUsed = Math.min(nextGuessCount, 99)
-                markComplete(daily.key, difficulty, attemptsUsed)
+                if (!curateMode) markComplete(daily.key, difficulty, attemptsUsed)
                 setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
                 setSolved(true)
                 setSelected(-1)
@@ -706,7 +736,7 @@ export default function CluelessGame() {
                 setAxisMode('row')
             }
         }
-    }, [solved, geometry.inputOrder, guessCount, guesses, locked, answers, daily.key, difficulty, checkedSignatures])
+    }, [solved, curateMode, geometry.inputOrder, guessCount, guesses, locked, answers, daily.key, difficulty, checkedSignatures])
 
     checkAnswerRef.current = checkAnswer
 
@@ -738,6 +768,27 @@ export default function CluelessGame() {
 
     const base = import.meta.env.BASE_URL
     const nextUnsolvedIdx = [0, 1, 2].find(i => i !== difficultyIdx && attemptsByDiff[i] == null)
+
+    const handleStatsClick = useCallback(() => {
+        if (curateMode) {
+            const entry = roster[curateIdx]
+            if (!entry?.puzzle) return
+            const line1 = `clueless ${entry.tier} ${entry.indexInTier + 1}`
+            const line2 = formatCluelessPuzzleSourceLine(entry.puzzle)
+            void navigator.clipboard.writeText(`${line1}\n${line2}`).then(
+                () => {
+                    setCurateCopyHint('Copied puzzle id')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+                () => {
+                    setCurateCopyHint('Copy failed')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+            )
+            return
+        }
+        setShowStats(true)
+    }, [curateMode, roster, curateIdx])
 
     // Letters already tried (wrong) in the selected cell, for keyboard highlighting
     const selectedKey = !solved && selected >= 0 && selected < geometry.inputOrder.length
@@ -898,65 +949,83 @@ export default function CluelessGame() {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
-                onStats={() => setShowStats(true)}
+                onStats={handleStatsClick}
             />
 
+            <CurateCopyToast message={curateCopyHint} />
+
             {/* INFO BAR */}
-            <div className="level-nav">
-                <div className="left-spacer">
-                    {/* (badge removed) */}
-                </div>
-                <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
-                    <div className="level-label" style={{ textAlign: 'center' }}>
-                        <span className="sub">{dateLabel}</span>
+            {curateMode ? (
+                <CurateLevelNav
+                    exitCurateHref={exitCurateHref}
+                    curateIdx={curateIdx}
+                    setCurateIdx={setCurateIdx}
+                    roster={roster}
+                    puzzleData={{ puzzles }}
+                    rightSlot={
+                        <>
+                            <span className="stats-label">Guesses</span>
+                            <span className="stats-num">{Math.min(guessCount, 99)}</span>
+                        </>
+                    }
+                />
+            ) : (
+                <div className="level-nav">
+                    <div className="left-spacer">
+                        {/* (badge removed) */}
                     </div>
-                    <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
-                        <div className="game-dice-share-phantom" aria-hidden />
-                        <div className="game-dice-share-gap" aria-hidden />
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            {['Easy', 'Med', 'Hard'].map((label, i) => {
-                                const isActive = i === difficultyIdx
-                                const a = attemptsByDiff[i]
-                                const done = a != null
-                                const content = done ? (a === 1 ? '★' : String(Math.min(a, 99))) : <DiceFace count={i + 1} size={20} />
-                                return (
-                                    <button
-                                        key={label}
-                                        type="button"
-                                        onClick={() => setDifficultyIdx(i)}
-                                        style={{
-                                            width: '28px',
-                                            height: '28px',
-                                            borderRadius: '6px',
-                                            border: 'none',
-                                            background: done ? '#6b9b3b' : (isActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE),
-                                            color: done || isActive ? '#fff' : PUZZLE_SUITE_INK,
-                                            fontWeight: 900,
-                                            fontSize: '0.94rem',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            transition: 'all 0.2s',
-                                            transform: isActive ? 'scale(1.1)' : 'scale(1)',
-                                            transformOrigin: 'center center',
-                                        }}
-                                        aria-label={`Select ${label}`}
-                                    >
-                                        {content}
-                                    </button>
-                                )
-                            })}
+                    <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
+                        <div className="level-label" style={{ textAlign: 'center' }}>
+                            <span className="sub">{dateLabel}</span>
                         </div>
-                        <div className="game-dice-share-gap" aria-hidden />
-                        <GameShareNavButton gameKey={GAME_KEYS.CLUELESS} dateKey={daily.key} canShare={canShareHub} />
+                        <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
+                            <div className="game-dice-share-phantom" aria-hidden />
+                            <div className="game-dice-share-gap" aria-hidden />
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                {['Easy', 'Med', 'Hard'].map((label, i) => {
+                                    const isActive = i === difficultyIdx
+                                    const a = attemptsByDiff[i]
+                                    const done = a != null
+                                    const content = done ? (a === 1 ? '★' : String(Math.min(a, 99))) : <DiceFace count={i + 1} size={20} />
+                                    return (
+                                        <button
+                                            key={label}
+                                            type="button"
+                                            onClick={() => setDifficultyIdx(i)}
+                                            style={{
+                                                width: '28px',
+                                                height: '28px',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                background: done ? '#6b9b3b' : (isActive ? PUZZLE_SUITE_INK : PUZZLE_SUITE_SURFACE_INCOMPLETE),
+                                                color: done || isActive ? '#fff' : PUZZLE_SUITE_INK,
+                                                fontWeight: 900,
+                                                fontSize: '0.94rem',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'all 0.2s',
+                                                transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                                                transformOrigin: 'center center',
+                                            }}
+                                            aria-label={`Select ${label}`}
+                                        >
+                                            {content}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                            <div className="game-dice-share-gap" aria-hidden />
+                            <GameShareNavButton gameKey={GAME_KEYS.CLUELESS} dateKey={daily.key} canShare={canShareHub} />
+                        </div>
+                    </div>
+                    <div className="stats-group">
+                        <span className="stats-label">Guesses</span>
+                        <span className="stats-num">{Math.min(guessCount, 99)}</span>
                     </div>
                 </div>
-                <div className="stats-group">
-                    <span className="stats-label">Guesses</span>
-                    <span className="stats-num">{Math.min(guessCount, 99)}</span>
-                </div>
-            </div>
+            )}
 
             {/* STATUS MESSAGE */}
             <div className="clueless-status" style={{
@@ -1017,7 +1086,13 @@ export default function CluelessGame() {
                 flexShrink: 0,
             }}>
                 {solved ? (
-                    nextUnsolvedIdx !== undefined ? (
+                    curateMode ? (
+                        curateIdx < roster.length - 1 ? (
+                            <button type="button" className="btn-primary" onClick={() => setCurateIdx(j => j + 1)}>
+                                Next Puzzle
+                            </button>
+                        ) : null
+                    ) : nextUnsolvedIdx !== undefined ? (
                         <button type="button" className="btn-primary" onClick={() => setDifficultyIdx(nextUnsolvedIdx)}>
                             Next Puzzle
                         </button>
@@ -1129,7 +1204,7 @@ export default function CluelessGame() {
                 gameKey={GAME_KEYS.CLUELESS}
             />
             <SuiteGameCompletionModal
-                show={showCompletionModal}
+                show={showCompletionModal && !curateMode}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.CLUELESS}
                 dateKey={daily.key}

@@ -25,6 +25,10 @@ import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintex
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import HoneycombsIcon from '../../src/shared/icons/HoneycombsIcon.jsx'
 import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
+import { buildTierRoster } from '../../src/shared/curateRoster.js'
+import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
+import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
+import { formatHoneycombPuzzleSourceLine } from './formatHoneycombPuzzleForCopy.js'
 import './honeycombs.css'
 
 const HONEYCOMBS_TUTORIAL_HINT_PATH =
@@ -111,7 +115,10 @@ export default function HoneycombsApp() {
   )
   const [showLinks, setShowLinks] = useState(false)
   const [showStats, setShowStats] = useState(false)
+  const [curateCopyHint, setCurateCopyHint] = useState(null)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const roster = useMemo(() => buildTierRoster(puzzleData), [])
+  const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
   const [tutorialHintPathDismissed, setTutorialHintPathDismissed] = useState(false)
   const [tutorialHintKeyboardDismissed, setTutorialHintKeyboardDismissed] = useState(false)
   const [tutorialHintEraseDismissed, setTutorialHintEraseDismissed] = useState(false)
@@ -122,8 +129,9 @@ export default function HoneycombsApp() {
     setShowInstructions,
     closeInstructions,
   } = useInstructionsGate('honeycombs:hasSeenInstructions', {
-    openOnMount: true,
+    openOnMount: !curateMode,
     completionStoragePrefix: 'honeycombs',
+    initiallyClosed: curateMode,
   })
 
   const boardMountRef = useRef(null)
@@ -134,14 +142,14 @@ export default function HoneycombsApp() {
   const tutorialPuzzles = useMemo(() => puzzleData.tutorial || [], [])
 
   useEffect(() => {
-    persistTutorialResumeState(GAME_KEYS.HONEYCOMBS, mode, tutorialIdx)
-  }, [mode, tutorialIdx])
+    if (!curateMode) persistTutorialResumeState(GAME_KEYS.HONEYCOMBS, mode, tutorialIdx)
+  }, [curateMode, mode, tutorialIdx])
 
   const activePuzzles = useMemo(
-    () => (mode === 'tutorial' ? tutorialPuzzles : daily.puzzles),
-    [mode, tutorialPuzzles, daily.puzzles],
+    () => (curateMode ? roster.map((r) => r.puzzle) : mode === 'tutorial' ? tutorialPuzzles : daily.puzzles),
+    [curateMode, roster, mode, tutorialPuzzles, daily.puzzles],
   )
-  const activePuzzleIdx = mode === 'tutorial' ? tutorialIdx : dailyIdx
+  const activePuzzleIdx = curateMode ? curateIdx : mode === 'tutorial' ? tutorialIdx : dailyIdx
 
   const bumpCompletions = useCallback(() => {
     setCompletions(loadCompletions(daily.dateKey))
@@ -149,25 +157,31 @@ export default function HoneycombsApp() {
   }, [daily.dateKey])
 
   const onRequestNext = useCallback(() => {
+    if (curateMode) {
+      setCurateIdx((i) => Math.min(roster.length - 1, i + 1))
+      return
+    }
     if (mode === 'tutorial') {
       setTutorialIdx((i) => Math.min(Math.max(0, tutorialPuzzles.length - 1), i + 1))
       return
     }
     setDailyIdx((i) => Math.min(2, i + 1))
-  }, [mode, tutorialPuzzles.length])
+  }, [curateMode, roster.length, mode, tutorialPuzzles.length])
 
   const handleWinAnimationComplete = useCallback(
     (puzzleIdx) => {
+      if (curateMode) return
       if (mode !== 'daily') return
       if (!pendingSuiteModalRef.current) return
       if (puzzleIdx !== dailyIdx) return
       pendingSuiteModalRef.current = false
       setShowCompletionModal(true)
     },
-    [mode, dailyIdx],
+    [curateMode, mode, dailyIdx],
   )
 
   const tutorialFinalAction = useMemo(() => {
+    if (curateMode) return null
     if (mode !== 'tutorial') return null
     return {
       label: CTA_LABELS.PLAY_TODAY,
@@ -176,7 +190,7 @@ export default function HoneycombsApp() {
         setDailyIdx(0)
       },
     }
-  }, [mode])
+  }, [mode, curateMode])
 
   useLayoutEffect(() => {
     modalsOpenRef.current = showInstructions || showStats || showLinks
@@ -185,7 +199,7 @@ export default function HoneycombsApp() {
   // Track when all three daily Honeycombs are completed; defer actual modal
   // opening until the engine signals that the win animation has finished.
   useLayoutEffect(() => {
-    if (mode !== 'daily') return
+    if (curateMode || mode !== 'daily') return
     const done = completions.every(Boolean)
     if (allDailyDoneCompletionRef.current === null) {
       allDailyDoneCompletionRef.current = done
@@ -195,7 +209,7 @@ export default function HoneycombsApp() {
       pendingSuiteModalRef.current = true
     }
     allDailyDoneCompletionRef.current = done
-  }, [mode, completions])
+  }, [curateMode, mode, completions])
 
   useLayoutEffect(() => {
     const mount = boardMountRef.current
@@ -203,13 +217,13 @@ export default function HoneycombsApp() {
     const engine = createHoneycombsEngine({
       mount,
       puzzles: activePuzzles,
-      dateKey: daily.dateKey,
+      dateKey: curateMode ? 'curate' : daily.dateKey,
       hubBaseHref: base,
       onRequestNextPuzzle: onRequestNext,
       onCompletionsUpdated: bumpCompletions,
       isBlockingModalOpen: () => modalsOpenRef.current,
       onWinAnimationComplete: handleWinAnimationComplete,
-      trackCompletion: mode === 'daily',
+      trackCompletion: !curateMode && mode === 'daily',
       finalSolvedAction: tutorialFinalAction,
     })
     engineRef.current = engine
@@ -217,11 +231,32 @@ export default function HoneycombsApp() {
       engine.destroy()
       engineRef.current = null
     }
-  }, [activePuzzles, daily.dateKey, base, onRequestNext, bumpCompletions, handleWinAnimationComplete, mode, tutorialFinalAction])
+  }, [activePuzzles, curateMode, daily.dateKey, base, onRequestNext, bumpCompletions, handleWinAnimationComplete, mode, tutorialFinalAction])
 
   useLayoutEffect(() => {
     engineRef.current?.initPuzzle(activePuzzleIdx)
   }, [activePuzzleIdx, mode])
+
+  const handleStatsClick = useCallback(() => {
+    if (curateMode) {
+      const entry = roster[curateIdx]
+      const p = entry?.puzzle
+      if (!entry || !p) return
+      const text = `honeycombs ${entry.tier} ${entry.indexInTier + 1}\n${formatHoneycombPuzzleSourceLine(p)}`
+      void navigator.clipboard.writeText(text).then(
+        () => {
+          setCurateCopyHint('Copied puzzle id')
+          window.setTimeout(() => setCurateCopyHint(null), 2500)
+        },
+        () => {
+          setCurateCopyHint('Copy failed')
+          window.setTimeout(() => setCurateCopyHint(null), 2500)
+        },
+      )
+      return
+    }
+    setShowStats(true)
+  }, [curateMode, roster, curateIdx])
 
   return (
     <div className="game-container">
@@ -231,10 +266,20 @@ export default function HoneycombsApp() {
         onHome={() => { window.location.href = base }}
         onHelp={() => setShowInstructions(true)}
         onCube={() => setShowLinks(true)}
-        onStats={() => setShowStats(true)}
+        onStats={handleStatsClick}
       />
 
-      {mode === 'tutorial' ? (
+      <CurateCopyToast message={curateCopyHint} />
+
+      {curateMode ? (
+        <CurateLevelNav
+          exitCurateHref={exitCurateHref}
+          curateIdx={curateIdx}
+          setCurateIdx={setCurateIdx}
+          roster={roster}
+          puzzleData={puzzleData}
+        />
+      ) : mode === 'tutorial' ? (
         <div className="level-nav">
           <div className="left-spacer">
             <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>

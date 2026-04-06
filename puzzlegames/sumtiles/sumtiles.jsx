@@ -17,6 +17,9 @@ import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import SumTilesIcon from '../../src/shared/icons/SumTilesIcon.jsx'
+import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
+import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
+import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 
 const SNAP_SPEED = 0.25
 const SOLVE_STEP_MS = 200
@@ -231,6 +234,8 @@ export default function SumTiles() {
     const chrome = getGameChrome(GAME_KEYS.SUMTILES)
     const daily = useMemo(() => getDailyPuzzles(), [])
     const dateLabel = useMemo(() => getDateLabel(), [])
+    const roster = useMemo(() => buildTierRoster(puzzleData), [])
+    const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 
     const canvasRef  = useRef(null)
     const wrapperRef = useRef(null)
@@ -241,6 +246,8 @@ export default function SumTiles() {
     const dailyKeyRef = useRef(daily.key)
     const dailyIdxRef = useRef(0)
     const modeRef = useRef('daily')
+    const curateModeRef = useRef(false)
+    const curateIdxRef = useRef(0)
 
     const [mode, setMode]               = useState(() => getInitialTutorialNav(GAME_KEYS.SUMTILES, puzzleData.tutorial ?? []).mode)
     const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.SUMTILES, puzzleData.tutorial ?? []).tutorialIdx)
@@ -248,6 +255,8 @@ export default function SumTiles() {
     dailyKeyRef.current = daily.key
     dailyIdxRef.current = dailyIdx
     modeRef.current = mode
+    curateModeRef.current = curateMode
+    curateIdxRef.current = curateIdx
 
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects]       = useState(() => loadPerfects(daily.key))
@@ -263,22 +272,28 @@ export default function SumTiles() {
         showInstructions,
         setShowInstructions,
         closeInstructions,
-    } = useInstructionsGate('sumtiles:hasSeenInstructions', { openOnMount: true, completionStoragePrefix: 'sumtiles' })
+    } = useInstructionsGate('sumtiles:hasSeenInstructions', {
+        openOnMount: !curateMode,
+        completionStoragePrefix: 'sumtiles',
+        initiallyClosed: curateMode,
+    })
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
+    const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
     /** When daily suite just became all-complete, open modal only after win row/col animation ends. */
     const pendingSuiteModalAfterAnimRef = useRef(false)
 
     useEffect(() => {
-        persistTutorialResumeState(GAME_KEYS.SUMTILES, mode, tutorialIdx)
-    }, [mode, tutorialIdx])
+        if (!curateMode) persistTutorialResumeState(GAME_KEYS.SUMTILES, mode, tutorialIdx)
+    }, [curateMode, mode, tutorialIdx])
 
     const currentPuzzleData = useMemo(() => {
+        if (curateMode) return roster[curateIdx]?.puzzle
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
         return daily.puzzles[dailyIdx]
-    }, [mode, tutorialIdx, dailyIdx, daily])
+    }, [curateMode, curateIdx, roster, mode, tutorialIdx, dailyIdx, daily])
 
     const loadPuzzle = useCallback((data, gs) => {
         if (!data) return
@@ -357,7 +372,33 @@ export default function SumTiles() {
         const labelCol = 52
         const boardPx = wrapperRef.current.getBoundingClientRect().width - labelCol
         const gs = Math.min(72, Math.max(20, Math.floor(boardPx / data.s)))
-        if (mode === 'daily') {
+        if (curateMode) {
+            const saved = loadGameState('curate', curateIdx, data)
+            if (saved) {
+                const tiles = saved.tiles.map(t => ({
+                    ...t,
+                    x: t.c * gs + (t.w * gs) / 2,
+                    y: t.r * gs + (t.h * gs) / 2,
+                }))
+                const initialTiles = data.b.map((raw, i) => parseTile(raw, i + 1, gs))
+                stateRef.current = {
+                    size: saved.size,
+                    targets: saved.targets,
+                    tiles,
+                    originalScramble: JSON.parse(JSON.stringify(initialTiles)),
+                    moveHistory: saved.moveHistory,
+                    solveAnim: null,
+                    gridSize: gs,
+                }
+                setHistoryLen(saved.moveHistory.length)
+                const { curR, curC } = computeSums(tiles, saved.size)
+                const alreadyWon = saved.targets.rows.every((v, i) => curR[i] === v) && saved.targets.cols.every((v, i) => curC[i] === v)
+                setIsSolved(!!alreadyWon)
+                resizeBoard()
+                usedUndoOrResetRef.current = false
+                return
+            }
+        } else if (mode === 'daily') {
             const saved = loadGameState(daily.key, dailyIdx, data)
             if (saved) {
                 const tiles = saved.tiles.map(t => ({
@@ -388,21 +429,21 @@ export default function SumTiles() {
         loadPuzzle(data, gs)
         resizeBoard()
         usedUndoOrResetRef.current = false
-        if (mode === 'daily') setMoveCounts(loadMoveCounts(daily.key))
-    }, [currentPuzzleData, daily.key, dailyIdx, mode])
+        if (mode === 'daily' && !curateMode) setMoveCounts(loadMoveCounts(daily.key))
+    }, [currentPuzzleData, curateMode, curateIdx, daily.key, dailyIdx, mode])
 
     useEffect(() => {
-        if (isSolved && mode === 'daily') {
+        if (isSolved && !curateMode && mode === 'daily') {
             const moves = stateRef.current?.moveHistory?.length ?? 0
             markComplete(daily.key, dailyIdx, !usedUndoOrResetRef.current, moves)
             setCompletions(loadCompletions(daily.key))
             setPerfects(loadPerfects(daily.key))
             setMoveCounts(loadMoveCounts(daily.key))
         }
-    }, [isSolved])
+    }, [isSolved, curateMode, mode, daily.key, dailyIdx])
 
     useEffect(() => {
-        if (mode !== 'daily') return
+        if (curateMode || mode !== 'daily') return
         const done = completions.every(Boolean)
         if (allDailyDoneCompletionRef.current === null) {
             allDailyDoneCompletionRef.current = done
@@ -418,7 +459,7 @@ export default function SumTiles() {
         }
         if (!done) pendingSuiteModalAfterAnimRef.current = false
         allDailyDoneCompletionRef.current = done
-    }, [mode, completions])
+    }, [curateMode, mode, completions])
 
     useEffect(() => {
         const canvas = canvasRef.current; if (!canvas) return
@@ -463,7 +504,7 @@ export default function SumTiles() {
                     ctx.fillStyle=`rgba(34,197,94,${0.15*a})`; ctx.fillRect(0,0,canvas.width,canvas.height)
                     if (elapsed >= SOLVE_FINAL_MS) {
                         s.solveAnim = null
-                        if (pendingSuiteModalAfterAnimRef.current && modeRef.current === 'daily') {
+                        if (pendingSuiteModalAfterAnimRef.current && modeRef.current === 'daily' && !curateModeRef.current) {
                             pendingSuiteModalAfterAnimRef.current = false
                             setTimeout(() => setShowCompletionModal(true), 500)
                         }
@@ -504,7 +545,8 @@ export default function SumTiles() {
             if (hit) {
                 s.moveHistory.push(JSON.stringify(s.tiles.map(t=>({id:t.id,r:t.r,c:t.c}))))
                 setHistoryLen(s.moveHistory.length)
-                if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
+                if (curateModeRef.current) saveGameState('curate', curateIdxRef.current, s)
+                else if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
                 dragRef.current = { active:hit, axis:null, lastX:mx, lastY:my }
                 canvas.setPointerCapture?.(e.pointerId)
             }
@@ -566,7 +608,8 @@ export default function SumTiles() {
                 const won = s.targets.rows.every((v,i)=>curR[i]===v) && s.targets.cols.every((v,i)=>curC[i]===v)
                 if (won) { s.solveAnim = { phase:'rows', startTime:performance.now() }; setIsSolved(true) }
             }
-            if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
+            if (curateModeRef.current) saveGameState('curate', curateIdxRef.current, s)
+            else if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
             dragRef.current = { active:null, axis:null, lastX:0, lastY:0 }
         }
         canvas.addEventListener('pointerdown', onDown, { passive:false })
@@ -589,7 +632,8 @@ export default function SumTiles() {
         s.solveAnim = null
         setIsSolved(false)
         setHistoryLen(s.moveHistory.length)
-        if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
+        if (curateModeRef.current) saveGameState('curate', curateIdxRef.current, s)
+        else if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
     }
 
     const handleReset = () => {
@@ -606,10 +650,15 @@ export default function SumTiles() {
             if (rEl) rEl.style.transform='scale(1)'; if (cEl) cEl.style.transform='scale(1)'
         }
         setIsSolved(false); setHistoryLen(0)
-        if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
+        if (curateModeRef.current) saveGameState('curate', curateIdxRef.current, s)
+        else if (modeRef.current === 'daily') saveGameState(dailyKeyRef.current, dailyIdxRef.current, s)
     }
 
     const handlePrimary = () => {
+        if (curateMode) {
+            if (curateIdx < roster.length - 1) setCurateIdx(j => j + 1)
+            return
+        }
         if (mode === 'tutorial') {
             if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
             else { setMode('daily'); setDailyIdx(0) }
@@ -621,12 +670,35 @@ export default function SumTiles() {
 
     const allDone = completions.every(Boolean)
     const primaryLabel = isSolved
-        ? mode === 'tutorial'
-            ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
-            : allDone ? CTA_LABELS.ALL_PUZZLES : CTA_LABELS.NEXT_PUZZLE
+        ? curateMode
+            ? curateIdx < roster.length - 1 ? CTA_LABELS.NEXT_PUZZLE : null
+            : mode === 'tutorial'
+              ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
+              : allDone ? CTA_LABELS.ALL_PUZZLES : CTA_LABELS.NEXT_PUZZLE
         : null
 
     const base = import.meta.env.BASE_URL
+
+    const handleStatsClick = useCallback(() => {
+        if (curateMode) {
+            const entry = roster[curateIdx]
+            const p = currentPuzzleData
+            if (!entry || !p) return
+            const text = formatCurateClipboard('sumtiles', entry.tier, entry.indexInTier + 1, p, 200)
+            void navigator.clipboard.writeText(text).then(
+                () => {
+                    setCurateCopyHint('Copied puzzle id')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+                () => {
+                    setCurateCopyHint('Copy failed')
+                    window.setTimeout(() => setCurateCopyHint(null), 2500)
+                },
+            )
+            return
+        }
+        setShowStats(true)
+    }, [curateMode, roster, curateIdx, currentPuzzleData])
 
     return (
         <div className="game-container">
@@ -636,10 +708,26 @@ export default function SumTiles() {
                 onHome={() => { window.location.href = base }}
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
-                onStats={() => setShowStats(true)}
+                onStats={handleStatsClick}
             />
 
-            {mode === 'tutorial' ? (
+            <CurateCopyToast message={curateCopyHint} />
+
+            {curateMode ? (
+                <CurateLevelNav
+                    exitCurateHref={exitCurateHref}
+                    curateIdx={curateIdx}
+                    setCurateIdx={setCurateIdx}
+                    roster={roster}
+                    puzzleData={puzzleData}
+                    rightSlot={
+                        <>
+                            <span className="stats-label">Moves</span>
+                            <span className="stats-num">{Math.min(historyLen, MAX_MOVE_DISPLAY)}</span>
+                        </>
+                    }
+                />
+            ) : mode === 'tutorial' ? (
                 <div className="level-nav">
                     <div className="left-spacer">
                         <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
@@ -707,9 +795,9 @@ export default function SumTiles() {
                     style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {CTA_LABELS.ALL_PUZZLES}
                 </a>
-            ) : (
+            ) : primaryLabel ? (
                 <button className="btn-primary" onClick={handlePrimary}>{primaryLabel}</button>
-            )}
+            ) : null}
 
             <SharedModalShell show={showInstructions} onClose={closeInstructions} intent={MODAL_INTENTS.INSTRUCTIONS}>
                 <h1 className="title" style={{ marginBottom:'2rem', textAlign:'center' }}>Sum Tiles</h1>
@@ -745,7 +833,7 @@ export default function SumTiles() {
                 gameKey={GAME_KEYS.SUMTILES}
             />
             <SuiteGameCompletionModal
-                show={showCompletionModal}
+                show={showCompletionModal && !curateMode}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.SUMTILES}
                 dateKey={daily.key}

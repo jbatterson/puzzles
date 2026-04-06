@@ -20,11 +20,17 @@ export function hasAnyDailyCompletionInPrefix(prefix) {
 }
 
 export default function useInstructionsGate(storageKey, options = {}) {
-	const { openOnMount = true, completionStoragePrefix = null } = options;
+	const {
+		openOnMount = true,
+		completionStoragePrefix = null,
+		/** When true, instructions start closed (e.g. hidden curate URL). */
+		initiallyClosed = false,
+	} = options;
 	const [hasSeenInstructions, setHasSeenInstructions] = useState(
 		() => localStorage.getItem(storageKey) === "1"
 	);
 	const [showInstructions, setShowInstructions] = useState(() => {
+		if (initiallyClosed) return false;
 		const seen = localStorage.getItem(storageKey) === "1";
 		const veteran =
 			completionStoragePrefix != null &&
