@@ -189,6 +189,96 @@ function completionKey(idx) {
   return `honeycombs:${engineDateKey}:${idx}`
 }
 
+const GAME_STATE_VERSION = 1
+
+function gameStateKey(idx) {
+  return `honeycombs:${engineDateKey}:${idx}:gameState`
+}
+
+function puzzleFingerprint(puzzle) {
+  if (!puzzle) return null
+  return JSON.stringify({
+    size: puzzle.size,
+    clues: puzzle.clues,
+  })
+}
+
+function saveGameState() {
+  const puzzle = currentPuzzle()
+  if (!puzzle) return
+  try {
+    const payload = {
+      version: GAME_STATE_VERSION,
+      fingerprint: puzzleFingerprint(puzzle),
+      solved: !!state.solved,
+      activeDigit: state.activeDigit,
+      usedUndoOrReset: !!usedUndoOrReset,
+      cells: state.cells.map((c) => ({
+        row: c.row,
+        col: c.col,
+        value: c.value,
+        isClue: !!c.isClue,
+      })),
+      moveHistory: state.moveHistory.map((snap) => (Array.isArray(snap) ? [...snap] : snap)),
+    }
+    localStorage.setItem(gameStateKey(state.puzzleIdx), JSON.stringify(payload))
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function clearGameState(idx) {
+  try {
+    localStorage.removeItem(gameStateKey(idx))
+  } catch {
+    // ignore
+  }
+}
+
+function loadGameState(idx, puzzle, baselineCells) {
+  try {
+    const raw = localStorage.getItem(gameStateKey(idx))
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data || data.version !== GAME_STATE_VERSION) return null
+    if (data.fingerprint !== puzzleFingerprint(puzzle)) return null
+    if (!Array.isArray(data.cells) || data.cells.length !== baselineCells.length) return null
+    if (!Array.isArray(data.moveHistory)) return null
+
+    const baselineByPos = new Map(baselineCells.map((c) => [cellKey(c.row, c.col), c]))
+    const loadedByPos = new Map(data.cells.map((c) => [cellKey(c.row, c.col), c]))
+    if (loadedByPos.size !== baselineByPos.size) return null
+
+    const hydratedCells = baselineCells.map((base) => {
+      const loaded = loadedByPos.get(cellKey(base.row, base.col))
+      if (!loaded) return null
+      if (loaded.row !== base.row || loaded.col !== base.col) return null
+      if (!!loaded.isClue !== !!base.isClue) return null
+      if (base.isClue && loaded.value !== base.value) return null
+      return {
+        ...base,
+        value: loaded.value,
+      }
+    })
+    if (hydratedCells.some((c) => !c)) return null
+
+    const cellCount = hydratedCells.length
+    for (const snap of data.moveHistory) {
+      if (!Array.isArray(snap) || snap.length !== cellCount) return null
+    }
+
+    return {
+      solved: !!data.solved,
+      activeDigit: data.activeDigit == null ? null : data.activeDigit,
+      usedUndoOrReset: !!data.usedUndoOrReset,
+      cells: hydratedCells,
+      moveHistory: data.moveHistory.map((snap) => [...snap]),
+    }
+  } catch {
+    return null
+  }
+}
+
 function markSolved(idx) {
   const k = completionKey(idx)
   if (!k) return
@@ -214,16 +304,30 @@ function initPuzzle(idx) {
   const clueMap = {}
   for (const [r, c, v] of puzzle.clues) clueMap[cellKey(r, c)] = v
 
-  state.puzzleIdx  = idx
-  state.cells      = rawCells.map(({ row, col, cx, cy }) => ({
+  const baselineCells = rawCells.map(({ row, col, cx, cy }) => ({
     row, col, cx, cy,
     value:  clueMap[cellKey(row, col)] ?? null,
     isClue: !!clueMap[cellKey(row, col)],
   }))
-  state.solved     = false
-  state.moveHistory = []
-  state.activeDigit = computeActiveDigitMinMissing()
-  usedUndoOrReset = false
+  state.puzzleIdx = idx
+  const loaded = loadGameState(idx, puzzle, baselineCells)
+  if (loaded) {
+    state.cells = loaded.cells
+    state.solved = loaded.solved
+    state.moveHistory = loaded.moveHistory
+    state.activeDigit = loaded.activeDigit
+    usedUndoOrReset = loaded.usedUndoOrReset
+  } else {
+    clearGameState(idx)
+    state.cells = baselineCells
+    state.solved = false
+    state.moveHistory = []
+    state.activeDigit = computeActiveDigitMinMissing()
+    usedUndoOrReset = false
+  }
+  if (!state.solved && state.activeDigit === null) {
+    state.activeDigit = computeActiveDigitMinMissing()
+  }
   pathTraceSession++
   clearPathFadeTimeout()
   clearTraceDomImmediate()
@@ -294,6 +398,7 @@ function handleUndo() {
   }
   state.solved = false
   state.activeDigit = computeActiveDigitMinMissing()
+  saveGameState()
   render()
 }
 
@@ -313,6 +418,7 @@ function applyDigitToCell(row, col, num) {
   pushMoveHistory()
   cell.value = num
   state.activeDigit = computeActiveDigitAfterFill(num)
+  saveGameState()
   render()
 }
 
@@ -582,6 +688,7 @@ function runPathTraceAnimation(trace) {
   if (trace.complete && !state.solved) {
     state.solved = true
     markSolved(state.puzzleIdx)
+    saveGameState()
     renderKeyboard()
   }
 
@@ -990,6 +1097,7 @@ function handleCellClick(row, col) {
     pushMoveHistory()
     cell.value = null
     state.activeDigit = deletedValue
+    saveGameState()
     render()
     return
   }
@@ -1027,6 +1135,7 @@ function handleClearAll() {
   state.moveHistory = []
   state.solved = false
   state.activeDigit = computeActiveDigitMinMissing()
+  saveGameState()
   render()
 }
 
@@ -1102,6 +1211,7 @@ function handleKeyboard(e) {
   window.addEventListener('resize', onResize)
 
   function destroy() {
+    saveGameState()
     document.removeEventListener('keydown', handleKeyboard)
     document.removeEventListener('touchend', onTouchEnd)
     window.removeEventListener('resize', onResize)
