@@ -26,3 +26,6 @@ puzzlegames/allten/bundle_allten.js.map
 *.njsproj
 *.sln
 *.sw?
+
+# Generated Clueless ambiguity reports (run npm run check:clueless-ambiguity)
+tools/reports/

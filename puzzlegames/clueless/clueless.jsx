@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import puzzles from './puzzles.js'
+import puzzleData from './puzzles.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
@@ -18,10 +18,9 @@ import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
 import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
-import { buildFlatPuzzleRoster } from '../../src/shared/curateRoster.js'
+import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
-import { formatCluelessPuzzleSourceLine } from './formatCluelessPuzzleForCopy.js'
 
 /** Curate uses easy geometry for all roster puzzles (full word on middle row/col). */
 const CURATE_PUZZLE_DIFFICULTY = 'easy'
@@ -49,29 +48,31 @@ function getDayIndex(key) {
 
 const DIFFS = ['easy', 'medium', 'hard']
 
+/** Daily pick: same pattern as Scurry — each tier has its own batch; index = dayIndex % tier.length (no cross-tier offset). */
 function getDailyPuzzle(difficulty) {
     const key = getDailyKey()
     const dayIndex = getDayIndex(key)
+    const easy = puzzleData.easy || []
+    const medium = puzzleData.medium || []
+    const hard = puzzleData.hard || []
 
-    // Pools:
-    // - easy/medium: first 240, staggered by 120
-    // - hard: remaining (240+)
-    const EASY_LEN_RAW = 240
-    const MED_OFFSET = 120
-    const EASY_LEN = Math.min(EASY_LEN_RAW, puzzles.length)
-    const HARD_START = Math.min(EASY_LEN_RAW, puzzles.length)
-    const HARD_LEN = Math.max(0, puzzles.length - HARD_START)
-
+    let puzzle
     let idx = 0
     if (difficulty === 'easy') {
-        idx = EASY_LEN > 0 ? (dayIndex % EASY_LEN) : 0
+        const n = easy.length
+        idx = n > 0 ? dayIndex % n : 0
+        puzzle = easy[idx]
     } else if (difficulty === 'medium') {
-        idx = EASY_LEN > 0 ? ((dayIndex + MED_OFFSET) % EASY_LEN) : 0
+        const n = medium.length
+        idx = n > 0 ? dayIndex % n : 0
+        puzzle = medium[idx]
     } else {
-        idx = HARD_LEN > 0 ? (HARD_START + (dayIndex % HARD_LEN)) : (EASY_LEN > 0 ? (dayIndex % EASY_LEN) : 0)
+        const n = hard.length
+        idx = n > 0 ? dayIndex % n : 0
+        puzzle = hard[idx]
     }
 
-    return { puzzle: puzzles[idx], key, idx }
+    return { puzzle, key, idx }
 }
 
 // ── Completion tracking ──────────────────────────────────────────────────────
@@ -410,7 +411,7 @@ export default function CluelessGame() {
     const chrome = getGameChrome(GAME_KEYS.CLUELESS)
     const [difficultyIdx, setDifficultyIdx] = useState(() => parseHubDailyPuzzleParam())
     const difficulty = DIFFS[difficultyIdx] || 'easy'
-    const roster = useMemo(() => buildFlatPuzzleRoster(puzzles, 'puzzles'), [])
+    const roster = useMemo(() => buildTierRoster(puzzleData, ['easy', 'medium', 'hard']), [])
     const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 
     const daily = useMemo(() => {
@@ -772,10 +773,10 @@ export default function CluelessGame() {
     const handleStatsClick = useCallback(() => {
         if (curateMode) {
             const entry = roster[curateIdx]
-            if (!entry?.puzzle) return
-            const line1 = `clueless ${entry.tier} ${entry.indexInTier + 1}`
-            const line2 = formatCluelessPuzzleSourceLine(entry.puzzle)
-            void navigator.clipboard.writeText(`${line1}\n${line2}`).then(
+            const p = entry?.puzzle
+            if (!p) return
+            const text = formatCurateClipboard('clueless', entry.tier, entry.indexInTier + 1, p, 200)
+            void navigator.clipboard.writeText(text).then(
                 () => {
                     setCurateCopyHint('Copied puzzle id')
                     window.setTimeout(() => setCurateCopyHint(null), 2500)
@@ -961,7 +962,7 @@ export default function CluelessGame() {
                     curateIdx={curateIdx}
                     setCurateIdx={setCurateIdx}
                     roster={roster}
-                    puzzleData={{ puzzles }}
+                    puzzleData={puzzleData}
                     rightSlot={
                         <>
                             <span className="stats-label">Guesses</span>
@@ -1184,7 +1185,7 @@ export default function CluelessGame() {
                         <CluelessIcon size={80} />
                     </div>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                    Each puzzle uses six common five-letter, classroom-appropriate words - no plurals, proper nouns, abbreviations, or acronyms. The third puzzle may include some less familiar words.
+                    Each puzzle uses six common five-letter, classroom-appropriate words — no plurals, proper nouns, abbreviations, or acronyms. Easy puzzles skew toward the most familiar vocabulary; hard puzzles may include less common words.
                     </p>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
                         Use the <strong>CHECK</strong> button to reveal which letters are correct.
