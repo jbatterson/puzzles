@@ -22,6 +22,9 @@ import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import { formatScurryPuzzleSourceLine } from './formatScurryPuzzleForCopy.js'
 
+/** After the last winning placement: 300ms pre-celebration + 800ms `celebrating-bug` (see `placeBug`). */
+const SCURRY_SUITE_MODAL_AFTER_WIN_MS = 300 + 800 + 150
+
 const SCURRY_TUTORIAL_HINTS = [
     {
         idx: 0,
@@ -417,9 +420,9 @@ const BugPuzzle = () => {
             return
         }
         if (done && !allDailyDoneCompletionRef.current) {
-            setTimeout(() => {
+            window.setTimeout(() => {
                 setShowCompletionModal(true)
-            }, 500)
+            }, SCURRY_SUITE_MODAL_AFTER_WIN_MS)
         }
         allDailyDoneCompletionRef.current = done
     }, [curateMode, mode, completions])

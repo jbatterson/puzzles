@@ -7,7 +7,7 @@ import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
-import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
+import { MODAL_INTENTS, getModalCloseAriaLabel } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import {
     PUZZLE_SUITE_INK,
@@ -465,14 +465,33 @@ export default function CluelessGame() {
     const [selected, setSelected] = useState(-1)
     const [guessCount, setGuessCount] = useState(0)
     const [solved, setSolved] = useState(false)
-    const [statusMsg, setStatusMsg] = useState('')
     const [selectionHighlighted, setSelectionHighlighted] = useState(true)
     const [axisMode, setAxisMode] = useState('row')
     const [bestAttempts, setBestAttempts] = useState(null)
     const [checkedSignatures, setCheckedSignatures] = useState([])
-  const [hasInteracted, setHasInteracted] = useState(false)
+    const [hasInteracted, setHasInteracted] = useState(false)
+    const [showCheckModal, setShowCheckModal] = useState(false)
+    /** True only while diagonal scale pop runs on the grid. */
+    const [winFlourishActive, setWinFlourishActive] = useState(false)
+    /** Pause + flourish + pause until CTA; keyboard hidden as soon as solved. */
+    const [winCelebrationActive, setWinCelebrationActive] = useState(false)
+
+    const lastAutoWinKeyRef = useRef(null)
+    const winAnimTimerRef = useRef(null)
+    const winAnimGenRef = useRef(0)
+    const [showCompletionModal, setShowCompletionModal] = useState(false)
+    const allDifficultiesDoneCompletionRef = useRef(null)
+    const pendingSuiteCompletionModalRef = useRef(false)
 
     selectedRef.current = selected
+
+    useEffect(() => () => {
+        winAnimGenRef.current += 1
+        if (winAnimTimerRef.current != null) {
+            clearTimeout(winAnimTimerRef.current)
+            winAnimTimerRef.current = null
+        }
+    }, [])
 
     const attemptsByDiff = useMemo(() => {
         if (curateMode) return [null, null, null]
@@ -492,16 +511,41 @@ export default function CluelessGame() {
             return
         }
         if (done && !allDifficultiesDoneCompletionRef.current) {
-            setTimeout(() => {
-                setShowCompletionModal(true)
-            }, 500)
+            allDifficultiesDoneCompletionRef.current = done
+            if (winCelebrationActive) {
+                pendingSuiteCompletionModalRef.current = true
+            } else {
+                window.setTimeout(() => setShowCompletionModal(true), 500)
+            }
+            return
         }
         allDifficultiesDoneCompletionRef.current = done
-    }, [curateMode, attemptsByDiff])
+    }, [curateMode, attemptsByDiff, winCelebrationActive])
+
+    useEffect(() => {
+        if (curateMode || winCelebrationActive) return
+        if (!pendingSuiteCompletionModalRef.current) return
+        if (!attemptsByDiff.every(a => a != null)) {
+            pendingSuiteCompletionModalRef.current = false
+            return
+        }
+        pendingSuiteCompletionModalRef.current = false
+        const t = window.setTimeout(() => setShowCompletionModal(true), 500)
+        return () => window.clearTimeout(t)
+    }, [winCelebrationActive, curateMode, attemptsByDiff])
 
     // Load/restore state whenever difficulty changes
     useEffect(() => {
         if (!daily.puzzle) return
+        lastAutoWinKeyRef.current = null
+        pendingSuiteCompletionModalRef.current = false
+        winAnimGenRef.current += 1
+        if (winAnimTimerRef.current != null) {
+            clearTimeout(winAnimTimerRef.current)
+            winAnimTimerRef.current = null
+        }
+        setWinFlourishActive(false)
+        setWinCelebrationActive(false)
         const storageDiff = curateMode ? String(curateIdx) : difficulty
         const saved = loadGameState(daily.key, storageDiff, ALL_PLAYABLE_KEYS)
         const best = curateMode ? null : loadBestAttempts(daily.key, difficulty)
@@ -545,8 +589,7 @@ export default function CluelessGame() {
         setSelected(nextSel)
         setAxisMode('row')
         setSelectionHighlighted(true)
-        setStatusMsg('')
-    setHasInteracted(false)
+        setHasInteracted(false)
     }, [curateMode, curateIdx, daily.key, daily.puzzle, difficulty, geometry.inputOrder, answers])
 
     // Persist game state when it changes
@@ -575,8 +618,6 @@ export default function CluelessGame() {
     const [showLinks, setShowLinks] = useState(false)
     const [showStats, setShowStats] = useState(false)
     const [curateCopyHint, setCurateCopyHint] = useState(null)
-    const [showCompletionModal, setShowCompletionModal] = useState(false)
-    const allDifficultiesDoneCompletionRef = useRef(null)
 
     // ── Input handling ─────────────────────────────────────────────────────
 
@@ -637,12 +678,20 @@ export default function CluelessGame() {
         })
     }, [solved, locked])
 
+    /** Enter runs full puzzle check in one step; the on-screen CHECK key opens the menu. */
     const checkAnswerRef = useRef(null)
 
     // Physical keyboard
     useEffect(() => {
         if (showInstructions) return
         const handler = (e) => {
+            if (e.key === 'Escape') {
+                if (showCheckModal) {
+                    e.preventDefault()
+                    setShowCheckModal(false)
+                }
+                return
+            }
             if (e.key === 'Tab') {
                 e.preventDefault()
                 navigateUnlockedCell(e.shiftKey ? -1 : 1)
@@ -659,16 +708,63 @@ export default function CluelessGame() {
                 return
             }
             if (e.key === 'Backspace') { e.preventDefault(); handleKey('Backspace') }
-            else if (e.key === 'Enter') { e.preventDefault(); checkAnswerRef.current?.() }
+            else if (e.key === 'Enter') {
+                e.preventDefault()
+                if (showCheckModal) setShowCheckModal(false)
+                checkAnswerRef.current?.()
+            }
             else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key)
         }
         window.addEventListener('keydown', handler)
         return () => window.removeEventListener('keydown', handler)
-    }, [showInstructions, handleKey, navigateUnlockedCell])  // checkAnswer wired via ref below
+    }, [showInstructions, showCheckModal, handleKey, navigateUnlockedCell])
 
-    // ── Check answer ───────────────────────────────────────────────────────
+    /** Solve → pause → flourish → pause → CTA (see .clueless-win-flourish-pop). */
+    const WIN_PRE_FLOURISH_MS = 400
+    const WIN_POST_FLOURISH_MS = 400
+    const FLOURISH_DIAG_STAGGER_MS = 52
+    const FLOURISH_POP_DURATION_MS = 420
+    const FLOURISH_MAX_DIAG = 8
 
-    const checkAnswer = useCallback(() => {
+    const finalizePuzzleWin = useCallback((nextGuessCount, opts = {}) => {
+        const fromAutoWin = opts.fromAutoWin === true
+        const attemptsUsed = Math.min(nextGuessCount, 99)
+        if (!curateMode) markComplete(daily.key, difficulty, attemptsUsed)
+        setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
+        setSolved(true)
+        setSelected(-1)
+        if (fromAutoWin) {
+            setLocked(new Set(geometry.inputOrder.map(({ r, c }) => `${r},${c}`)))
+        }
+
+        setWinCelebrationActive(true)
+        setWinFlourishActive(false)
+
+        const flourishMs = FLOURISH_MAX_DIAG * FLOURISH_DIAG_STAGGER_MS + FLOURISH_POP_DURATION_MS + 120
+        if (winAnimTimerRef.current != null) {
+            clearTimeout(winAnimTimerRef.current)
+            winAnimTimerRef.current = null
+        }
+        const myGen = ++winAnimGenRef.current
+
+        winAnimTimerRef.current = window.setTimeout(() => {
+            if (myGen !== winAnimGenRef.current) return
+            setWinFlourishActive(true)
+            winAnimTimerRef.current = window.setTimeout(() => {
+                if (myGen !== winAnimGenRef.current) return
+                setWinFlourishActive(false)
+                winAnimTimerRef.current = window.setTimeout(() => {
+                    if (myGen !== winAnimGenRef.current) return
+                    setWinCelebrationActive(false)
+                    winAnimTimerRef.current = null
+                }, WIN_POST_FLOURISH_MS)
+            }, flourishMs)
+        }, WIN_PRE_FLOURISH_MS)
+    }, [curateMode, daily.key, difficulty, geometry.inputOrder])
+
+    // ── Check puzzle (full board) ──────────────────────────────────────────
+
+    const checkPuzzle = useCallback(() => {
         if (solved) return
 
         const newCorrect = []
@@ -686,10 +782,7 @@ export default function CluelessGame() {
             else newWrong.push(k)
         }
 
-        if (!hadAnyGuess) {
-            setStatusMsg('Enter at least one letter')
-            return
-        }
+        if (!hadAnyGuess) return
 
         const sig = boardCheckSignature(geometry.inputOrder, guesses)
         if (checkedSignatures.includes(sig)) return
@@ -706,18 +799,9 @@ export default function CluelessGame() {
             const allInputsLocked = geometry.inputOrder.every(({ r, c }) =>
                 newLocked.has(`${r},${c}`))
             if (allInputsLocked) {
-                const attemptsUsed = Math.min(nextGuessCount, 99)
-                if (!curateMode) markComplete(daily.key, difficulty, attemptsUsed)
-                setBestAttempts(prev => (prev != null && prev <= attemptsUsed ? prev : attemptsUsed))
-                setSolved(true)
-                setSelected(-1)
-                setStatusMsg('')
-            } else {
-                setStatusMsg('Looking good — keep going')
+                finalizePuzzleWin(nextGuessCount)
             }
         } else {
-            setStatusMsg('Not quite — try again')
-            // Record wrong letters per cell for keyboard highlighting
             setTriedLettersByCell(prev => {
                 const next = { ...prev }
                 for (const k of newWrong) {
@@ -730,16 +814,89 @@ export default function CluelessGame() {
                 }
                 return next
             })
-            // Move selection to first wrong cell
             const firstWrongIdx = geometry.inputOrder.findIndex(({ r, c }) => newWrong.includes(`${r},${c}`))
             if (firstWrongIdx >= 0) {
                 setSelected(firstWrongIdx)
                 setAxisMode('row')
             }
         }
-    }, [solved, curateMode, geometry.inputOrder, guessCount, guesses, locked, answers, daily.key, difficulty, checkedSignatures])
+    }, [solved, curateMode, geometry.inputOrder, guessCount, guesses, locked, answers, daily.key, difficulty, checkedSignatures, finalizePuzzleWin])
 
-    checkAnswerRef.current = checkAnswer
+    // ── Check single highlighted square ─────────────────────────────────────
+
+    const checkSelectedSquare = useCallback(() => {
+        if (solved) return
+        if (selected < 0 || selected >= geometry.inputOrder.length) return
+        const { r, c } = geometry.inputOrder[selected]
+        const k = `${r},${c}`
+        if (locked.has(k)) return
+        const guess = guesses[k]
+        if (!guess) return
+
+        const nextGuessCount = guessCount + 1
+        setGuessCount(nextGuessCount)
+        const answer = answers[k]
+
+        if (guess === answer) {
+            const newLocked = new Set([...locked, k])
+            setLocked(newLocked)
+            const allInputsLocked = geometry.inputOrder.every(({ r: rr, c: cc }) =>
+                newLocked.has(`${rr},${cc}`))
+            if (allInputsLocked) {
+                finalizePuzzleWin(nextGuessCount)
+            }
+        } else {
+            setTriedLettersByCell(prev => {
+                const next = { ...prev }
+                const arr = next[k] ? [...next[k]] : []
+                if (!arr.includes(guess)) arr.push(guess)
+                next[k] = arr
+                return next
+            })
+        }
+    }, [solved, selected, geometry.inputOrder, locked, guesses, answers, guessCount, finalizePuzzleWin])
+
+    checkAnswerRef.current = checkPuzzle
+
+    // Auto-solve when every entry is correct (instant green + same celebration as CHECK win).
+    useEffect(() => {
+        if (solved || showInstructions) return
+
+        const allCorrect = geometry.inputOrder.every(({ r, c }) => {
+            const k = `${r},${c}`
+            return guesses[k] === answers[k]
+        })
+        if (!allCorrect) {
+            lastAutoWinKeyRef.current = null
+            return
+        }
+
+        const sig = boardCheckSignature(geometry.inputOrder, guesses)
+        const winKey = `${daily.key}:${curateMode ? String(curateIdx) : difficulty}:${sig}`
+        if (lastAutoWinKeyRef.current === winKey) return
+        lastAutoWinKeyRef.current = winKey
+
+        const nextGuessCount = Math.min(guessCount + 1, 99)
+        setCheckedSignatures(prev => (prev.includes(sig) ? prev : [...prev, sig]))
+        setGuessCount(prev => Math.min(prev + 1, 99))
+        finalizePuzzleWin(nextGuessCount, { fromAutoWin: true })
+    }, [
+        solved,
+        showInstructions,
+        geometry.inputOrder,
+        guesses,
+        answers,
+        daily.key,
+        difficulty,
+        curateMode,
+        curateIdx,
+        guessCount,
+        finalizePuzzleWin,
+    ])
+
+    useEffect(() => {
+        if (solved) setShowCheckModal(false)
+    }, [solved])
 
     // ── Cell click ─────────────────────────────────────────────────────────
 
@@ -766,6 +923,7 @@ export default function CluelessGame() {
 
     const currentBoardSig = boardCheckSignature(geometry.inputOrder, guesses)
     const boardAlreadyChecked = checkedSignatures.includes(currentBoardSig)
+    const canCheckPuzzle = hasCheckableLetter && !boardAlreadyChecked
 
     const base = import.meta.env.BASE_URL
     const nextUnsolvedIdx = [0, 1, 2].find(i => i !== difficultyIdx && attemptsByDiff[i] == null)
@@ -800,6 +958,15 @@ export default function CluelessGame() {
     const selPos = !solved && selected >= 0 && selected < geometry.inputOrder.length
         ? geometry.inputOrder[selected]
         : null
+
+    let canCheckSelectedSquare = false
+    if (selected >= 0 && selected < geometry.inputOrder.length) {
+        const { r, c } = geometry.inputOrder[selected]
+        const sk = `${r},${c}`
+        canCheckSelectedSquare = !locked.has(sk) && !!guesses[sk]
+    }
+
+    const canOpenCheckMenu = canCheckPuzzle || canCheckSelectedSquare
 
     // ── Grid cells ─────────────────────────────────────────────────────────
 
@@ -851,23 +1018,33 @@ export default function CluelessGame() {
             if (geometry.clueCells.has(key)) {
                 const clueIsLarge = inBand
                 const clueInset = clueIsLarge ? LARGE_TILE_INSET : SMALL_TILE_INSET
+                const diagFlourish = r + c
+                const clueFlourish = solved && winFlourishActive
                 cells.push(
                     <div key={key} style={slotStyle}>
-                        <div style={{
-                            width: sizeForInset(clueInset),
-                            height: sizeForInset(clueInset),
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: GOLD_FILL,
-                            color: '#ffffff',
-                            border: clueIsLarge ? `${ENTRY_BORDER_WIDTH}px solid ${GOLD_FILL}` : 'none',
-                            fontWeight: 900,
-                            fontSize: clueIsLarge ? CLUELESS_INPUT_FONT : CLUELESS_CLUE_FONT,
-                            transition: 'width 0.15s ease, height 0.15s ease, font-size 0.15s ease',
-                            textTransform: 'uppercase',
-                            boxSizing: 'border-box',
-                        }}>
+                        <div
+                            className={clueFlourish ? 'clueless-win-flourish-pop' : undefined}
+                            style={{
+                                width: sizeForInset(clueInset),
+                                height: sizeForInset(clueInset),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: GOLD_FILL,
+                                color: '#ffffff',
+                                border: clueIsLarge ? `${ENTRY_BORDER_WIDTH}px solid ${GOLD_FILL}` : 'none',
+                                fontWeight: 900,
+                                fontSize: clueIsLarge ? CLUELESS_INPUT_FONT : CLUELESS_CLUE_FONT,
+                                transition: 'width 0.15s ease, height 0.15s ease, font-size 0.15s ease',
+                                textTransform: 'uppercase',
+                                boxSizing: 'border-box',
+                                ...(clueFlourish ? {
+                                    ['--clueless-flourish-wave']: diagFlourish,
+                                    ['--clueless-flourish-stagger']: `${FLOURISH_DIAG_STAGGER_MS}ms`,
+                                    ['--clueless-flourish-pop-duration']: `${FLOURISH_POP_DURATION_MS}ms`,
+                                } : {}),
+                            }}
+                        >
                             {clues[key] || ''}
                         </div>
                     </div>
@@ -909,6 +1086,21 @@ export default function CluelessGame() {
                 bg = ACTIVE_CELL_FILL
             }
 
+            const diagFlourish = r + c
+            const entryFlourish = solved && winFlourishActive && isLocked
+
+            const innerTileCommon = {
+                width: sizeForInset(tileInset),
+                height: sizeForInset(tileInset),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: tileFontSize,
+                textTransform: 'uppercase',
+                boxSizing: 'border-box',
+            }
+
             cells.push(
                 <div
                     key={key}
@@ -918,21 +1110,21 @@ export default function CluelessGame() {
                         cursor: solved || isLocked ? 'default' : 'pointer',
                     }}
                 >
-                    <div style={{
-                        width: sizeForInset(tileInset),
-                        height: sizeForInset(tileInset),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: bg,
-                        color,
-                        border: `${borderWidth} solid ${borderColor}`,
-                        fontWeight: 900,
-                        fontSize: tileFontSize,
-                        textTransform: 'uppercase',
-                        transition: 'width 0.15s ease, height 0.15s ease, font-size 0.15s ease, background 0.15s, border-color 0.15s',
-                        boxSizing: 'border-box',
-                    }}>
+                    <div
+                        className={entryFlourish ? 'clueless-win-flourish-pop' : undefined}
+                        style={{
+                            ...innerTileCommon,
+                            background: bg,
+                            color,
+                            border: `${borderWidth} solid ${borderColor}`,
+                            transition: 'width 0.15s ease, height 0.15s ease, font-size 0.15s ease, background 0.15s, border-color 0.15s',
+                            ...(entryFlourish ? {
+                                ['--clueless-flourish-wave']: diagFlourish,
+                                ['--clueless-flourish-stagger']: `${FLOURISH_DIAG_STAGGER_MS}ms`,
+                                ['--clueless-flourish-pop-duration']: `${FLOURISH_POP_DURATION_MS}ms`,
+                            } : {}),
+                        }}
+                    >
                         {letter}
                     </div>
                 </div>
@@ -1037,10 +1229,10 @@ export default function CluelessGame() {
                 letterSpacing: '0.1em',
                 color: solved ? CORRECT_COLOR : PUZZLE_SUITE_INK,
             }}>
-                {solved ? 'Solved!' : statusMsg}
+                {solved ? 'Solved!' : ''}
             </div>
 
-            {/* GAME BOARD */}
+            {/* GAME BOARD + check modal + keyboard (shared stage width) */}
             {/*
               * Size the grid to fit whatever vertical space is left after the
               * fixed chrome (header ~60px, nav ~60px, status ~24px, keyboard
@@ -1052,41 +1244,44 @@ export default function CluelessGame() {
             <div style={{
                 display: 'flex',
                 justifyContent: 'center',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 padding: '6px 0',
                 flexShrink: 0,
             }}>
                 <div style={{
-                    width: CLUELESS_STAGE_WIDTH,
-                    aspectRatio: '1 / 1',
                     position: 'relative',
-                    background: '#fff',
-                    minWidth: '200px',
+                    width: CLUELESS_STAGE_WIDTH,
+                    maxWidth: '100%',
+                    flexShrink: 0,
                 }}>
                     <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(5, 1fr)',
-                        gridTemplateRows: 'repeat(5, 1fr)',
                         width: '100%',
-                        height: '100%',
+                        aspectRatio: '1 / 1',
+                        position: 'relative',
+                        background: '#fff',
+                        minWidth: '200px',
                     }}>
-                        {cells}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(5, 1fr)',
+                            gridTemplateRows: 'repeat(5, 1fr)',
+                            width: '100%',
+                            height: '100%',
+                        }}>
+                            {cells}
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            {/* KEYBOARD when playing; next puzzle / hub when solved */}
-            <div style={{
-                marginTop: '0.5rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-                width: CLUELESS_STAGE_WIDTH,
-                maxWidth: '100%',
-                alignSelf: 'center',
-                flexShrink: 0,
-            }}>
-                {solved ? (
+                    {/* Keyboard only while unsolved; CTA after celebration */}
+                    <div style={{
+                        marginTop: '0.5rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        width: '100%',
+                        flexShrink: 0,
+                        minHeight: solved && winCelebrationActive ? 'clamp(100px, 22vh, 170px)' : undefined,
+                    }}>
+                {solved && !winCelebrationActive ? (
                     curateMode ? (
                         curateIdx < roster.length - 1 ? (
                             <button type="button" className="btn-primary" onClick={() => setCurateIdx(j => j + 1)}>
@@ -1103,7 +1298,7 @@ export default function CluelessGame() {
                             All Puzzles
                         </a>
                     )
-                ) : (
+                ) : !solved ? (
                 <>
                 {KB_ROWS.map((row, ri) => (
                     <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
@@ -1112,6 +1307,7 @@ export default function CluelessGame() {
                                 type="button"
                                 aria-label="Clear all entries"
                                 className="clueless-action-key"
+                                disabled={solved}
                                 onClick={clearAllUnlockedEntries}
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
@@ -1127,8 +1323,8 @@ export default function CluelessGame() {
                                 <button
                                     key={ch}
                                     type="button"
-                                    disabled={isTried}
-                                    onClick={() => { if (!isTried) handleKey(ch) }}
+                                    disabled={isTried || solved}
+                                    onClick={() => { if (!isTried && !solved) handleKey(ch) }}
                                     className={isTried ? 'clueless-key clueless-key--tried' : 'clueless-key'}
                                     style={{
                                         minWidth: 'clamp(24px, 7vw, 36px)',
@@ -1146,6 +1342,7 @@ export default function CluelessGame() {
                                 type="button"
                                 aria-label="Backspace"
                                 className="clueless-action-key"
+                                disabled={solved}
                                 onClick={() => handleKey('Backspace')}
                                 style={{
                                     minWidth: 'clamp(36px, 9vw, 52px)',
@@ -1154,27 +1351,25 @@ export default function CluelessGame() {
                             >
                                 <i className="fa-solid fa-delete-left" style={{ fontSize: '1.5em' }} aria-hidden="true" />
                             </button>
-                            {(() => {
-                            const checkActive = hasCheckableLetter && !solved && !boardAlreadyChecked
-                            return (
-                                <button
-                                    className="clueless-action-key clueless-check-key"
-                                    onClick={checkActive ? checkAnswerRef.current : undefined}
-                                    disabled={!checkActive}
-                                    style={{
-                                        minWidth: 'clamp(36px, 9vw, 52px)',
-                                        height: 'clamp(32px, 7vh, 50px)',
-                                        fontSize: 'clamp(0.55rem, 1.8vw, 0.75rem)',
-                                    }}
-                                >CHECK</button>
-                            )
-                        })()}
+                            <button
+                                type="button"
+                                className="clueless-action-key clueless-check-key"
+                                disabled={solved || !canOpenCheckMenu}
+                                onClick={() => { if (canOpenCheckMenu) setShowCheckModal(true) }}
+                                style={{
+                                    minWidth: 'clamp(36px, 9vw, 52px)',
+                                    height: 'clamp(32px, 7vh, 50px)',
+                                    fontSize: 'clamp(0.55rem, 1.8vw, 0.75rem)',
+                                }}
+                            >CHECK</button>
                             </>
                         )}
                     </div>
                 ))}
                 </>
-                )}
+                ) : null}
+                    </div>
+                </div>
             </div>
 
             {/* INSTRUCTIONS OVERLAY */}
@@ -1185,13 +1380,13 @@ export default function CluelessGame() {
                         <CluelessIcon size={80} />
                     </div>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                    Each puzzle uses six common five-letter, classroom-appropriate words — no plurals, proper nouns, abbreviations, or acronyms. Easy puzzles skew toward the most familiar vocabulary; hard puzzles may include less common words.
+                    Each puzzle uses six five-letter, classroom-appropriate words — no plurals, proper nouns, abbreviations, or acronyms.
                     </p>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-                        Use the <strong>CHECK</strong> button to reveal which letters are correct.
+                        When every blank is filled with the correct letter, the puzzle completes automatically.
                     </p>
-                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                        If multiple letters can fill a blank, the puzzle uses the one that creates the most common pair.
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
+                        Tap <strong>CHECK</strong> to choose <strong>CHECK PUZZLE</strong> (all blanks) or <strong>CHECK SQUARE</strong> (only the highlighted blank).
                     </p>
                 </div>
 
@@ -1205,11 +1400,74 @@ export default function CluelessGame() {
                 gameKey={GAME_KEYS.CLUELESS}
             />
             <SuiteGameCompletionModal
-                show={showCompletionModal && !curateMode}
+                show={showCompletionModal && !curateMode && !winCelebrationActive}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.CLUELESS}
                 dateKey={daily.key}
             />
+
+            {showCheckModal && (
+                <div
+                    className="floating-modal-backdrop clueless-check-modal-backdrop"
+                    role="presentation"
+                    onClick={() => setShowCheckModal(false)}
+                >
+                    <div
+                        className="floating-modal-panel shared-modal-content clueless-check-modal-panel"
+                        role="dialog"
+                        aria-label="Check options"
+                        aria-modal="true"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            className="shared-modal-close"
+                            onClick={() => setShowCheckModal(false)}
+                            aria-label={getModalCloseAriaLabel()}
+                        >
+                            ✕
+                        </button>
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px',
+                                marginTop: '4px',
+                            }}
+                        >
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                disabled={!canCheckPuzzle}
+                                onClick={() => {
+                                    setShowCheckModal(false)
+                                    checkPuzzle()
+                                }}
+                            >
+                                Check puzzle
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                disabled={!canCheckSelectedSquare}
+                                onClick={() => {
+                                    setShowCheckModal(false)
+                                    checkSelectedSquare()
+                                }}
+                            >
+                                Check square
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-primary"
+                                onClick={() => setShowCheckModal(false)}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

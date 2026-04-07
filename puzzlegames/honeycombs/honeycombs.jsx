@@ -196,8 +196,8 @@ export default function HoneycombsApp() {
     modalsOpenRef.current = showInstructions || showStats || showLinks
   }, [showInstructions, showStats, showLinks])
 
-  // Track when all three daily Honeycombs are completed; defer actual modal
-  // opening until the engine signals that the win animation has finished.
+  // Track when all three daily Honeycombs are completed; the engine calls
+  // `onWinAnimationComplete` after the 3× trace pulse (honeycombsEngine WIN_TRACE_PULSE_TOTAL_MS).
   useLayoutEffect(() => {
     if (curateMode || mode !== 'daily') return
     const done = completions.every(Boolean)

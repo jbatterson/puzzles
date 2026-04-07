@@ -24,6 +24,8 @@ import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChro
 const SNAP_SPEED = 0.25
 const SOLVE_STEP_MS = 200
 const SOLVE_FINAL_MS = 1000
+/** Worst-case row+col wave + final flash (grid size ≤ 6); used if suite completes without an active `solveAnim`. */
+const SUMTILES_SUITE_MODAL_SOLVE_ANIM_MAX_MS = 6 * SOLVE_STEP_MS * 2 + SOLVE_FINAL_MS + 200
 
 // ── Daily helpers ────────────────────────────────────────────────────────────
 function getDailyKey() {
@@ -461,7 +463,7 @@ export default function SumTiles() {
             const s = stateRef.current
             if (!s?.solveAnim) {
                 pendingSuiteModalAfterAnimRef.current = false
-                setTimeout(() => setShowCompletionModal(true), 500)
+                window.setTimeout(() => setShowCompletionModal(true), SUMTILES_SUITE_MODAL_SOLVE_ANIM_MAX_MS)
             }
         }
         if (!done) pendingSuiteModalAfterAnimRef.current = false

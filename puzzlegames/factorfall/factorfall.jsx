@@ -20,6 +20,9 @@ import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateR
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 
+/** Suite modal: allow last clear animation (highlights, pops, floating “=N” scores) to finish. */
+const FACTORFALL_SUITE_MODAL_AFTER_WIN_MS = 1800
+
 // ── Constants ────────────────────────────────────────────────────────────────
 const COLS = 5, ROWS = 5
 const BASE_CELL = 72   
@@ -693,9 +696,9 @@ const Factorfall = () => {
             return
         }
         if (done && !allDailyDoneCompletionRef.current) {
-            setTimeout(() => {
+            window.setTimeout(() => {
                 setShowCompletionModal(true)
-            }, 500)
+            }, FACTORFALL_SUITE_MODAL_AFTER_WIN_MS)
         }
         allDailyDoneCompletionRef.current = done
     }, [curateMode, mode, completions])

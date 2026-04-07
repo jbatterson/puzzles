@@ -22,6 +22,9 @@ import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateR
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 
+/** Must match `.pulse-win` in `src/shared/style.css` (3 × 0.6s) and the suite-completion delay below. */
+const FOLDS_WIN_PULSE_TOTAL_MS = 1900
+
 // ── Geometry (unchanged) ─────────────────────────────────────────────────────
 const S = 62, H = S * Math.sqrt(3) / 2, PAD = 40, N = 4, ANIM_MS = 450
 const up = (r, c) => (r + c) % 2 === 0
@@ -635,7 +638,7 @@ const App = () => {
     /** pulseWin runs 3 × 0.6s; drop class after so revisits don’t retrigger from leftover state. */
     useEffect(() => {
         if (!playWinPulse) return
-        const t = setTimeout(() => setPlayWinPulse(false), 1900)
+        const t = setTimeout(() => setPlayWinPulse(false), FOLDS_WIN_PULSE_TOTAL_MS)
         return () => clearTimeout(t)
     }, [playWinPulse])
 
@@ -840,9 +843,9 @@ const App = () => {
             return
         }
         if (done && !allDailyDoneCompletionRef.current) {
-            setTimeout(() => {
+            window.setTimeout(() => {
                 setShowCompletionModal(true)
-            }, 500)
+            }, FOLDS_WIN_PULSE_TOTAL_MS + 200)
         }
         allDailyDoneCompletionRef.current = done
     }, [curateMode, mode, completions])

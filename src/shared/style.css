@@ -769,6 +769,46 @@ html, body {
     cursor: not-allowed;
 }
 
+/* Clueless CHECK menu: full-screen dim; sheet anchored to bottom so the board stays visible */
+.floating-modal-backdrop.clueless-check-modal-backdrop {
+    justify-content: flex-end;
+    align-items: center;
+    padding: 32px 0 0;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+}
+
+.game-container.clueless .floating-modal-panel.clueless-check-modal-panel {
+    position: relative;
+    width: min(100%, 420px);
+    max-width: 100%;
+    max-height: min(52vh, 360px);
+    flex-shrink: 0;
+    margin: 0 auto;
+    border-radius: 16px 16px 0 0;
+    padding: 44px 16px 20px;
+}
+
+/* Post-solve diagonal wave: scale pop on clue + entry tiles (timing via --clueless-flourish-* from JSX) */
+@keyframes cluelessWinFlourishPop {
+    0% {
+        transform: scale(1);
+    }
+    40% {
+        transform: scale(1.14);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.clueless-win-flourish-pop {
+    transform-origin: center center;
+    will-change: transform;
+    animation: cluelessWinFlourishPop var(--clueless-flourish-pop-duration, 420ms) ease-in-out forwards;
+    animation-delay: calc(var(--clueless-flourish-wave, 0) * var(--clueless-flourish-stagger, 52ms));
+    animation-fill-mode: none;
+}
+
 /* =============================================================================
    SCURRY-SPECIFIC
    Grid cells and bug layer positioning.
