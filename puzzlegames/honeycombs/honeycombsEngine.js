@@ -419,6 +419,17 @@ function applyDigitToCell(row, col, num) {
   cell.value = num
   state.activeDigit = computeActiveDigitAfterFill(num)
   saveGameState()
+
+  // Auto-check only for true wins, so wrong filled boards still show CHECK.
+  if (allFilled()) {
+    const trace = buildPathTrace()
+    if (trace.complete) {
+      render()
+      handleCheck()
+      return
+    }
+  }
+
   render()
 }
 
