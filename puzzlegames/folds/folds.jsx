@@ -455,6 +455,11 @@ const App = () => {
 
     const beginFoldTouchTrace = (e, grid, hitLineKey) => {
         endFoldTouchTrace()
+        if (hoverDelayRef.current) {
+            clearTimeout(hoverDelayRef.current)
+            hoverDelayRef.current = null
+        }
+        setHoverLine(null)
         const svg = svgRef.current
         if (!svg) return
         const pointerIdForTrace = e.pointerId
@@ -501,6 +506,7 @@ const App = () => {
                     anchor = picked.anchor
                 }
             }
+            setHoverLine(null)
             setPendingFoldLine(lineKey)
             setPendingFoldAnchor(anchor)
         }
@@ -978,6 +984,10 @@ const App = () => {
                         preserveAspectRatio="xMidYMid meet"
                         style={{ width: '100%', height: '100%', display: 'block' }}
                         onPointerDownCapture={onSvgPointerDownCapture}
+                        onLostPointerCapture={(e) => {
+                            if (foldTracePointerIdRef.current == null || e.pointerId !== foldTracePointerIdRef.current) return
+                            endFoldTouchTrace()
+                        }}
                     >
                         <g transform={`rotate(30 ${HEX_BOUNDS.minX + HEX_BOUNDS.width/2} ${HEX_BOUNDS.minY + HEX_BOUNDS.height/2})`}>
                             {ALL_TRIANGLES.map(t => <polygon key={t.key} points={pts(t.r, t.c)} fill="none" stroke="#f1f5f9" strokeWidth="1.5" />)}
@@ -1007,7 +1017,10 @@ const App = () => {
                                         if (Date.now() < ignoreBoardPointerUntilRef.current) return
                                         if (e.pointerType !== 'mouse') return
                                         if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
-                                        hoverDelayRef.current = setTimeout(() => setHoverLine(l.lineKey), 80)
+                                        hoverDelayRef.current = setTimeout(() => {
+                                            if (Date.now() < ignoreBoardPointerUntilRef.current) return
+                                            setHoverLine(l.lineKey)
+                                        }, 80)
                                     }}
                                     onPointerLeave={(e) => {
                                         if (Date.now() < ignoreBoardPointerUntilRef.current) return
