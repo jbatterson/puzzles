@@ -786,7 +786,7 @@ export default function Home() {
                             <ul>
                                 <li><strong>Green</strong> indicates completed puzzles. </li>
                                 <li><strong>Numbers</strong> in completed puzzles indicate moves or guesses used.</li>
-                                <li><strong>Stars</strong> in unnumbered puzzles indicate solves made without using undo or reset.</li>
+                                <li><strong>Stars</strong> in unnumbered puzzles indicate perfect solves made without using check, undo, or reset, or deletions on Honeycombs.</li>
                             </ul>
                             <p><strong>Share</strong> copies your results to the clipboard.</p>
                             <p><strong>Streaks</strong> for each puzzle type are maintained by completing at least one puzzle daily.</p>

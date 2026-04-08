@@ -12,7 +12,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -21,6 +21,7 @@ import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
 import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
+import { PostSolvePrimaryButton, PostSolvePrimaryLink } from '../../src/shared/PostSolvePrimaryCta.jsx'
 
 /** Clueless-style wave flourish: cap × stagger + pop + tail (keep in sync with `src/shared/style.css` `.folds-win-flourish-pop`). */
 const FOLDS_FLOURISH_STAGGER_MS = 52
@@ -441,7 +442,9 @@ const App = () => {
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.FOLDS, puzzleData.tutorial ?? []).mode)
     const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.FOLDS, puzzleData.tutorial ?? []).tutorialIdx)
-    const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
+    const [dailyIdx, setDailyIdx] = useState(() =>
+        resolveHubDailySlotOnLoad(GAME_KEYS.FOLDS, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+    )
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const canShareHub = useMemo(
@@ -463,6 +466,8 @@ const App = () => {
     const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
+    /** When the suite becomes all-complete during daily play, open modal after win flourish (not during rewind/replay). */
+    const pendingSuiteModalAfterCelebrationRef = useRef(false)
 
     const [tutorialHint1Dismissed, setTutorialHint1Dismissed] = useState(false)
     /** Puzzle 5 in the UI (tutorial index 4): two-folds hint. */
@@ -473,6 +478,11 @@ const App = () => {
     useEffect(() => {
         if (!curateMode) persistTutorialResumeState(GAME_KEYS.FOLDS, mode, tutorialIdx)
     }, [curateMode, mode, tutorialIdx])
+
+    useEffect(() => {
+        if (curateMode || mode !== 'daily') return
+        persistHubDailySlot(GAME_KEYS.FOLDS, daily.key, dailyIdx)
+    }, [curateMode, mode, daily.key, dailyIdx])
 
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
@@ -646,8 +656,6 @@ const App = () => {
     const puzzleRef = useRef(puzzle)
     const historyRef = useRef(history)
     const winShowcaseRef = useRef(null)
-    /** Total ms from first win frame until suite “all dailies” modal should open (rewind + replay + pause + flourish + pad). */
-    const winCelebrationTotalMsRef = useRef(FOLDS_WIN_REPLAY_PAUSE_MS + FOLDS_WIN_FLOURISH_TOTAL_MS + 200)
     boardRef.current = board
     puzzleRef.current = puzzle
     historyRef.current = history
@@ -730,9 +738,6 @@ const App = () => {
                 prevBoardMatchedTargetRef.current = true
                 const boardsSnap = historyRef.current.map(b => ({ ...b }))
                 const lineKeys = inferFoldSequence(boardsSnap)
-                const n = lineKeys == null ? 0 : lineKeys.length
-                const rewindMs = n > 0 ? FOLDS_WIN_REWIND_FADE_MS : 0
-                winCelebrationTotalMsRef.current = rewindMs + n * ANIM_MS + FOLDS_WIN_REPLAY_PAUSE_MS + FOLDS_WIN_FLOURISH_TOTAL_MS + 200
                 if (lineKeys === null) {
                     setWinShowcase({ kind: 'pause' })
                     return
@@ -815,12 +820,18 @@ const App = () => {
         })
     }, [winShowcase, anim])
 
-    /** Drop flourish class after last triangle’s animation can finish. */
+    /** Drop flourish class after last triangle’s animation can finish; then suite completion modal if pending. */
     useEffect(() => {
         if (!winFlourishActive) return
-        const t = setTimeout(() => setWinFlourishActive(false), FOLDS_WIN_FLOURISH_TOTAL_MS)
+        const t = setTimeout(() => {
+            setWinFlourishActive(false)
+            if (pendingSuiteModalAfterCelebrationRef.current && mode === 'daily' && !curateMode) {
+                pendingSuiteModalAfterCelebrationRef.current = false
+                setShowCompletionModal(true)
+            }
+        }, FOLDS_WIN_FLOURISH_TOTAL_MS)
         return () => clearTimeout(t)
-    }, [winFlourishActive])
+    }, [winFlourishActive, mode, curateMode])
 
     useEffect(() => {
         if (!puzzle || anim) return
@@ -908,6 +919,13 @@ const App = () => {
         setRewindFadeT(null)
         const h = historyRef.current
         if (h.length > 0) setBoard({ ...h[h.length - 1] })
+        if (pendingSuiteModalAfterCelebrationRef.current && mode === 'daily' && !curateMode) {
+            const allDone = loadCompletions(daily.key).every(Boolean)
+            if (allDone) {
+                pendingSuiteModalAfterCelebrationRef.current = false
+                setShowCompletionModal(true)
+            }
+        }
     }
 
     // Mark complete when won
@@ -1050,6 +1068,8 @@ const App = () => {
         : folds <= 0 ? 'Retry Puzzle'
         : null
 
+    const foldsPrimaryCtaAttention = uiWon && !foldsCelebrationActive && !!primaryLabel
+
     useEffect(() => {
         if (curateMode || mode !== 'daily') return
         const done = completions.every(Boolean)
@@ -1058,9 +1078,7 @@ const App = () => {
             return
         }
         if (done && !allDailyDoneCompletionRef.current) {
-            window.setTimeout(() => {
-                setShowCompletionModal(true)
-            }, winCelebrationTotalMsRef.current)
+            pendingSuiteModalAfterCelebrationRef.current = true
         }
         allDailyDoneCompletionRef.current = done
     }, [curateMode, mode, completions])
@@ -1374,12 +1392,17 @@ const App = () => {
             ) : ((anim && !foldsCelebrationActive) || (!uiWon && folds > 0)) ? (
                 <div className="goal-text">Match the Pattern</div>
             ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
-                <a href={base} className="btn-primary"
-                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <PostSolvePrimaryLink
+                    attention={foldsPrimaryCtaAttention}
+                    href={base}
+                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
                     {CTA_LABELS.ALL_PUZZLES}
-                </a>
+                </PostSolvePrimaryLink>
             ) : primaryLabel ? (
-                <button className="btn-primary" onClick={handlePrimaryClick}>{primaryLabel}</button>
+                <PostSolvePrimaryButton attention={foldsPrimaryCtaAttention} onClick={handlePrimaryClick}>
+                    {primaryLabel}
+                </PostSolvePrimaryButton>
             ) : null}
 
             <SharedModalShell show={showInstructions} onClose={closeInstructions} intent={MODAL_INTENTS.INSTRUCTIONS}>

@@ -224,7 +224,7 @@ const puzzleData = {
 
 export default puzzleData
 
-function getDailyKey() {
+export function getHoneycombsDailyDateKey() {
   const now = new Date()
   const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
   return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
@@ -238,7 +238,7 @@ function getDayIndex(key) {
 }
 
 export function getDailyHoneycombsPuzzles() {
-  const key = getDailyKey()
+  const key = getHoneycombsDailyDateKey()
   const dayIndex = getDayIndex(key)
   const easy = puzzleData.easy || []
   const medium = puzzleData.medium || []
@@ -251,15 +251,4 @@ export function getDailyHoneycombsPuzzles() {
       hard[dayIndex % hard.length],
     ],
   }
-}
-
-export function parsePuzzleParam(search = window.location.search) {
-  try {
-    const p = new URLSearchParams(search).get('p')
-    const n = parseInt(p, 10)
-    if (n >= 1 && n <= 3) return n - 1
-  } catch {
-    // ignore malformed URL params
-  }
-  return 0
 }

@@ -6,7 +6,7 @@ import React, {
   useRef,
   useLayoutEffect,
 } from 'react'
-import puzzleData, { getDailyHoneycombsPuzzles } from './puzzles.js'
+import puzzleData, { getDailyHoneycombsPuzzles, getHoneycombsDailyDateKey } from './puzzles.js'
 import { createHoneycombsEngine } from './honeycombsEngine.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
@@ -19,7 +19,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -106,7 +106,13 @@ export default function HoneycombsApp() {
   const [tutorialIdx, setTutorialIdx] = useState(() =>
     getInitialTutorialNav(GAME_KEYS.HONEYCOMBS, puzzleData.tutorial ?? []).tutorialIdx,
   )
-  const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
+  const [dailyIdx, setDailyIdx] = useState(() =>
+    resolveHubDailySlotOnLoad(
+      GAME_KEYS.HONEYCOMBS,
+      getHoneycombsDailyDateKey(),
+      typeof window !== 'undefined' ? window.location.search : '',
+    ),
+  )
   const [completions, setCompletions] = useState(() => loadCompletions(daily.dateKey))
   const [perfects, setPerfects] = useState(() => loadPerfects(daily.dateKey))
   const canShareHub = useMemo(
@@ -144,6 +150,11 @@ export default function HoneycombsApp() {
   useEffect(() => {
     if (!curateMode) persistTutorialResumeState(GAME_KEYS.HONEYCOMBS, mode, tutorialIdx)
   }, [curateMode, mode, tutorialIdx])
+
+  useEffect(() => {
+    if (curateMode || mode !== 'daily') return
+    persistHubDailySlot(GAME_KEYS.HONEYCOMBS, daily.dateKey, dailyIdx)
+  }, [curateMode, mode, daily.dateKey, dailyIdx])
 
   const activePuzzles = useMemo(
     () => (curateMode ? roster.map((r) => r.puzzle) : mode === 'tutorial' ? tutorialPuzzles : daily.puzzles),

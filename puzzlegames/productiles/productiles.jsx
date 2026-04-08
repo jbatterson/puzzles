@@ -12,7 +12,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -20,12 +20,20 @@ import ProductilesIcon from '../../src/shared/icons/ProductilesIcon.jsx'
 import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
+import { PostSolvePrimaryButton, PostSolvePrimaryLink } from '../../src/shared/PostSolvePrimaryCta.jsx'
+import {
+    TILE_WIN_HIGHLIGHT_FILL,
+    TILES_WIN_FLOURISH_TOTAL_MS,
+    applyTilesTargetFlourishDom,
+    clearTilesTargetFlourishDom,
+    tileWinFlourishScale,
+    tilesWinFlourishWaveForCell,
+} from '../../src/shared/tileGameWinFlourish.js'
 
 const SNAP_SPEED = 0.25
 const SOLVE_STEP_MS = 200
-const SOLVE_FINAL_MS = 1000
-/** Worst-case row+col wave + final flash (grid size ≤ 6); used if suite completes without an active `solveAnim`. */
-const PRODUCTILES_SUITE_MODAL_SOLVE_ANIM_MAX_MS = 6 * SOLVE_STEP_MS * 2 + SOLVE_FINAL_MS + 200
+/** Worst-case row+col wave + flourish (grid size ≤ 6); used if suite completes without an active `solveAnim`. */
+const PRODUCTILES_SUITE_MODAL_SOLVE_ANIM_MAX_MS = 6 * SOLVE_STEP_MS * 2 + TILES_WIN_FLOURISH_TOTAL_MS + 200
 
 // ── Daily helpers ────────────────────────────────────────────────────────────
 function getDailyKey() {
@@ -259,7 +267,9 @@ export default function Productiles() {
     const curateIdxRef = useRef(0)
     const [mode, setMode]               = useState(() => getInitialTutorialNav(GAME_KEYS.PRODUCTILES, puzzleData.tutorial ?? []).mode)
     const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.PRODUCTILES, puzzleData.tutorial ?? []).tutorialIdx)
-    const [dailyIdx, setDailyIdx]       = useState(() => parseHubDailyPuzzleParam())
+    const [dailyIdx, setDailyIdx]       = useState(() =>
+        resolveHubDailySlotOnLoad(GAME_KEYS.PRODUCTILES, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+    )
     dailyKeyRef.current = daily.key
     dailyIdxRef.current = dailyIdx
     modeRef.current = mode
@@ -274,6 +284,8 @@ export default function Productiles() {
         [daily.key, completions],
     )
     const [isSolved, setIsSolved]       = useState(false)
+    const [postSolveCtaAttention, setPostSolveCtaAttention] = useState(false)
+    const notifyPostSolveCtaAttentionRef = useRef(() => {})
     const [historyLen, setHistoryLen]   = useState(0)
     const {
         hasSeenInstructions,
@@ -296,11 +308,31 @@ export default function Productiles() {
         if (!curateMode) persistTutorialResumeState(GAME_KEYS.PRODUCTILES, mode, tutorialIdx)
     }, [curateMode, mode, tutorialIdx])
 
+    useEffect(() => {
+        if (curateMode || mode !== 'daily') return
+        persistHubDailySlot(GAME_KEYS.PRODUCTILES, daily.key, dailyIdx)
+    }, [curateMode, mode, daily.key, dailyIdx])
+
     const currentPuzzleData = useMemo(() => {
         if (curateMode) return roster[curateIdx]?.puzzle
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
         return daily.puzzles[dailyIdx]
     }, [curateMode, curateIdx, roster, mode, tutorialIdx, dailyIdx, daily])
+
+    useEffect(() => {
+        notifyPostSolveCtaAttentionRef.current = () => setPostSolveCtaAttention(true)
+    }, [])
+
+    useEffect(() => {
+        if (!isSolved) {
+            setPostSolveCtaAttention(false)
+            return
+        }
+        const s = stateRef.current
+        if (s && !s.solveAnim) {
+            setPostSolveCtaAttention(true)
+        }
+    }, [isSolved, currentPuzzleData])
 
     const loadPuzzle = useCallback((data, gs) => {
         if (!data) return
@@ -506,23 +538,31 @@ export default function Productiles() {
                     const i = Math.floor(elapsed/step)
                     if (i >= s.size) { s.solveAnim = { phase:'cols', startTime:now } }
                     else {
-                        ctx.fillStyle='rgba(34,197,94,0.25)'; ctx.fillRect(0,i*gs,canvas.width,gs)
+                        ctx.fillStyle = TILE_WIN_HIGHLIGHT_FILL
+                        ctx.fillRect(0,i*gs,canvas.width,gs)
                         const el = document.getElementById(`row-t-${i}`)
                         if (el) el.style.transform = `scale(${1+0.35*Math.sin(Math.min(1,(elapsed%step)/step)*Math.PI)})`
                     }
                 } else if (s.solveAnim.phase==='cols') {
                     const i = Math.floor(elapsed/step)
-                    if (i >= s.size) { s.solveAnim = { phase:'final', startTime:now } }
+                    if (i >= s.size) {
+                        s.solveAnim = { phase:'flourish', startTime:now, flourishDomApplied:false }
+                    }
                     else {
-                        ctx.fillStyle='rgba(34,197,94,0.25)'; ctx.fillRect(i*gs,0,gs,canvas.height)
+                        ctx.fillStyle = TILE_WIN_HIGHLIGHT_FILL
+                        ctx.fillRect(i*gs,0,gs,canvas.height)
                         const el = document.getElementById(`col-t-${i}`)
                         if (el) el.style.transform = `scale(${1+0.35*Math.sin(Math.min(1,(elapsed%step)/step)*Math.PI)})`
                     }
-                } else if (s.solveAnim.phase==='final') {
-                    const a = Math.max(0, 1-elapsed/SOLVE_FINAL_MS)
-                    ctx.fillStyle=`rgba(34,197,94,${0.15*a})`; ctx.fillRect(0,0,canvas.width,canvas.height)
-                    if (elapsed >= SOLVE_FINAL_MS) {
+                } else if (s.solveAnim.phase==='flourish') {
+                    if (!s.solveAnim.flourishDomApplied) {
+                        s.solveAnim.flourishDomApplied = true
+                        applyTilesTargetFlourishDom(s.size)
+                    }
+                    if (elapsed >= TILES_WIN_FLOURISH_TOTAL_MS) {
+                        clearTilesTargetFlourishDom(s.size)
                         s.solveAnim = null
+                        notifyPostSolveCtaAttentionRef.current()
                         if (pendingSuiteModalAfterAnimRef.current && modeRef.current === 'daily' && !curateModeRef.current) {
                             pendingSuiteModalAfterAnimRef.current = false
                             setTimeout(() => setShowCompletionModal(true), 500)
@@ -530,6 +570,8 @@ export default function Productiles() {
                     }
                 }
             }
+            const flourishElapsed =
+                s.solveAnim?.phase === 'flourish' ? now - s.solveAnim.startTime : null
             for (const t of s.tiles) {
                 if (!dragRef.current.active) {
                     const tx = t.c*gs+(t.w*gs)/2, ty = t.r*gs+(t.h*gs)/2
@@ -544,7 +586,18 @@ export default function Productiles() {
                 const left=t.x-(t.w*gs)/2, top=t.y-(t.h*gs)/2
                 for (let rr=0; rr<t.h; rr++) for (let cc=0; cc<t.w; cc++) {
                     const v=t.vals[rr*t.w+cc]; if (!v) continue
-                    ctx.fillText(v, left+cc*gs+gs/2, top+rr*gs+gs/2)
+                    const cx = left+cc*gs+gs/2, cy = top+rr*gs+gs/2
+                    if (flourishElapsed != null) {
+                        const wave = tilesWinFlourishWaveForCell(t.r + rr, t.c + cc)
+                        const sc = tileWinFlourishScale(flourishElapsed, wave)
+                        ctx.save()
+                        ctx.translate(cx, cy)
+                        ctx.scale(sc, sc)
+                        ctx.fillText(v, 0, 0)
+                        ctx.restore()
+                    } else {
+                        ctx.fillText(v, cx, cy)
+                    }
                 }
             }
         }
@@ -649,6 +702,7 @@ export default function Productiles() {
         const s = stateRef.current; if (!s || s.moveHistory.length === 0) return
         const state = JSON.parse(s.moveHistory.pop())
         for (const sv of state) { const t = s.tiles.find(t => t.id === sv.id); if (t) { t.r = sv.r; t.c = sv.c } }
+        clearTilesTargetFlourishDom(s.size)
         s.solveAnim = null
         setIsSolved(false)
         setHistoryLen(s.moveHistory.length)
@@ -660,6 +714,7 @@ export default function Productiles() {
         usedUndoOrResetRef.current = true
         const s = stateRef.current; if (!s) return
         const gs = s.gridSize
+        clearTilesTargetFlourishDom(s.size)
         s.moveHistory = []; s.solveAnim = null
         for (let i=0; i<s.tiles.length; i++) {
             const t=s.tiles[i]; t.r=s.originalScramble[i].r; t.c=s.originalScramble[i].c
@@ -811,12 +866,17 @@ export default function Productiles() {
             {!isSolved ? (
                 <div className="goal-text">Match the Products</div>
             ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
-                <a href={base} className="btn-primary"
-                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <PostSolvePrimaryLink
+                    attention={postSolveCtaAttention}
+                    href={base}
+                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
                     {CTA_LABELS.ALL_PUZZLES}
-                </a>
+                </PostSolvePrimaryLink>
             ) : primaryLabel ? (
-                <button className="btn-primary" onClick={handlePrimary}>{primaryLabel}</button>
+                <PostSolvePrimaryButton attention={postSolveCtaAttention} onClick={handlePrimary}>
+                    {primaryLabel}
+                </PostSolvePrimaryButton>
             ) : null}
 
             <SharedModalShell show={showInstructions} onClose={closeInstructions} intent={MODAL_INTENTS.INSTRUCTIONS}>

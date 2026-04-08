@@ -11,7 +11,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -20,10 +20,13 @@ import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
 import { buildTierRoster } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
+import { PostSolvePrimaryButton, PostSolvePrimaryLink } from '../../src/shared/PostSolvePrimaryCta.jsx'
 import { formatScurryPuzzleSourceLine } from './formatScurryPuzzleForCopy.js'
 
 /** After the last winning placement: 300ms pre-celebration + 800ms `celebrating-bug` (see `placeBug`). */
 const SCURRY_SUITE_MODAL_AFTER_WIN_MS = 300 + 800 + 150
+/** Bottom CTA text pulse starts after settle + celebration (see `placeBug` timeouts). */
+const SCURRY_POST_WIN_CTA_PULSE_MS = 500 + 300 + 800 + 50
 
 const SCURRY_TUTORIAL_HINTS = [
     {
@@ -199,7 +202,9 @@ const BugPuzzle = () => {
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.SCURRY, puzzleData.tutorial ?? []).mode)
     const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.SCURRY, puzzleData.tutorial ?? []).tutorialIdx)
-    const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
+    const [dailyIdx, setDailyIdx] = useState(() =>
+        resolveHubDailySlotOnLoad(GAME_KEYS.SCURRY, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+    )
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const canShareHub = useMemo(
@@ -230,10 +235,16 @@ const BugPuzzle = () => {
         if (!curateMode) persistTutorialResumeState(GAME_KEYS.SCURRY, mode, tutorialIdx)
     }, [curateMode, mode, tutorialIdx])
 
+    useEffect(() => {
+        if (curateMode || mode !== 'daily') return
+        persistHubDailySlot(GAME_KEYS.SCURRY, daily.key, dailyIdx)
+    }, [curateMode, mode, daily.key, dailyIdx])
+
     const [bugs, setBugs] = useState([])
     const [bugsPlacedCount, setBugsPlacedCount] = useState(0)
     const [isAnimating, setIsAnimating] = useState(false)
     const [isCelebrating, setIsCelebrating] = useState(false)
+    const [scurryPostWinCtaAttention, setScurryPostWinCtaAttention] = useState(false)
     const [history, setHistory] = useState([])
 
     const level = useMemo(() => {
@@ -306,6 +317,17 @@ const BugPuzzle = () => {
         if (mode !== 'daily') return
         saveScurryWip(daily.key, dailyIdx, level, bugs, bugsPlacedCount, history)
     }, [curateMode, curateIdx, mode, daily.key, dailyIdx, level, bugs, bugsPlacedCount, history, isAnimating])
+
+    useEffect(() => {
+        const filled =
+            level?.targets?.length > 0 && level.targets.every((t) => bugs.some((b) => b.square === t))
+        if (!filled) {
+            setScurryPostWinCtaAttention(false)
+            return
+        }
+        const tid = window.setTimeout(() => setScurryPostWinCtaAttention(true), SCURRY_POST_WIN_CTA_PULSE_MS)
+        return () => clearTimeout(tid)
+    }, [level, bugs])
 
     const allTargetsFilled = level?.targets.length > 0 &&
         level.targets.every(t => bugs.some(b => b.square === t))
@@ -616,12 +638,17 @@ const BugPuzzle = () => {
                     End of list — use ← → to review other puzzles
                 </div>
             ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
-                <a href={base} className="btn-primary"
-                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <PostSolvePrimaryLink
+                    attention={scurryPostWinCtaAttention}
+                    href={base}
+                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
                     {CTA_LABELS.ALL_PUZZLES}
-                </a>
+                </PostSolvePrimaryLink>
             ) : primaryLabel ? (
-                <button className="btn-primary" onClick={handlePrimaryClick}>{primaryLabel}</button>
+                <PostSolvePrimaryButton attention={scurryPostWinCtaAttention} onClick={handlePrimaryClick}>
+                    {primaryLabel}
+                </PostSolvePrimaryButton>
             ) : (
                 <div className="goal-text">Fill All Target Squares</div>
             )}

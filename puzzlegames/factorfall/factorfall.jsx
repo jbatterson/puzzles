@@ -11,7 +11,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -19,6 +19,7 @@ import FactorfallIcon from '../../src/shared/icons/FactorfallIcon.jsx'
 import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
+import { PostSolvePrimaryButton, PostSolvePrimaryLink } from '../../src/shared/PostSolvePrimaryCta.jsx'
 
 /** Suite modal: allow last clear animation (highlights, pops, floating “=N” scores) to finish. */
 const FACTORFALL_SUITE_MODAL_AFTER_WIN_MS = 1800
@@ -284,7 +285,9 @@ const Factorfall = () => {
     const usedUndoOrResetRef = useRef(false)
     const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.FACTORFALL, puzzleData.tutorial ?? []).mode)
     const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.FACTORFALL, puzzleData.tutorial ?? []).tutorialIdx)
-    const [dailyIdx, setDailyIdx] = useState(() => parseHubDailyPuzzleParam())
+    const [dailyIdx, setDailyIdx] = useState(() =>
+        resolveHubDailySlotOnLoad(GAME_KEYS.FACTORFALL, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+    )
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const canShareHub = useMemo(
@@ -310,6 +313,11 @@ const Factorfall = () => {
     useEffect(() => {
         if (!curateMode) persistTutorialResumeState(GAME_KEYS.FACTORFALL, mode, tutorialIdx)
     }, [curateMode, mode, tutorialIdx])
+
+    useEffect(() => {
+        if (curateMode || mode !== 'daily') return
+        persistHubDailySlot(GAME_KEYS.FACTORFALL, daily.key, dailyIdx)
+    }, [curateMode, mode, daily.key, dailyIdx])
 
     const wrapperRef = useRef(null)
     const canvasRef = useRef(null)
@@ -349,6 +357,7 @@ const Factorfall = () => {
 
     // Reactive game-over state (replaces overlay)
     const [boardCleared, setBoardCleared] = useState(false)
+    const [factorfallPostWinCtaAttention, setFactorfallPostWinCtaAttention] = useState(false)
     const [gridFull, setGridFull] = useState(false)
     const [outOfBalls, setOutOfBalls] = useState(false)
 
@@ -703,6 +712,15 @@ const Factorfall = () => {
         allDailyDoneCompletionRef.current = done
     }, [curateMode, mode, completions])
 
+    useEffect(() => {
+        if (!boardCleared) {
+            setFactorfallPostWinCtaAttention(false)
+            return
+        }
+        const tid = window.setTimeout(() => setFactorfallPostWinCtaAttention(true), FACTORFALL_SUITE_MODAL_AFTER_WIN_MS)
+        return () => clearTimeout(tid)
+    }, [boardCleared, dailyIdx, tutorialIdx, curateIdx])
+
     // ── Undo / Reset ─────────────────────────────────────────────────────────
     const undoMove = useCallback(() => {
         usedUndoOrResetRef.current = true
@@ -1036,12 +1054,17 @@ const Factorfall = () => {
             </div>
 
             {primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
-                <a href={base} className="btn-primary"
-                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <PostSolvePrimaryLink
+                    attention={factorfallPostWinCtaAttention}
+                    href={base}
+                    style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
                     {CTA_LABELS.ALL_PUZZLES}
-                </a>
+                </PostSolvePrimaryLink>
             ) : primaryLabel ? (
-                <button className="btn-primary" onClick={handlePrimaryClick}>{primaryLabel}</button>
+                <PostSolvePrimaryButton attention={factorfallPostWinCtaAttention} onClick={handlePrimaryClick}>
+                    {primaryLabel}
+                </PostSolvePrimaryButton>
             ) : boardCleared ? null : (
                 <div className="goal-text">Clear the Board</div>
             )}

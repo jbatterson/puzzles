@@ -15,12 +15,13 @@ import {
     PUZZLE_SUITE_SURFACE_INCOMPLETE,
 } from '../../shared-contracts/chromeUi.js'
 import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
-import { parseHubDailyPuzzleParam } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
+import { PostSolvePrimaryButton, PostSolvePrimaryLink } from '../../src/shared/PostSolvePrimaryCta.jsx'
 
 /** Curate uses easy geometry for all roster puzzles (full word on middle row/col). */
 const CURATE_PUZZLE_DIFFICULTY = 'easy'
@@ -411,7 +412,9 @@ function retreatAlongAxis(fromIdx, axisMode, inputOrder, locked) {
 
 export default function CluelessGame() {
     const chrome = getGameChrome(GAME_KEYS.CLUELESS)
-    const [difficultyIdx, setDifficultyIdx] = useState(() => parseHubDailyPuzzleParam())
+    const [difficultyIdx, setDifficultyIdx] = useState(() =>
+        resolveHubDailySlotOnLoad(GAME_KEYS.CLUELESS, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+    )
     const difficulty = DIFFS[difficultyIdx] || 'easy'
     const roster = useMemo(() => buildTierRoster(puzzleData, ['easy', 'medium', 'hard']), [])
     const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
@@ -504,6 +507,11 @@ export default function CluelessGame() {
         () => hasShareableHubProgress(GAME_KEYS.CLUELESS, daily.key),
         [daily.key, attemptsByDiff],
     )
+
+    useEffect(() => {
+        if (curateMode) return
+        persistHubDailySlot(GAME_KEYS.CLUELESS, daily.key, difficultyIdx)
+    }, [curateMode, daily.key, difficultyIdx])
 
     useEffect(() => {
         if (curateMode) return
@@ -930,28 +938,34 @@ export default function CluelessGame() {
     const base = import.meta.env.BASE_URL
     const nextUnsolvedIdx = [0, 1, 2].find(i => i !== difficultyIdx && attemptsByDiff[i] == null)
 
+    const cluelessPostSolveCtaAttention = !winCelebrationActive
+
     const postSolveCta = useMemo(() => {
+        const att = cluelessPostSolveCtaAttention
         if (curateMode) {
             return curateIdx < roster.length - 1 ? (
-                <button type="button" className="btn-primary" onClick={() => setCurateIdx(j => j + 1)}>
+                <PostSolvePrimaryButton attention={att} onClick={() => setCurateIdx((j) => j + 1)}>
                     Next Puzzle
-                </button>
+                </PostSolvePrimaryButton>
             ) : null
         }
         if (nextUnsolvedIdx !== undefined) {
             return (
-                <button type="button" className="btn-primary" onClick={() => setDifficultyIdx(nextUnsolvedIdx)}>
+                <PostSolvePrimaryButton attention={att} onClick={() => setDifficultyIdx(nextUnsolvedIdx)}>
                     Next Puzzle
-                </button>
+                </PostSolvePrimaryButton>
             )
         }
         return (
-            <a href={base} className="btn-primary"
-                style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <PostSolvePrimaryLink
+                attention={att}
+                href={base}
+                style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
                 All Puzzles
-            </a>
+            </PostSolvePrimaryLink>
         )
-    }, [curateMode, curateIdx, roster.length, nextUnsolvedIdx, base])
+    }, [curateMode, curateIdx, roster.length, nextUnsolvedIdx, base, cluelessPostSolveCtaAttention])
 
     const handleStatsClick = useCallback(() => {
         if (curateMode) {

@@ -951,6 +951,34 @@ html, body {
     transform: none;
 }
 
+/* Post-solve bottom CTA: text scale bump (~1× per 6s) after win animation settles */
+@keyframes btnPrimaryPulseLabel {
+    0%,
+    83% {
+        transform: scale(1);
+    }
+    88% {
+        transform: scale(1.06);
+    }
+    93%,
+    100% {
+        transform: scale(1);
+    }
+}
+
+.btn-primary--solve-attention .btn-primary__pulse-label {
+    display: inline-block;
+    transform-origin: center center;
+    animation: btnPrimaryPulseLabel 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn-primary--solve-attention .btn-primary__pulse-label {
+        animation: none;
+        transform: none;
+    }
+}
+
 .btn-secondary:disabled {
     opacity: 0.35;
     cursor: not-allowed;
