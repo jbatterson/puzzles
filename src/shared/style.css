@@ -830,7 +830,7 @@ html, body {
         transform: scale(1);
     }
     40% {
-        transform: scale(1.14);
+        transform: scale(1.27);
     }
     100% {
         transform: scale(1);
@@ -960,13 +960,18 @@ html, body {
     transform: none;
 }
 
-/* Goal text shown while puzzle is in progress */
+/* Goal text shown while puzzle is in progress — match primary CTA min height so swapping goal ↔ button does not shift layout */
 .goal-text {
     text-align: center;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    padding: 18px 0;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0 12px;
     color: var(--puzzle-ink-goal);
 }
 
@@ -1235,10 +1240,31 @@ html, body {
     100% { background-color: transparent; }
 }
 
-/* Folds win pulse — applied to board triangles on solve */
+/* Folds win pulse — used by other games (e.g. Honeycombs trace); Folds solve uses `.folds-win-flourish-pop` */
 @keyframes pulseWin {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.6; }
+}
+
+/* Folds solve flourish — Clueless-style staggered scale pop (timing via --folds-flourish-* from JSX) */
+@keyframes foldsWinFlourishPop {
+    0% {
+        transform: scale(1);
+    }
+    40% {
+        transform: scale(1.7);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.folds-win-flourish-pop {
+    transform-origin: center center;
+    will-change: transform;
+    animation: foldsWinFlourishPop var(--folds-flourish-pop-duration, 420ms) ease-in-out forwards;
+    animation-delay: calc(var(--folds-flourish-wave, 0) * var(--folds-flourish-stagger, 52ms));
+    animation-fill-mode: none;
 }
 
 .moving-bug     { animation: scurryWiggle 0.1s infinite linear; }

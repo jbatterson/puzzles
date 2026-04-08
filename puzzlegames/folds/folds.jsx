@@ -22,8 +22,15 @@ import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateR
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 
-/** Must match `.pulse-win` in `src/shared/style.css` (3 × 0.6s) and the suite-completion delay below. */
-const FOLDS_WIN_PULSE_TOTAL_MS = 1900
+/** Clueless-style wave flourish: cap × stagger + pop + tail (keep in sync with `src/shared/style.css` `.folds-win-flourish-pop`). */
+const FOLDS_FLOURISH_STAGGER_MS = 52
+const FOLDS_FLOURISH_POP_MS = 420
+const FOLDS_FLOURISH_WAVE_CAP = 14
+const FOLDS_WIN_FLOURISH_TOTAL_MS = FOLDS_FLOURISH_WAVE_CAP * FOLDS_FLOURISH_STAGGER_MS + FOLDS_FLOURISH_POP_MS + 120
+/** Crossfade from solved board → start board before replaying folds. */
+const FOLDS_WIN_REWIND_FADE_MS = 800
+/** After replay: delay before flourish (0 = none; still one async tick via setTimeout). */
+const FOLDS_WIN_REPLAY_PAUSE_MS = 100
 
 // ── Geometry (unchanged) ─────────────────────────────────────────────────────
 const S = 62, H = S * Math.sqrt(3) / 2, PAD = 40, N = 4, ANIM_MS = 450
@@ -92,6 +99,12 @@ const ALL_TRIANGLES = (() => {
     for (let r = 0; r <= 8; r++) for (let c = -5; c <= 18; c++) if (isInsideHex(r, c)) tris.push({ r, c, key: `${r},${c}` })
     return tris
 })()
+
+const FOLD_FLOURISH_MIN_RC = Math.min(...ALL_TRIANGLES.map(t => t.r + t.c))
+
+function foldFlourishWaveIndex(r, c) {
+    return Math.min(FOLDS_FLOURISH_WAVE_CAP, Math.max(0, r + c - FOLD_FLOURISH_MIN_RC))
+}
 
 const triangleVertices = (r, c) => {
     const s = pts(r, c)
@@ -333,6 +346,65 @@ function boardsMatchTarget(board, target) {
     return true
 }
 
+const FOLD_RESULT_TOL_SQ = (S * 0.6) ** 2
+
+/** Pure fold step for replay / sequence inference (mirrors `handleFold` geometry). */
+function computeFoldedBoardFromBoard(board, lineKey) {
+    const line = ALL_LINES.find(l => l.lineKey === lineKey)
+    if (!line) return null
+    const next = { ...board }
+    const lostKeys = {}
+    const c2 = Math.cos(2 * line.theta), s2 = Math.sin(2 * line.theta)
+    for (const [key, color] of Object.entries(board)) {
+        const [r, c] = key.split(',').map(Number)
+        const cp = cent(r, c)
+        const nx = line.px + (cp.x - line.px) * c2 + (cp.y - line.py) * s2
+        const ny = line.py + (cp.x - line.px) * s2 - (cp.y - line.py) * c2
+        const [nr, nc] = snap(nx, ny)
+        const sp = cent(nr, nc)
+        const dist2 = (sp.x - nx) ** 2 + (sp.y - ny) ** 2
+        if (isPointInsideHex(nx, ny) && isInsideHex(nr, nc) && dist2 <= FOLD_RESULT_TOL_SQ) {
+            const destKey = `${nr},${nc}`
+            const prev = next[destKey]
+            if (prev === undefined || prev === color) next[destKey] = color
+            else next[destKey] = BROWN
+        } else {
+            lostKeys[key] = true
+        }
+    }
+    return { next, lostKeys, line }
+}
+
+function boardsEqual(a, b) {
+    const ak = Object.keys(a)
+    if (ak.length !== Object.keys(b).length) return false
+    for (const k of ak) {
+        if (a[k] !== b[k]) return false
+    }
+    return true
+}
+
+/** Returns line keys between consecutive history boards, or `null` if any step is ambiguous. */
+function inferFoldSequence(historyBoards) {
+    if (!historyBoards || historyBoards.length < 2) return []
+    const lineKeys = []
+    for (let i = 0; i < historyBoards.length - 1; i++) {
+        const prev = historyBoards[i]
+        const exp = historyBoards[i + 1]
+        let found = null
+        for (const l of ALL_LINES) {
+            const r = computeFoldedBoardFromBoard(prev, l.lineKey)
+            if (r && boardsEqual(r.next, exp)) {
+                found = l.lineKey
+                break
+            }
+        }
+        if (found == null) return null
+        lineKeys.push(found)
+    }
+    return lineKeys
+}
+
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
 function PuzzleBoxes({ current, completions, perfects, onChange }) {
     return (
@@ -563,13 +635,23 @@ const App = () => {
     const [history, setHistory] = useState([puzzle.start])
     const [folds, setFolds] = useState(puzzle.folds)
     const [anim, setAnim] = useState(null)
-    const [playWinPulse, setPlayWinPulse] = useState(false)
+    const [winFlourishActive, setWinFlourishActive] = useState(false)
+    /** 0–1 during `rewindFade` win phase (null otherwise). */
+    const [rewindFadeT, setRewindFadeT] = useState(null)
+    /** Win celebration: replay folds from history, pause, then pulse flourish (null = idle). */
+    const [winShowcase, setWinShowcase] = useState(null)
     /** Previous commit: board already matched target (avoids pulse when reopening a solved puzzle / WIP). */
     const prevBoardMatchedTargetRef = useRef(false)
     const boardRef = useRef(board)
     const puzzleRef = useRef(puzzle)
+    const historyRef = useRef(history)
+    const winShowcaseRef = useRef(null)
+    /** Total ms from first win frame until suite “all dailies” modal should open (rewind + replay + pause + flourish + pad). */
+    const winCelebrationTotalMsRef = useRef(FOLDS_WIN_REPLAY_PAUSE_MS + FOLDS_WIN_FLOURISH_TOTAL_MS + 200)
     boardRef.current = board
     puzzleRef.current = puzzle
+    historyRef.current = history
+    winShowcaseRef.current = winShowcase
 
     useLayoutEffect(() => {
         clearFoldLineInteractionState()
@@ -588,7 +670,9 @@ const App = () => {
             setFolds(nextFolds)
             setAnim(null)
             usedUndoOrResetRef.current = false
-            setPlayWinPulse(false)
+            setWinFlourishActive(false)
+            setRewindFadeT(null)
+            setWinShowcase(null)
             prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
             return
         }
@@ -598,7 +682,9 @@ const App = () => {
             setFolds(nextFolds)
             setAnim(null)
             usedUndoOrResetRef.current = false
-            setPlayWinPulse(false)
+            setWinFlourishActive(false)
+            setRewindFadeT(null)
+            setWinShowcase(null)
             prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
             return
         }
@@ -612,7 +698,9 @@ const App = () => {
             setFolds(nextFolds)
             setAnim(null)
             usedUndoOrResetRef.current = false
-            setPlayWinPulse(false)
+            setWinFlourishActive(false)
+            setRewindFadeT(null)
+            setWinShowcase(null)
             prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
             return
         }
@@ -621,7 +709,9 @@ const App = () => {
         setFolds(nextFolds)
         setAnim(null)
         usedUndoOrResetRef.current = false
-        setPlayWinPulse(false)
+        setWinFlourishActive(false)
+        setRewindFadeT(null)
+        setWinShowcase(null)
         prevBoardMatchedTargetRef.current = boardsMatchTarget(nextBoard, puzzle.target)
     }, [puzzle, curateMode, curateIdx, mode, daily.key, dailyIdx, clearFoldLineInteractionState])
 
@@ -632,8 +722,29 @@ const App = () => {
             raf = 0
             const won = boardsMatchTarget(boardRef.current, puzzleRef.current.target)
             const wasWon = prevBoardMatchedTargetRef.current
-            if (won && !wasWon) setPlayWinPulse(true)
-            if (!won) setPlayWinPulse(false)
+            if (winShowcaseRef.current != null) {
+                if (won) prevBoardMatchedTargetRef.current = true
+                return
+            }
+            if (won && !wasWon) {
+                prevBoardMatchedTargetRef.current = true
+                const boardsSnap = historyRef.current.map(b => ({ ...b }))
+                const lineKeys = inferFoldSequence(boardsSnap)
+                const n = lineKeys == null ? 0 : lineKeys.length
+                const rewindMs = n > 0 ? FOLDS_WIN_REWIND_FADE_MS : 0
+                winCelebrationTotalMsRef.current = rewindMs + n * ANIM_MS + FOLDS_WIN_REPLAY_PAUSE_MS + FOLDS_WIN_FLOURISH_TOTAL_MS + 200
+                if (lineKeys === null) {
+                    setWinShowcase({ kind: 'pause' })
+                    return
+                }
+                if (lineKeys.length > 0) {
+                    setWinShowcase({ kind: 'rewindFade', lineKeys, boards: boardsSnap })
+                } else {
+                    setWinShowcase({ kind: 'pause' })
+                }
+                return
+            }
+            if (!won) setWinFlourishActive(false)
             prevBoardMatchedTargetRef.current = won
         })
         return () => {
@@ -641,22 +752,86 @@ const App = () => {
         }
     }, [board, puzzle])
 
-    /** pulseWin runs 3 × 0.6s; drop class after so revisits don’t retrigger from leftover state. */
+    /** Crossfade solved board → start over `FOLDS_WIN_REWIND_FADE_MS`, then enter replay phase. */
     useEffect(() => {
-        if (!playWinPulse) return
-        const t = setTimeout(() => setPlayWinPulse(false), FOLDS_WIN_PULSE_TOTAL_MS)
+        if (!winShowcase || winShowcase.kind !== 'rewindFade') {
+            setRewindFadeT(null)
+            return
+        }
+        const start = performance.now()
+        let rafId = 0
+        let cancelled = false
+        const tick = () => {
+            if (cancelled) return
+            const elapsed = performance.now() - start
+            const t = Math.min(1, elapsed / FOLDS_WIN_REWIND_FADE_MS)
+            setRewindFadeT(t)
+            if (t < 1) {
+                rafId = requestAnimationFrame(tick)
+                return
+            }
+            const sc = winShowcaseRef.current
+            if (sc?.kind === 'rewindFade') {
+                setBoard(sc.boards[0])
+                setWinShowcase({ kind: 'replay', lineKeys: sc.lineKeys, boards: sc.boards, index: 0 })
+            }
+            setRewindFadeT(null)
+        }
+        rafId = requestAnimationFrame(tick)
+        return () => {
+            cancelled = true
+            cancelAnimationFrame(rafId)
+        }
+    }, [winShowcase])
+
+    /** After replay: brief pause, then Clueless-style scale flourish on triangles. */
+    useEffect(() => {
+        if (!winShowcase || winShowcase.kind !== 'pause') return
+        const tid = window.setTimeout(() => {
+            setWinShowcase(null)
+            setWinFlourishActive(true)
+        }, FOLDS_WIN_REPLAY_PAUSE_MS)
+        return () => clearTimeout(tid)
+    }, [winShowcase])
+
+    /** Start each replay fold once `anim` is clear (chained after prior fold completes). */
+    useEffect(() => {
+        if (!winShowcase || winShowcase.kind !== 'replay' || anim != null) return
+        const { lineKeys, boards, index } = winShowcase
+        const lineKey = lineKeys[index]
+        const startBoard = boards[index]
+        const computed = computeFoldedBoardFromBoard(startBoard, lineKey)
+        if (!computed) {
+            setWinShowcase({ kind: 'pause' })
+            return
+        }
+        t0.current = performance.now()
+        setAnim({
+            line: computed.line,
+            startBoard: { ...startBoard },
+            finalBoard: computed.next,
+            lostKeys: computed.lostKeys,
+            rawT: 0,
+        })
+    }, [winShowcase, anim])
+
+    /** Drop flourish class after last triangle’s animation can finish. */
+    useEffect(() => {
+        if (!winFlourishActive) return
+        const t = setTimeout(() => setWinFlourishActive(false), FOLDS_WIN_FLOURISH_TOTAL_MS)
         return () => clearTimeout(t)
-    }, [playWinPulse])
+    }, [winFlourishActive])
 
     useEffect(() => {
         if (!puzzle || anim) return
+        if (winShowcase != null) return
         if (curateMode) {
             saveFoldsWip('curate', curateIdx, puzzle, board, folds, history)
             return
         }
         if (mode !== 'daily') return
         saveFoldsWip(daily.key, dailyIdx, puzzle, board, folds, history)
-    }, [curateMode, curateIdx, mode, daily.key, dailyIdx, puzzle, board, folds, history, anim])
+    }, [curateMode, curateIdx, mode, daily.key, dailyIdx, puzzle, board, folds, history, anim, winShowcase])
 
     useEffect(() => () => {
         if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
@@ -719,6 +894,21 @@ const App = () => {
     }, [showInstructions, showStats, showLinks, clearFoldLineInteractionState])
 
     const isWon = useMemo(() => boardsMatchTarget(board, puzzle.target), [board, puzzle])
+    /** Treat as solved during win replay / pause so CTAs stay in “won” mode. */
+    const uiWon = isWon || winShowcase != null
+    /** Rewind / replay / pause / flourish — bottom chrome should match post-solve (no goal-text blink during replay `anim`). */
+    const foldsCelebrationActive = winShowcase != null || winFlourishActive
+
+    /** Skip celebration and snap to final solved board (Undo / Reset / primary CTA during celebration). */
+    const cancelFoldsWinCelebration = () => {
+        endFoldTouchTrace()
+        setAnim(null)
+        setWinShowcase(null)
+        setWinFlourishActive(false)
+        setRewindFadeT(null)
+        const h = historyRef.current
+        if (h.length > 0) setBoard({ ...h[h.length - 1] })
+    }
 
     // Mark complete when won
     useEffect(() => {
@@ -751,7 +941,7 @@ const App = () => {
     }
 
     const handleFold = (lineKey) => {
-        if (folds <= 0 || anim || isWon) return
+        if (folds <= 0 || anim || isWon || winShowcase != null) return
         const result = validateFold(lineKey)
         if (!result.ok) return
         const line = ALL_LINES.find(l => l.lineKey === lineKey)
@@ -785,7 +975,24 @@ const App = () => {
         let rafId = 0
         const tick = () => {
             const rawT = Math.min(1, (performance.now() - t0.current) / ANIM_MS)
-            if (rawT >= 1) { setBoard(anim.finalBoard); setHistory(h => [...h, anim.finalBoard]); setAnim(null); return }
+            if (rawT >= 1) {
+                const sc = winShowcaseRef.current
+                if (sc && sc.kind === 'replay') {
+                    setBoard(anim.finalBoard)
+                    setAnim(null)
+                    const nextIndex = sc.index + 1
+                    if (nextIndex < sc.lineKeys.length) {
+                        setWinShowcase({ kind: 'replay', lineKeys: sc.lineKeys, boards: sc.boards, index: nextIndex })
+                    } else {
+                        setWinShowcase({ kind: 'pause' })
+                    }
+                    return
+                }
+                setBoard(anim.finalBoard)
+                setHistory(h => [...h, anim.finalBoard])
+                setAnim(null)
+                return
+            }
             setAnim(a => (a ? { ...a, rawT } : a)); rafId = requestAnimationFrame(tick)
         }
         rafId = requestAnimationFrame(tick); return () => cancelAnimationFrame(rafId)
@@ -800,15 +1007,17 @@ const App = () => {
     }
 
     const confirmPendingFold = useCallback(() => {
+        if (winShowcase != null || winFlourishActive) return
         const lineKey = pendingFoldLineRef.current
         if (!lineKey) return
         setPendingFoldLine(null)
         setPendingFoldAnchor(null)
         handleFold(lineKey)
-    }, [handleFold])
+    }, [handleFold, winShowcase, winFlourishActive])
 
     const handlePrimaryClick = () => {
-        if (isWon) {
+        if (foldsCelebrationActive) cancelFoldsWinCelebration()
+        if (uiWon || isWon) {
             if (curateMode) {
                 clearFoldsWip('curate', curateIdx)
                 if (curateIdx < roster.length - 1) setCurateIdx(j => j + 1)
@@ -832,7 +1041,7 @@ const App = () => {
         }
     }
 
-    const primaryLabel = isWon
+    const primaryLabel = uiWon
         ? curateMode
             ? curateIdx < roster.length - 1 ? CTA_LABELS.NEXT_PUZZLE : null
             : mode === 'tutorial'
@@ -851,7 +1060,7 @@ const App = () => {
         if (done && !allDailyDoneCompletionRef.current) {
             window.setTimeout(() => {
                 setShowCompletionModal(true)
-            }, FOLDS_WIN_PULSE_TOTAL_MS + 200)
+            }, winCelebrationTotalMsRef.current)
         }
         allDailyDoneCompletionRef.current = done
     }, [curateMode, mode, completions])
@@ -982,7 +1191,12 @@ const App = () => {
                         ref={svgRef}
                         viewBox={`${HEX_VIEWBOX.x} ${HEX_VIEWBOX.y} ${HEX_VIEWBOX.w} ${HEX_VIEWBOX.h}`}
                         preserveAspectRatio="xMidYMid meet"
-                        style={{ width: '100%', height: '100%', display: 'block' }}
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'block',
+                            pointerEvents: winShowcase != null ? 'none' : undefined,
+                        }}
                         onPointerDownCapture={onSvgPointerDownCapture}
                         onLostPointerCapture={(e) => {
                             if (foldTracePointerIdRef.current == null || e.pointerId !== foldTracePointerIdRef.current) return
@@ -996,9 +1210,44 @@ const App = () => {
                                 const hex = fillColor(col)
                                 return <polygon key={`t-${k}`} points={pts(r, c)} fill={hex} opacity="0.15" stroke={hex} strokeWidth="2" />
                             })}
-                            {Object.entries(board).map(([k, col]) => {
+                            {winShowcase?.kind === 'rewindFade' ? (() => {
+                                const bStart = winShowcase.boards[0]
+                                const bSolved = winShowcase.boards[winShowcase.boards.length - 1]
+                                const fade = rewindFadeT ?? 0
+                                return (
+                                    <g>
+                                        <g style={{ opacity: fade }}>
+                                            {Object.entries(bStart).map(([k, col]) => {
+                                                const [r, c] = k.split(',').map(Number)
+                                                return <polygon key={`rw-s-${k}`} points={pts(r, c)} fill={fillColor(col)} />
+                                            })}
+                                        </g>
+                                        <g style={{ opacity: 1 - fade }}>
+                                            {Object.entries(bSolved).map(([k, col]) => {
+                                                const [r, c] = k.split(',').map(Number)
+                                                return <polygon key={`rw-w-${k}`} points={pts(r, c)} fill={fillColor(col)} />
+                                            })}
+                                        </g>
+                                    </g>
+                                )
+                            })() : Object.entries(board).map(([k, col]) => {
                                 const [r, c] = k.split(',').map(Number)
-                                return <polygon key={`b-${k}`} points={pts(r, c)} fill={fillColor(col)} className={playWinPulse ? 'pulse-win' : ''} style={{ transformOrigin: `${cent(r,c).x}px ${cent(r,c).y}px` }} />
+                                return (
+                                    <polygon
+                                        key={`b-${k}`}
+                                        points={pts(r, c)}
+                                        fill={fillColor(col)}
+                                        className={winFlourishActive ? 'folds-win-flourish-pop' : ''}
+                                        style={{
+                                            transformOrigin: `${cent(r, c).x}px ${cent(r, c).y}px`,
+                                            ...(winFlourishActive ? {
+                                                ['--folds-flourish-wave']: foldFlourishWaveIndex(r, c),
+                                                ['--folds-flourish-stagger']: `${FOLDS_FLOURISH_STAGGER_MS}ms`,
+                                                ['--folds-flourish-pop-duration']: `${FOLDS_FLOURISH_POP_MS}ms`,
+                                            } : {}),
+                                        }}
+                                    />
+                                )
                             })}
                             {anim && (
                                 <g transform={`matrix(${1 + easeIO(anim.rawT) * (Math.cos(2 * anim.line.theta) - 1)} ${easeIO(anim.rawT) * Math.sin(2 * anim.line.theta)} ${easeIO(anim.rawT) * Math.sin(2 * anim.line.theta)} ${1 - easeIO(anim.rawT) * (1 + Math.cos(2 * anim.line.theta))} ${easeIO(anim.rawT) * (anim.line.px * (1 - Math.cos(2 * anim.line.theta)) - anim.line.py * Math.sin(2 * anim.line.theta))} ${easeIO(anim.rawT) * (anim.line.py * (1 + Math.cos(2 * anim.line.theta)) - anim.line.px * Math.sin(2 * anim.line.theta))})`}>
@@ -1093,6 +1342,7 @@ const App = () => {
             <div className="button-tray">
                 <button
                     onClick={() => {
+                        if (foldsCelebrationActive) cancelFoldsWinCelebration()
                         clearFoldLineInteractionState()
                         usedUndoOrResetRef.current = true
                         if (history.length <= 1) return
@@ -1106,6 +1356,7 @@ const App = () => {
                 >Undo</button>
                 <button
                     onClick={() => {
+                        if (foldsCelebrationActive) cancelFoldsWinCelebration()
                         clearFoldLineInteractionState()
                         usedUndoOrResetRef.current = true
                         if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
@@ -1118,9 +1369,9 @@ const App = () => {
                 >Reset</button>
             </div>
 
-            {!anim && !isWon && folds > 0 && pendingFoldLine ? (
+            {!anim && !uiWon && folds > 0 && pendingFoldLine && !foldsCelebrationActive ? (
                 <button className="btn-primary" data-fold-confirm onClick={confirmPendingFold}>FOLD</button>
-            ) : (anim || (!isWon && folds > 0)) ? (
+            ) : ((anim && !foldsCelebrationActive) || (!uiWon && folds > 0)) ? (
                 <div className="goal-text">Match the Pattern</div>
             ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
                 <a href={base} className="btn-primary"
@@ -1138,9 +1389,14 @@ const App = () => {
                         <FoldsIcon size={80} />
                     </div>
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
-                        Fold the shapes along the grid lines to match the <b>target pattern</b>.
+                        Fold the shapes along the grid lines to match the faded <b>target pattern</b>.
                         <br />
-                        On touch devices, tap or trace a line to select it. Touch the line or the <b>FOLD</b> button to fold the triangles across it.                   </p>
+                        {coarsePointer ? (
+                            <>Tap or trace a line to select it. Touch the line again or use the <b>fold</b> button to fold the triangles across it.</>
+                        ) : (
+                            <>Hover over a fold line to highlight it. Click the line to fold the triangles across it.</>
+                        )}
+                    </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {!hasSeenInstructions ? (

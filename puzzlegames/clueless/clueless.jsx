@@ -279,6 +279,8 @@ const CLUELESS_INPUT_FONT = 'clamp(1.2rem, 5vw, 2rem)'
 
 /** Board outer width — keyboard and post-solve buttons use the same value so they match the grid. */
 const CLUELESS_STAGE_WIDTH = 'min(calc(100vw - 40px), calc(100dvh - 346px), 460px)'
+/** Keyboard + CTA share this min height in both play and solved states so the board doesn’t jump on win. */
+const CLUELESS_KEYBOARD_BAND_MIN_HEIGHT = 'clamp(100px, 22vh, 170px)'
 
 /** Next/prev typeable cell index in `inputOrder`, wrapping; +1 forward, -1 back. */
 function nextUnlockedNavIndex(inputOrder, locked, fromIdx, delta) {
@@ -928,6 +930,29 @@ export default function CluelessGame() {
     const base = import.meta.env.BASE_URL
     const nextUnsolvedIdx = [0, 1, 2].find(i => i !== difficultyIdx && attemptsByDiff[i] == null)
 
+    const postSolveCta = useMemo(() => {
+        if (curateMode) {
+            return curateIdx < roster.length - 1 ? (
+                <button type="button" className="btn-primary" onClick={() => setCurateIdx(j => j + 1)}>
+                    Next Puzzle
+                </button>
+            ) : null
+        }
+        if (nextUnsolvedIdx !== undefined) {
+            return (
+                <button type="button" className="btn-primary" onClick={() => setDifficultyIdx(nextUnsolvedIdx)}>
+                    Next Puzzle
+                </button>
+            )
+        }
+        return (
+            <a href={base} className="btn-primary"
+                style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                All Puzzles
+            </a>
+        )
+    }, [curateMode, curateIdx, roster.length, nextUnsolvedIdx, base])
+
     const handleStatsClick = useCallback(() => {
         if (curateMode) {
             const entry = roster[curateIdx]
@@ -1228,8 +1253,10 @@ export default function CluelessGame() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 color: solved ? CORRECT_COLOR : PUZZLE_SUITE_INK,
+                minHeight: '1.35em',
+                lineHeight: 1.35,
             }}>
-                {solved ? 'Solved!' : ''}
+                {solved ? 'Solved!' : '\u00a0'}
             </div>
 
             {/* GAME BOARD + check modal + keyboard (shared stage width) */}
@@ -1271,34 +1298,20 @@ export default function CluelessGame() {
                             {cells}
                         </div>
                     </div>
-                    {/* Keyboard only while unsolved; CTA after celebration */}
+                    {/* Keyboard while playing; CTA as soon as solved (same band min-height either way — no layout jump). */}
                     <div style={{
                         marginTop: '0.5rem',
                         display: 'flex',
                         flexDirection: 'column',
+                        justifyContent: 'flex-start',
                         gap: '4px',
                         width: '100%',
                         flexShrink: 0,
-                        minHeight: solved && winCelebrationActive ? 'clamp(100px, 22vh, 170px)' : undefined,
+                        minHeight: CLUELESS_KEYBOARD_BAND_MIN_HEIGHT,
                     }}>
-                {solved && !winCelebrationActive ? (
-                    curateMode ? (
-                        curateIdx < roster.length - 1 ? (
-                            <button type="button" className="btn-primary" onClick={() => setCurateIdx(j => j + 1)}>
-                                Next Puzzle
-                            </button>
-                        ) : null
-                    ) : nextUnsolvedIdx !== undefined ? (
-                        <button type="button" className="btn-primary" onClick={() => setDifficultyIdx(nextUnsolvedIdx)}>
-                            Next Puzzle
-                        </button>
-                    ) : (
-                        <a href={base} className="btn-primary"
-                            style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            All Puzzles
-                        </a>
-                    )
-                ) : !solved ? (
+                {solved ? (
+                    postSolveCta
+                ) : (
                 <>
                 {KB_ROWS.map((row, ri) => (
                     <div key={ri} style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
@@ -1367,7 +1380,7 @@ export default function CluelessGame() {
                     </div>
                 ))}
                 </>
-                ) : null}
+                )}
                     </div>
                 </div>
             </div>
