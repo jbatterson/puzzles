@@ -1140,9 +1140,7 @@ const App = () => {
                     <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
                         Fold the shapes along the grid lines to match the <b>target pattern</b>.
                         <br />
-                        Reflections that place triangles off the board will cause those triangles to disappear.
-                        Reflections that place a triangle of one color onto a triangle of a different color will create a brown triangle.
-                    </p>
+                        On touch devices, tap or trace a line to select it. Touch the line or the <b>FOLD</b> button to fold the triangles across it.                   </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {!hasSeenInstructions ? (
