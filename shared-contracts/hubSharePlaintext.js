@@ -2,6 +2,15 @@
  * Hub and in-game share plaintext — matches `src/home.jsx` share rules (single source of truth).
  */
 
+import { readSuiteGameElapsedMs } from './suiteCompletionTimer.js'
+import { formatAllTenElapsedMsForShare } from './allTenSharePlaintext.js'
+
+function elapsedLineForShare(gameKey, dateKey) {
+	const ms = readSuiteGameElapsedMs(gameKey, dateKey)
+	if (ms == null) return ''
+	return `\n${formatAllTenElapsedMsForShare(ms)}\n`
+}
+
 function lsGet(key) {
 	try {
 		return localStorage.getItem(key)
@@ -74,7 +83,7 @@ const GAME_TITLES = Object.freeze({
 	honeycombs: 'Honeycombs',
 })
 
-function buildShareText(key, title, href, completions, perfects, moveCounts) {
+function buildShareText(key, title, href, completions, perfects, moveCounts, dateKey) {
 	const origin = typeof window !== 'undefined' ? window.location.origin : ''
 	const playUrl = new URL(href, origin || 'http://localhost').href
 	const isTileGame = TILE_GAMES.has(key)
@@ -89,11 +98,12 @@ function buildShareText(key, title, href, completions, perfects, moveCounts) {
 			out += `${label}   ⬜\n`
 		}
 	}
+	out += elapsedLineForShare(key, dateKey)
 	out += playUrl
 	return out
 }
 
-function buildSingleShareText(title, href, completed, perfect) {
+function buildSingleShareText(gameKey, dateKey, title, href, completed, perfect) {
 	const origin = typeof window !== 'undefined' ? window.location.origin : ''
 	const playUrl = new URL(href, origin || 'http://localhost').href
 	let out = title.toUpperCase() + '\n'
@@ -103,11 +113,12 @@ function buildSingleShareText(title, href, completed, perfect) {
 	} else {
 		out += `⬜\n`
 	}
+	out += elapsedLineForShare(gameKey, dateKey)
 	out += playUrl
 	return out
 }
 
-function buildCluelessShareText(title, href, attempts) {
+function buildCluelessShareText(dateKey, title, href, attempts) {
 	const origin = typeof window !== 'undefined' ? window.location.origin : ''
 	const playUrl = new URL(href, origin || 'http://localhost').href
 	const labels = ['Easy', 'Med', 'Hard']
@@ -121,6 +132,7 @@ function buildCluelessShareText(title, href, attempts) {
 			out += `${labels[i]}   ⬜\n`
 		}
 	}
+	out += elapsedLineForShare('clueless', dateKey)
 	out += playUrl
 	return out
 }
@@ -160,10 +172,17 @@ export function buildHubSharePlaintext(gameKey, dateKey, baseHref = '/') {
 	const href = `${b}puzzlegames/${gameKey}/`
 
 	if (gameKey === 'clueless') {
-		return buildCluelessShareText(title, href, loadCluelessAttempts(dateKey))
+		return buildCluelessShareText(dateKey, title, href, loadCluelessAttempts(dateKey))
 	}
 	if (SINGLE_PUZZLE_GAMES.has(gameKey)) {
-		return buildSingleShareText(title, href, loadSingleCompletion(gameKey, dateKey), loadSinglePerfect(gameKey, dateKey))
+		return buildSingleShareText(
+			gameKey,
+			dateKey,
+			title,
+			href,
+			loadSingleCompletion(gameKey, dateKey),
+			loadSinglePerfect(gameKey, dateKey),
+		)
 	}
 	return buildShareText(
 		gameKey,
@@ -172,5 +191,6 @@ export function buildHubSharePlaintext(gameKey, dateKey, baseHref = '/') {
 		loadCompletions(gameKey, dateKey),
 		loadPerfects(gameKey, dateKey),
 		loadMoveCounts(gameKey, dateKey),
+		dateKey,
 	)
 }

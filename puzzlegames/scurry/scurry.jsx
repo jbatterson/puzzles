@@ -6,6 +6,7 @@ import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
+import useSuiteCompletionTimer from '../../src/shared/useSuiteCompletionTimer.js'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -227,6 +228,11 @@ const BugPuzzle = () => {
     const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
+
+    useSuiteCompletionTimer(GAME_KEYS.SCURRY, daily.key, {
+        track: !curateMode && mode === 'daily',
+        alreadyFullyComplete: completions.every(Boolean),
+    })
 
     const [tutorialHintsDismissed, setTutorialHintsDismissed] = useState(() =>
         Object.fromEntries(SCURRY_TUTORIAL_HINTS.map(({ idx }) => [idx, false])),
@@ -692,12 +698,19 @@ const BugPuzzle = () => {
                 show={showStats}
                 onClose={() => setShowStats(false)}
                 gameKey={GAME_KEYS.SCURRY}
+                dailySuiteFooter={{
+                    dateKey: daily.key,
+                    completions,
+                    perfects,
+                }}
             />
             <SuiteGameCompletionModal
                 show={showCompletionModal}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.SCURRY}
                 dateKey={daily.key}
+                hubDiceCompletions={completions}
+                hubDicePerfects={perfects}
             />
         </div>
     )

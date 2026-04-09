@@ -5,6 +5,7 @@ import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
+import useSuiteCompletionTimer from '../../src/shared/useSuiteCompletionTimer.js'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS, getModalCloseAriaLabel } from '../../shared-contracts/modalIntents.js'
@@ -507,6 +508,21 @@ export default function CluelessGame() {
         () => hasShareableHubProgress(GAME_KEYS.CLUELESS, daily.key),
         [daily.key, attemptsByDiff],
     )
+
+    const cluelessStatsDailyFooter = useMemo(() => {
+        const att = DIFFS.map((d) => loadBestAttempts(daily.key, d))
+        return {
+            dateKey: daily.key,
+            completions: att.map((a) => a != null),
+            perfects: att.map((a) => a === 1),
+            cluelessAttempts: att,
+        }
+    }, [daily.key, bestAttempts, difficulty])
+
+    useSuiteCompletionTimer(GAME_KEYS.CLUELESS, daily.key, {
+        track: !curateMode,
+        alreadyFullyComplete: attemptsByDiff.every(a => a != null),
+    })
 
     useEffect(() => {
         if (curateMode) return
@@ -1425,12 +1441,16 @@ export default function CluelessGame() {
                 show={showStats}
                 onClose={() => setShowStats(false)}
                 gameKey={GAME_KEYS.CLUELESS}
+                dailySuiteFooter={cluelessStatsDailyFooter}
             />
             <SuiteGameCompletionModal
                 show={showCompletionModal && !curateMode && !winCelebrationActive}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.CLUELESS}
                 dateKey={daily.key}
+                hubDiceCompletions={attemptsByDiff.map(a => a != null)}
+                hubDicePerfects={attemptsByDiff.map(a => a === 1)}
+                hubCluelessAttempts={attemptsByDiff}
             />
 
             {showCheckModal && (

@@ -24,6 +24,7 @@ import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
+import useSuiteCompletionTimer from '../../src/shared/useSuiteCompletionTimer.js'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -422,6 +423,11 @@ const App = () => {
     const allDailyDoneCompletionRef = useRef(null)
     /** When the suite becomes all-complete during daily play, open modal after win flourish (not during rewind/replay). */
     const pendingSuiteModalAfterCelebrationRef = useRef(false)
+
+    useSuiteCompletionTimer(GAME_KEYS.FOLDS, daily.key, {
+        track: !curateMode && mode === 'daily',
+        alreadyFullyComplete: completions.every(Boolean),
+    })
 
     const [tutorialHint1Dismissed, setTutorialHint1Dismissed] = useState(false)
     /** Puzzle 5 in the UI (tutorial index 4): two-folds hint. */
@@ -1396,12 +1402,19 @@ const App = () => {
                 show={showStats}
                 onClose={closeStats}
                 gameKey={GAME_KEYS.FOLDS}
+                dailySuiteFooter={{
+                    dateKey: daily.key,
+                    completions,
+                    perfects,
+                }}
             />
             <SuiteGameCompletionModal
                 show={showCompletionModal && !curateMode}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.FOLDS}
                 dateKey={daily.key}
+                hubDiceCompletions={completions}
+                hubDicePerfects={perfects}
             />
         </div>
     )

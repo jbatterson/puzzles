@@ -33,6 +33,12 @@ import {
 	isStringifiedCookieDate,
 	pstStringifyForRobots,
 } from "../util/Dates";
+import {
+	clearSolveTimerStart,
+	computeElapsedMsSinceStart,
+	ensureSolveTimerStart,
+	persistSolveElapsedMs,
+} from "../util/solveTimerStorage";
 
 configure({
 	enforceActions: "always",
@@ -384,6 +390,13 @@ export default class AppState {
 	 */
 	showStats(value: boolean) {
 		this.statsShowing = value;
+	}
+
+	/**
+	 * Start the daily solve timer on first load of an in-progress puzzle (persists across reload).
+	 */
+	ensureSolveTimerStarted() {
+		ensureSolveTimerStart(this.problemDate, this.completed);
 	}
 
 	/**
@@ -942,6 +955,11 @@ export default class AppState {
 		targetState.solutionState = this.exprState;
 		this.saveToStorage();
 		if (!firstAllTenForDay && this.completed) {
+			const endMs = Date.now();
+			const elapsed =
+				computeElapsedMsSinceStart(this.problemDate, endMs) ?? 0;
+			persistSolveElapsedMs(this.problemDate, elapsed);
+			clearSolveTimerStart(this.problemDate);
 			this.showResults(true);
 			this.profile.numAllTens += 1;
 			this.profile.mostRecentAllTen = pstStringify(this.problemDate);
@@ -1064,6 +1082,8 @@ export default class AppState {
 			const dateStr = pstStringify(checkDate);
 			keysToKeep.add(`${dateStr}-problem`);
 			keysToKeep.add(`${dateStr}-targets`);
+			keysToKeep.add(`${dateStr}-solveTimerStart`);
+			keysToKeep.add(`${dateStr}-solveElapsedMs`);
 			checkDate = jumpDays(checkDate, -1);
 		}
 
@@ -1074,13 +1094,21 @@ export default class AppState {
 				continue;
 			}
 
-			// Delete if it's a problem/targets entry with date-like format and not in our keep list
-			if (key.endsWith("-problem") || key.endsWith("-targets")) {
+			// Delete if it's a problem/targets/timer entry with date-like format and not in our keep list
+			if (
+				key.endsWith("-problem") ||
+				key.endsWith("-targets") ||
+				key.endsWith("-solveTimerStart") ||
+				key.endsWith("-solveElapsedMs")
+			) {
 				if (keysToKeep.has(key)) {
 					continue;
 				}
 				// Check if it has a date-like format (m/d/yyyy or mm/dd/yyyy)
-				const datePart = key.replace(/-(problem|targets)$/, "");
+				const datePart = key.replace(
+					/-(problem|targets|solveTimerStart|solveElapsedMs)$/,
+					""
+				);
 				if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(datePart)) {
 					localStorage.removeItem(key);
 				}

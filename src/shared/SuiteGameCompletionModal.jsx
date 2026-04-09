@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import React, { useMemo, useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import FloatingModalShell from './FloatingModalShell.jsx'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { computeSimpleGameStats } from '../../shared-contracts/simpleGameStats.js'
@@ -6,8 +6,16 @@ import { buildHubSharePlaintext } from '../../shared-contracts/hubSharePlaintext
 import { isNowSchoolTime } from '../../shared-contracts/schoolTime.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
+import {
+    finalizeSuiteGameTimerFromModal,
+    formatPuzzleDateHeading,
+    readSuiteGameElapsedMs,
+} from '../../shared-contracts/suiteCompletionTimer.js'
+import { formatAllTenElapsedMsForShare } from '../../shared-contracts/allTenSharePlaintext.js'
 import ShareIcon from './ShareIcon.jsx'
 import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './ShareResultToast.jsx'
+import SuiteCompletionTitle from './SuiteCompletionTitle.jsx'
+import SuiteCompletionHubDice from './SuiteCompletionHubDice.jsx'
 
 /** Win-modal headings (uppercase + punctuation per design). */
 const COMPLETION_HEADLINE = Object.freeze({
@@ -26,9 +34,18 @@ function pluralUnit(n, singular, plural) {
 
 /**
  * All Ten–style completion surface: Beast promo, suite stats, hub-identical share, ALL PUZZLES.
- * @param {{ show: boolean, onClose: () => void, gameKey: string, dateKey: string }} props
+ * @param {{ show: boolean, onClose: () => void, gameKey: string, dateKey: string, hubDiceCompletions: boolean[], hubDicePerfects: boolean[], hubDiceMoveCounts?: (number|null)[], hubCluelessAttempts?: (number|null)[] | null }} props
  */
-export default function SuiteGameCompletionModal({ show, onClose, gameKey, dateKey }) {
+export default function SuiteGameCompletionModal({
+    show,
+    onClose,
+    gameKey,
+    dateKey,
+    hubDiceCompletions,
+    hubDicePerfects,
+    hubDiceMoveCounts,
+    hubCluelessAttempts,
+}) {
     const base = import.meta.env.BASE_URL
     const { title: gameTitle } = getGameChrome(gameKey)
     const modalTitle = COMPLETION_HEADLINE[gameKey] ?? `${gameTitle.toUpperCase()}!`
@@ -39,6 +56,19 @@ export default function SuiteGameCompletionModal({ show, onClose, gameKey, dateK
     }, [show, gameKey])
 
     const isTileGame = gameKey === GAME_KEYS.SUMTILES || gameKey === GAME_KEYS.PRODUCTILES
+
+    const [elapsedMsDisplay, setElapsedMsDisplay] = useState(null)
+
+    useLayoutEffect(() => {
+        if (!show || !gameKey || !dateKey) return
+        finalizeSuiteGameTimerFromModal(gameKey, dateKey)
+        setElapsedMsDisplay(readSuiteGameElapsedMs(gameKey, dateKey))
+    }, [show, gameKey, dateKey])
+
+    useEffect(() => {
+        if (show) return
+        setElapsedMsDisplay(null)
+    }, [show])
 
     /** Clipboard preview toast: lives outside the modal panel so it is not clipped by overflow. */
     const [shareUi, setShareUi] = useState(null)
@@ -121,6 +151,17 @@ export default function SuiteGameCompletionModal({ show, onClose, gameKey, dateK
 
     const schoolTime = isNowSchoolTime()
 
+    const timeHms =
+        elapsedMsDisplay != null
+            ? formatAllTenElapsedMsForShare(elapsedMsDisplay)
+            : formatAllTenElapsedMsForShare(0)
+
+    const showDiceBlock =
+        Array.isArray(hubDiceCompletions) &&
+        hubDiceCompletions.length === 3 &&
+        Array.isArray(hubDicePerfects) &&
+        hubDicePerfects.length === 3
+
     return (
         <>
             <FloatingModalShell
@@ -129,92 +170,111 @@ export default function SuiteGameCompletionModal({ show, onClose, gameKey, dateK
                 intent={MODAL_INTENTS.RESULTS}
                 contentClassName="suite-completion-shell"
             >
-            <h2 className="suite-completion-title">{modalTitle}</h2>
+                <SuiteCompletionTitle>{modalTitle}</SuiteCompletionTitle>
 
-            {schoolTime ? (
-                <div className="suite-completion-promo" id="suite-completion-plug-educators">
-                    <div className="suite-completion-promo-title">Are you a teacher?</div>
-                    <p className="suite-completion-promo-copy">
-                        Check out our interactive math curriculum for Grades 1-5 designed by
-                        the global leaders in advanced math education.
-                    </p>
-                    <a
-                        className="suite-completion-cta"
-                        id="suite-completion-educators-button"
-                        href="https://beastacademy.com/educators"
-                        target="_blank"
-                        rel="noreferrer"
-                    >
-                        Learn More
-                    </a>
-                </div>
-            ) : (
-                <div className="suite-completion-promo" id="suite-completion-plug-online">
-                    <div className="suite-completion-promo-title">More challenges ahead!</div>
-                    <p className="suite-completion-promo-copy">
-                        Check out our interactive full math curriculum tailored to advanced
-                        learners ages 6-13.
-                    </p>
-                    <a
-                        className="suite-completion-cta"
-                        id="suite-completion-online-button"
-                        href="https://beastacademy.com/online"
-                        target="_blank"
-                        rel="noreferrer"
-                    >
-                        Learn More
-                    </a>
-                </div>
-            )}
-
-            <div className="simple-game-stats-row suite-completion-stats">
-                <div className="simple-game-stats-col">
-                    <div className="simple-game-stats-label">Played</div>
-                    <div className="simple-game-stats-value">{stats.played}</div>
-                    <div className="simple-game-stats-unit">{pluralUnit(stats.played, 'day', 'days')}</div>
-                </div>
-                <div className="simple-game-stats-col">
-                    <div className="simple-game-stats-label">Streak</div>
-                    <div className="simple-game-stats-value">{stats.streak}</div>
-                    <div className="simple-game-stats-unit">{pluralUnit(stats.streak, 'day', 'days')}</div>
-                </div>
-                {isTileGame ? (
-                    <div className="simple-game-stats-col">
-                        <div className="simple-game-stats-label">AVG MOVES</div>
-                        <div className="simple-game-stats-value">{stats.avgMoves || '–|–|–'}</div>
-                        <div className="simple-game-stats-unit"></div>
+                {schoolTime ? (
+                    <div className="suite-completion-promo" id="suite-completion-plug-educators">
+                        <div className="suite-completion-promo-title">Are you a teacher?</div>
+                        <p className="suite-completion-promo-copy">
+                            Check out our interactive math curriculum for Grades 1-5 designed by
+                            the global leaders in advanced math education.
+                        </p>
+                        <a
+                            className="suite-completion-cta"
+                            id="suite-completion-educators-button"
+                            href="https://beastacademy.com/educators"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Learn More
+                        </a>
                     </div>
                 ) : (
-                    <div className="simple-game-stats-col">
-                        <div className="simple-game-stats-label">Stars</div>
-                        <div className="simple-game-stats-value">{stats.stars}</div>
-                        <div className="simple-game-stats-unit">{pluralUnit(stats.stars, 'time', 'times')}</div>
+                    <div className="suite-completion-promo" id="suite-completion-plug-online">
+                        <div className="suite-completion-promo-title">More challenges ahead!</div>
+                        <p className="suite-completion-promo-copy">
+                            Check out our interactive full math curriculum tailored to advanced
+                            learners ages 6-13.
+                        </p>
+                        <a
+                            className="suite-completion-cta"
+                            id="suite-completion-online-button"
+                            href="https://beastacademy.com/online"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Learn More
+                        </a>
                     </div>
                 )}
-            </div>
 
-            <div ref={shareAnchorRef} className="suite-completion-share-block">
-                <button type="button" className="suite-completion-share-btn" onClick={handleShare} aria-label="Share results">
-                    Share
-                    <ShareIcon size={18} />
-                </button>
-            </div>
+                <div className="simple-game-stats-row suite-completion-stats">
+                    <div className="simple-game-stats-col">
+                        <div className="simple-game-stats-label">Played</div>
+                        <div className="simple-game-stats-value">{stats.played}</div>
+                        <div className="simple-game-stats-unit">{pluralUnit(stats.played, 'day', 'days')}</div>
+                    </div>
+                    <div className="simple-game-stats-col">
+                        <div className="simple-game-stats-label">Streak</div>
+                        <div className="simple-game-stats-value">{stats.streak}</div>
+                        <div className="simple-game-stats-unit">{pluralUnit(stats.streak, 'day', 'days')}</div>
+                    </div>
+                    {isTileGame ? (
+                        <div className="simple-game-stats-col">
+                            <div className="simple-game-stats-label">AVG MOVES</div>
+                            <div className="simple-game-stats-value">{stats.avgMoves || '–|–|–'}</div>
+                            <div className="simple-game-stats-unit"></div>
+                        </div>
+                    ) : (
+                        <div className="simple-game-stats-col">
+                            <div className="simple-game-stats-label">Stars</div>
+                            <div className="simple-game-stats-value">{stats.stars}</div>
+                            <div className="simple-game-stats-unit">{pluralUnit(stats.stars, 'time', 'times')}</div>
+                        </div>
+                    )}
+                </div>
 
-            <a
-                href={base}
-                className="btn-primary suite-completion-all-puzzles"
-                style={{
-                    textAlign: 'center',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                }}
-            >
-                {CTA_LABELS.ALL_PUZZLES}
-            </a>
+                {showDiceBlock ? (
+                    <div className="suite-completion-hub-dice-block">
+                        <div className="suite-completion-puzzle-date">{formatPuzzleDateHeading(dateKey)}</div>
+                        <SuiteCompletionHubDice
+                            gameKey={gameKey}
+                            completions={hubDiceCompletions}
+                            perfects={hubDicePerfects}
+                            moveCounts={hubDiceMoveCounts}
+                            cluelessAttempts={hubCluelessAttempts ?? null}
+                        />
+                        <div
+                            className="suite-completion-solve-elapsed"
+                            aria-label={`Elapsed time ${timeHms}`}
+                        >
+                            {timeHms}
+                        </div>
+                    </div>
+                ) : null}
+
+                <div ref={shareAnchorRef} className="suite-completion-share-block">
+                    <button type="button" className="suite-completion-share-btn" onClick={handleShare} aria-label="Share results">
+                        Share
+                        <ShareIcon size={18} />
+                    </button>
+                </div>
+
+                <a
+                    href={base}
+                    className="btn-primary suite-completion-all-puzzles"
+                    style={{
+                        textAlign: 'center',
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                    }}
+                >
+                    {CTA_LABELS.ALL_PUZZLES}
+                </a>
             </FloatingModalShell>
             {show && shareUi != null && (
                 <ShareResultToast

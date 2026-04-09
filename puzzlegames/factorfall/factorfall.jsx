@@ -5,6 +5,7 @@ import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
+import useSuiteCompletionTimer from '../../src/shared/useSuiteCompletionTimer.js'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -309,6 +310,11 @@ const Factorfall = () => {
     const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
+
+    useSuiteCompletionTimer(GAME_KEYS.FACTORFALL, daily.key, {
+        track: !curateMode && mode === 'daily',
+        alreadyFullyComplete: completions.every(Boolean),
+    })
 
     useEffect(() => {
         if (!curateMode) persistTutorialResumeState(GAME_KEYS.FACTORFALL, mode, tutorialIdx)
@@ -1110,12 +1116,19 @@ const Factorfall = () => {
                 show={showStats}
                 onClose={() => setShowStats(false)}
                 gameKey={GAME_KEYS.FACTORFALL}
+                dailySuiteFooter={{
+                    dateKey: daily.key,
+                    completions,
+                    perfects,
+                }}
             />
             <SuiteGameCompletionModal
                 show={showCompletionModal && !curateMode}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.FACTORFALL}
                 dateKey={daily.key}
+                hubDiceCompletions={completions}
+                hubDicePerfects={perfects}
             />
         </div>
     )

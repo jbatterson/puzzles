@@ -14,6 +14,7 @@ import DiceFace from './shared/DiceFace.jsx'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../shared-contracts/chromeUi.js'
 import {
     buildAllTenInPuzzleStyleSharePlaintext,
+    formatAllTenElapsedMsForShare,
     getAllTenPuzzleNumberDisplayString,
 } from '../shared-contracts/allTenSharePlaintext.js'
 import { hubHrefFirstUnfinishedClueless, hubHrefFirstUnfinishedThree } from '../shared-contracts/hubEntry.js'
@@ -144,6 +145,21 @@ function loadAllTenTargetsForHubDateKey(dateKey) {
         if (!raw) return null
         const arr = JSON.parse(raw)
         return Array.isArray(arr) ? arr : null
+    } catch {
+        return null
+    }
+}
+
+/** Persisted solve time for All Ten (ms), same key as in-game results. */
+function loadAllTenSolveElapsedMsForHubDateKey(dateKey) {
+    const targetsKey = hubDateKeyToAllTenTargetsKey(dateKey)
+    if (!targetsKey) return null
+    const prefix = targetsKey.replace(/-targets$/, '')
+    try {
+        const raw = lsGet(`${prefix}-solveElapsedMs`)
+        if (raw == null) return null
+        const n = parseInt(raw, 10)
+        return Number.isFinite(n) ? n : null
     } catch {
         return null
     }
@@ -382,10 +398,19 @@ export default function Home() {
             ? (() => {
                 const targets = loadAllTenTargetsForHubDateKey(dateKey)
                 const now = new Date()
+                const elapsedMs = loadAllTenSolveElapsedMsForHubDateKey(dateKey)
                 if (targets && targets.length) {
-                    return buildAllTenInPuzzleStyleSharePlaintext(targets, now)
+                    return buildAllTenInPuzzleStyleSharePlaintext(
+                        targets,
+                        now,
+                        elapsedMs ?? undefined,
+                    )
                 }
-                return `All Ten #${getAllTenPuzzleNumberDisplayString(now)}\n${allTenTodayCount}/10\n`
+                const timeLine =
+                    elapsedMs != null && Number.isFinite(elapsedMs)
+                        ? `\n${formatAllTenElapsedMsForShare(elapsedMs)}`
+                        : ''
+                return `All Ten #${getAllTenPuzzleNumberDisplayString(now)}\n${allTenTodayCount}/10${timeLine}\n`
             })()
             : buildHubSharePlaintext(key, dateKey, base)
         navigator.clipboard.writeText(text).then(() => {
@@ -549,6 +574,8 @@ export default function Home() {
                     position: relative;
                 }
                 .hp-cardWrapper .hp-card { flex: 1; min-width: 0; }
+                /* Let the row shrink on narrow viewports; default flex min-width:auto was forcing overflow. */
+                .hp-cardWrapper .hp-shareCol { min-width: 0; }
 
                 .hp-shareBtn {
                     display: inline-flex;
@@ -729,6 +756,7 @@ export default function Home() {
                                 </div>
                             </a>
                             <div
+                                className="hp-shareCol"
                                 style={{
                                     position: 'relative',
                                     display: 'flex',

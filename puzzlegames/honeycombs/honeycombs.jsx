@@ -13,6 +13,7 @@ import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
+import useSuiteCompletionTimer from '../../src/shared/useSuiteCompletionTimer.js'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -138,6 +139,11 @@ export default function HoneycombsApp() {
     openOnMount: !curateMode,
     completionStoragePrefix: 'honeycombs',
     initiallyClosed: curateMode,
+  })
+
+  useSuiteCompletionTimer(GAME_KEYS.HONEYCOMBS, daily.dateKey, {
+    track: !curateMode && mode === 'daily',
+    alreadyFullyComplete: completions.every(Boolean),
   })
 
   const boardMountRef = useRef(null)
@@ -465,6 +471,11 @@ export default function HoneycombsApp() {
         show={showStats}
         onClose={() => setShowStats(false)}
         gameKey={GAME_KEYS.HONEYCOMBS}
+        dailySuiteFooter={{
+          dateKey: daily.dateKey,
+          completions,
+          perfects,
+        }}
       />
 
       <SuiteGameCompletionModal
@@ -472,6 +483,8 @@ export default function HoneycombsApp() {
         onClose={() => setShowCompletionModal(false)}
         gameKey={GAME_KEYS.HONEYCOMBS}
         dateKey={daily.dateKey}
+        hubDiceCompletions={completions}
+        hubDicePerfects={perfects}
       />
     </div>
   )

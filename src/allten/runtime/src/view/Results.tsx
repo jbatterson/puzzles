@@ -1,36 +1,24 @@
-import React from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {observer} from "mobx-react-lite";
-import copy from "copy-to-clipboard";
-import {styled} from "../stitches.config";
 import isMobile from "ismobilejs";
 
 import AppState from "../state/AppState";
-import ProgressDisplay from "./ProgressDisplay";
 import SolveOrderDisplay from "./SolveOrderDisplay";
-import {targetsToSolveOrderString} from "../state/AppStateUtil";
 
-import {
-	SubtleSubheading,
-	Container,
-	Centered,
-	Space,
-	Paragraph,
-	Title,
-} from "./util/TextContainers";
-
-import Modal from "./Modal";
-import ShareButton from "./ShareButton";
-import PlayAgainTimer from "./PlayAgainTimer";
-import StatsWidget from "./StatsWidget";
-import {isNowSchoolTime, pstStringify} from "../util/Dates";
-import {getPuzzleNumberAsString} from "../util/ProblemUtil";
-import ButtonLink from "./ButtonLink";
+import FloatingModalShell from "../../../../shared/FloatingModalShell.jsx";
+import SuiteCompletionTitle from "../../../../shared/SuiteCompletionTitle.jsx";
+import ShareIcon from "../../../../shared/ShareIcon.jsx";
+import ShareResultToast, {
+	SHARE_RESULT_TOAST_MS,
+} from "../../../../shared/ShareResultToast.jsx";
+import {MODAL_INTENTS} from "../../../../../shared-contracts/modalIntents.js";
+import {isNowSchoolTime} from "../../../../../shared-contracts/schoolTime.js";
+import {buildAllTenInPuzzleStyleSharePlaintext} from "../../../../../shared-contracts/allTenSharePlaintext.js";
 import {CTA_LABELS} from "../../../../../shared-contracts/ctaLabels.js";
-
-export const RESULTS_CLIPBOARD_UUID = "3834033daa48";
-export const HTML_TAG_REGEX = /<[\s\S\n]*?>/;
-
-const isPhone = isMobile(navigator.userAgent).phone;
+import {
+	formatSolveElapsedHms,
+	readPersistedSolveElapsedMs,
+} from "../util/solveTimerStorage";
 
 export type Props = {
 	hideResults: () => void;
@@ -39,213 +27,268 @@ export type Props = {
 	compact?: boolean;
 };
 
-const Clipboard = styled("div", {
-	display: "none",
-});
+const isPhone = isMobile(navigator.userAgent).phone;
 
-const PlugWrapper = styled("div", {
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	padding: "20px 20px 8px",
-	margin: "8px 0 16px",
-	backgroundColor: "$lightGray",
-	borderRadius: 10,
-	textDecoration: "none",
-	variants: {
-		hidden: {
-			true: {
-				display: "none",
-			},
-		},
-	},
-});
-
-const ImageParagraph = styled("div", {
-	display: "flex",
-	alignItems: "center",
-});
-
-/**
- * Copies the result to the clipboard, in both rich and plaintext.
- */
-const resultsToClipboard = function (
-	result: {
-		richStr: string;
-		plainStr: string;
-	},
-	showResultCopiedModal: () => void
-) {
-	const {richStr, plainStr} = result;
-	copy(richStr, {
-		format: "text/html",
-	});
-	copy(plainStr, {
-		format: "text/plain",
-	});
-	showResultCopiedModal();
-};
-
-/**
- * Gets the results from the element tagged with RESULTS_CLIPBOARD_UUID,
- * in both rich and plaintext.
- */
-
-const getResultsAsStr = function (): {richStr: string; plainStr: string} {
-	// fetch the text as a string with HTML markup
-	const richStr =
-		document.getElementById(RESULTS_CLIPBOARD_UUID)?.innerHTML || "";
-
-	// build the plain string from the rich string by filtering out HTML tags
-	let plainStr;
-	let nextPlainStr = richStr; // the filtered version of the string
-	do {
-		plainStr = nextPlainStr;
-		nextPlainStr = plainStr.replace(HTML_TAG_REGEX, "\n");
-	} while (plainStr !== nextPlainStr);
-	plainStr = plainStr
-		.split("\n")
-		.filter((s) => s.length)
-		.join("\n");
-
-	return {richStr, plainStr};
-};
+function pluralUnit(n: number, singular: string, plural: string) {
+	return n === 1 ? singular : plural;
+}
 
 const Results: React.FC<Props> = function (props: Props) {
-	const {hideResults, appState, show, compact} = props;
+	const {hideResults, appState, show} = props;
 	const {targets, profile, problemDate} = appState;
-	const solveOrderString = targetsToSolveOrderString(targets);
-	const puzzleNumberStr = getPuzzleNumberAsString(problemDate);
 
-	const doShare = function () {
-		const results = getResultsAsStr();
-		const shareData = {
-			text: results.plainStr,
-		};
-		if (isPhone && navigator.share && navigator.canShare(shareData)) {
-			navigator.share(shareData);
-		} else {
-			resultsToClipboard(results, () => appState.showResultCopiedModal(true));
+	const [shareUi, setShareUi] = useState<{
+		preview: string;
+		fadeOut: boolean;
+		top?: number;
+	} | null>(null);
+	const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const shareAnchorRef = useRef<HTMLDivElement | null>(null);
+
+	useEffect(
+		() => () => {
+			if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+		},
+		[],
+	);
+
+	useEffect(() => {
+		if (show) return;
+		if (toastTimeoutRef.current) {
+			clearTimeout(toastTimeoutRef.current);
+			toastTimeoutRef.current = null;
 		}
-		appState.hasSharedToday = true;
-	};
+		const id = requestAnimationFrame(() => setShareUi(null));
+		return () => cancelAnimationFrame(id);
+	}, [show]);
 
-	const resultsForMobileSharing = (
-		<Clipboard id={RESULTS_CLIPBOARD_UUID}>
-			<Paragraph>All Ten #{puzzleNumberStr}</Paragraph>
-			<ProgressDisplay
-				style="fraction"
-				targets={targets}
-				bold
-				excited
-				problemDate={appState.problemDate}
-			/>
-			<Paragraph>{solveOrderString}</Paragraph>
-		</Clipboard>
-	);
+	const pinShareToast = show && shareUi != null;
 
-	const isSchoolTime = isNowSchoolTime();
-	const modalContent = isSchoolTime ? (
-		<PlugWrapper id="allten-plug-educators">
-			<Title>Are you a teacher?</Title>
-			<ImageParagraph>
-				<Paragraph centered>
-					Check out our interactive math curriculum for Grades 1-5 designed by
-					the global leaders in advanced math education.
-				</Paragraph>
-			</ImageParagraph>
-			<ButtonLink
-				href="https://beastacademy.com/educators"
-				compact={compact}
-				id="allten-plug-educators-button"
-				newTab
-			>
-				Learn More
-			</ButtonLink>
-		</PlugWrapper>
-	) : (
-		<PlugWrapper id="allten-plug-online">
-			<Title>More challenges ahead!</Title>
-			<ImageParagraph>
-				<Paragraph centered>
-					Check out our interactive full math curriculum tailored to advanced
-					learners ages 6-13.
-				</Paragraph>
-			</ImageParagraph>
-			<ButtonLink
-				href="https://beastacademy.com/online"
-				compact={compact}
-				id="allten-plug-online-button"
-				newTab
-			>
-				Learn More
-			</ButtonLink>
-		</PlugWrapper>
-	);
+	useEffect(() => {
+		if (!pinShareToast) return;
+		const updateTop = () => {
+			const n = shareAnchorRef.current;
+			if (!n) return;
+			const top = n.getBoundingClientRect().bottom + 6;
+			setShareUi(prev => (prev ? {...prev, top} : null));
+		};
+		const id = requestAnimationFrame(updateTop);
+		window.addEventListener("resize", updateTop);
+		window.addEventListener("scroll", updateTop, true);
+		return () => {
+			cancelAnimationFrame(id);
+			window.removeEventListener("resize", updateTop);
+			window.removeEventListener("scroll", updateTop, true);
+		};
+	}, [pinShareToast]);
+
+	const dismissShareToast = useCallback(() => {
+		if (toastTimeoutRef.current) {
+			clearTimeout(toastTimeoutRef.current);
+			toastTimeoutRef.current = null;
+		}
+		setShareUi(null);
+	}, []);
+
+	const sharePlaintext = useMemo(() => {
+		const elapsedMs = readPersistedSolveElapsedMs(problemDate);
+		return buildAllTenInPuzzleStyleSharePlaintext(
+			targets,
+			problemDate,
+			elapsedMs ?? undefined,
+		);
+	}, [targets, problemDate, show]);
+
+	const timeHms = useMemo(() => {
+		const ms = readPersistedSolveElapsedMs(problemDate);
+		return formatSolveElapsedHms(ms ?? 0);
+	}, [problemDate, show]);
+
+	const handleShare = useCallback(() => {
+		const text = sharePlaintext;
+		const markShared = () => {
+			appState.hasSharedToday = true;
+		};
+		const runClipboardToast = () => {
+			if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+			const r = shareAnchorRef.current?.getBoundingClientRect();
+			setShareUi({
+				preview: text,
+				fadeOut: false,
+				top: r ? r.bottom + 6 : undefined,
+			});
+			toastTimeoutRef.current = setTimeout(() => {
+				setShareUi(prev => (prev ? {...prev, fadeOut: true} : null));
+				toastTimeoutRef.current = null;
+			}, SHARE_RESULT_TOAST_MS);
+		};
+
+		if (isPhone && navigator.share) {
+			const shareData = {text};
+			if (navigator.canShare?.(shareData)) {
+				navigator
+					.share(shareData)
+					.then(() => {
+						markShared();
+					})
+					.catch(() => {
+						navigator.clipboard.writeText(text).then(() => {
+							runClipboardToast();
+							markShared();
+						});
+					});
+				return;
+			}
+		}
+		navigator.clipboard.writeText(text).then(() => {
+			runClipboardToast();
+			markShared();
+		});
+	}, [sharePlaintext, appState]);
+
+	const shareToastViewportStyle =
+		shareUi != null && shareUi.top != null
+			? {
+					position: "fixed" as const,
+					top: shareUi.top,
+					left: "50%",
+					right: "auto" as const,
+					transform: "translateX(-50%)",
+					marginTop: 0,
+					zIndex: 10050,
+				}
+			: undefined;
+
+	const schoolTime = isNowSchoolTime();
+	const {numPlays, numStreak, numAllTens} = profile;
+	const base = import.meta.env.BASE_URL;
 
 	return (
-		<Modal close={hideResults} show={show} extraPad center>
-			<Container>
-				<Centered>
-					<ProgressDisplay
-						targets={targets}
-						style="text"
-						size="large"
-						problemDate={appState.problemDate}
-					/>
-				</Centered>
-				<Space small />
-				{modalContent}
-				<PlugWrapper id="allten-plug-playground" hidden>
-					<Title>Enjoying All Ten? Check out Beast Academy for more!</Title>
-					<ImageParagraph>
-						<Paragraph centered>
-							Designed by the global leaders in advanced math education, explore
-							our collection of <b>free tabletop math activities</b>.
-						</Paragraph>
-					</ImageParagraph>
-					<ButtonLink
-						href="https://beastacademy.com/playground?audience=teacher"
-						compact={compact}
-						id="allten-plug-playground-button"
-						newTab
-					>
-						Visit BA Playground
-					</ButtonLink>
-				</PlugWrapper>
-				<StatsWidget profile={profile} />
-				<Centered>
-					<SubtleSubheading>SOLVE ORDER</SubtleSubheading>
-					<SolveOrderDisplay targets={targets} />
-				</Centered>
-				<Space />
-				<Centered>
-					<ShareButton doShare={doShare} />
-				</Centered>
-				{(appState.hasSharedToday || appState.completed) && (
-					<PlayAgainTimer today={pstStringify(appState.problemDate)} />
+		<>
+			<FloatingModalShell
+				show={show}
+				onClose={hideResults}
+				intent={MODAL_INTENTS.RESULTS}
+				contentClassName="suite-completion-shell"
+			>
+				<SuiteCompletionTitle>ALL TEN!</SuiteCompletionTitle>
+
+				{schoolTime ? (
+					<div className="suite-completion-promo" id="suite-completion-plug-educators">
+						<div className="suite-completion-promo-title">Are you a teacher?</div>
+						<p className="suite-completion-promo-copy">
+							Check out our interactive math curriculum for Grades 1-5 designed by
+							the global leaders in advanced math education.
+						</p>
+						<a
+							className="suite-completion-cta"
+							id="suite-completion-educators-button"
+							href="https://beastacademy.com/educators"
+							target="_blank"
+							rel="noreferrer"
+						>
+							Learn More
+						</a>
+					</div>
+				) : (
+					<div className="suite-completion-promo" id="suite-completion-plug-online">
+						<div className="suite-completion-promo-title">More challenges ahead!</div>
+						<p className="suite-completion-promo-copy">
+							Check out our interactive full math curriculum tailored to advanced
+							learners ages 6-13.
+						</p>
+						<a
+							className="suite-completion-cta"
+							id="suite-completion-online-button"
+							href="https://beastacademy.com/online"
+							target="_blank"
+							rel="noreferrer"
+						>
+							Learn More
+						</a>
+					</div>
 				)}
-				<Space small />
-				<Centered>
-					<a
-						className="btn-primary"
-						href={`${import.meta.env.BASE_URL}`}
-						style={{
-							textAlign: "center",
-							textDecoration: "none",
-							display: "inline-flex",
-							alignItems: "center",
-							justifyContent: "center",
-							padding: "12px 24px",
-							marginTop: "4px",
-						}}
+
+				<div className="simple-game-stats-row suite-completion-stats">
+					<div className="simple-game-stats-col">
+						<div className="simple-game-stats-label">Played</div>
+						<div className="simple-game-stats-value">{numPlays}</div>
+						<div className="simple-game-stats-unit">
+							{pluralUnit(numPlays, "day", "days")}
+						</div>
+					</div>
+					<div className="simple-game-stats-col">
+						<div className="simple-game-stats-label">Streak</div>
+						<div className="simple-game-stats-value">{numStreak}</div>
+						<div className="simple-game-stats-unit">
+							{pluralUnit(numStreak, "day", "days")}
+						</div>
+					</div>
+					<div className="simple-game-stats-col">
+						<div className="simple-game-stats-label">ALL TEN</div>
+						<div className="simple-game-stats-value">{numAllTens}</div>
+						<div className="simple-game-stats-unit">
+							{pluralUnit(numAllTens, "time", "times")}
+						</div>
+					</div>
+				</div>
+
+				<div className="suite-completion-solve-order-block">
+					<div className="simple-game-stats-label">SOLVE ORDER</div>
+					<div className="suite-completion-solve-order-numbers">
+						<SolveOrderDisplay targets={targets} />
+					</div>
+					<div
+						className="suite-completion-solve-elapsed"
+						aria-label={`Elapsed time ${timeHms}`}
 					>
-						{CTA_LABELS.ALL_PUZZLES}
-					</a>
-				</Centered>
-				{resultsForMobileSharing}
-			</Container>
-		</Modal>
+						{timeHms}
+					</div>
+				</div>
+
+				<div ref={shareAnchorRef} className="suite-completion-share-block">
+					<button
+						type="button"
+						className="suite-completion-share-btn"
+						onClick={handleShare}
+						aria-label="Share results"
+					>
+						Share
+						<ShareIcon size={18} />
+					</button>
+				</div>
+
+				<a
+					href={base}
+					className="btn-primary suite-completion-all-puzzles"
+					style={{
+						textAlign: "center",
+						textDecoration: "none",
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						width: "100%",
+						boxSizing: "border-box",
+					}}
+				>
+					{CTA_LABELS.ALL_PUZZLES}
+				</a>
+			</FloatingModalShell>
+			{show && shareUi != null && (
+				<ShareResultToast
+					preview={shareUi.preview}
+					fadeOut={shareUi.fadeOut}
+					align="center"
+					style={shareToastViewportStyle}
+					onDismiss={dismissShareToast}
+					onTransitionEnd={e => {
+						if (e.target !== e.currentTarget || e.propertyName !== "opacity")
+							return;
+						setShareUi(prev => (prev?.fadeOut ? null : prev));
+					}}
+				/>
+			)}
+		</>
 	);
 };
 export default observer(Results);

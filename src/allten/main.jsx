@@ -26,6 +26,7 @@ try {
   const problemDate = new Date()
   const appState = new AppState(createProblemForDate(problemDate, props), problemDate)
   appState.loadFromStorage()
+  appState.ensureSolveTimerStarted()
 
   const root = createRoot(container)
   root.render(

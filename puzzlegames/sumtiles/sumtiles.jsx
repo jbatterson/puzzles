@@ -6,6 +6,7 @@ import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
 import SimpleGameStatsModal from '../../src/shared/SimpleGameStatsModal.jsx'
 import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.jsx'
+import useSuiteCompletionTimer from '../../src/shared/useSuiteCompletionTimer.js'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
 import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
@@ -296,6 +297,11 @@ export default function SumTiles() {
     const [curateCopyHint, setCurateCopyHint] = useState(null)
     const [showCompletionModal, setShowCompletionModal] = useState(false)
     const allDailyDoneCompletionRef = useRef(null)
+
+    useSuiteCompletionTimer(GAME_KEYS.SUMTILES, daily.key, {
+        track: !curateMode && mode === 'daily',
+        alreadyFullyComplete: completions.every(Boolean),
+    })
     /** When daily suite just became all-complete, open modal only after win row/col animation ends. */
     const pendingSuiteModalAfterAnimRef = useRef(false)
 
@@ -900,12 +906,21 @@ export default function SumTiles() {
                 show={showStats}
                 onClose={() => setShowStats(false)}
                 gameKey={GAME_KEYS.SUMTILES}
+                dailySuiteFooter={{
+                    dateKey: daily.key,
+                    completions,
+                    perfects,
+                    moveCounts,
+                }}
             />
             <SuiteGameCompletionModal
                 show={showCompletionModal && !curateMode}
                 onClose={() => setShowCompletionModal(false)}
                 gameKey={GAME_KEYS.SUMTILES}
                 dateKey={daily.key}
+                hubDiceCompletions={completions}
+                hubDicePerfects={perfects}
+                hubDiceMoveCounts={moveCounts}
             />
         </div>
     )
