@@ -52,3 +52,23 @@ export function getDayIndex(key) {
 export function getDateLabel() {
 	return PAC_LABEL.format(new Date())
 }
+
+/**
+ * Count consecutive days with a qualifying completion, working backward from today.
+ * Includes today when hasCompletion(todayKey) is true; otherwise starts from yesterday.
+ * This handles the "today counts if you've already played" streak display rule.
+ *
+ * @param {(dateKey: string) => boolean} hasCompletion - return true if that Pacific-date key has a completion
+ * @param {number} [maxDays] - how far back to search (default 365)
+ * @returns {number}
+ */
+export function computeStreak(hasCompletion, maxDays = 365) {
+	const hasToday = hasCompletion(getDateKey(0))
+	const startOffset = hasToday ? 0 : 1
+	let count = 0
+	for (let dayOffset = startOffset; dayOffset <= maxDays; dayOffset++) {
+		if (hasCompletion(getDateKey(dayOffset))) count++
+		else break
+	}
+	return count
+}

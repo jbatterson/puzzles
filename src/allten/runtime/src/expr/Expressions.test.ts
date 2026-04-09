@@ -417,15 +417,18 @@ const uiEnablingTestsTable: UIEnablingTestRow[] = [
 		expectedFinishableInterm: true,
 		expectedEnabledEquals: true,
 	},
-	// TODO: figure out why this test is failing
-	// {
-	// 	name: "interm =, forbid parens",
-	// 	start: [1, 2, 3, 4],
-	// 	rules: {forbidParens: true},
-	// 	mainString: "s0 + s1",
-	// 	expectedFinishableInterm: false,
-	// 	expectedEnabledEquals: false,
-	// },
+	{
+		// forbidParens blocks creating an intermediate, but isEqualsEnabled is still
+		// true here: s0+s1 is a syntactically valid expression whose only errors are
+		// E_UNUSED_NUMBER (a "partial" error accepted by canFinishDivisionByZero),
+		// so the = button remains enabled to let the player attempt the submission.
+		name: "interm =, forbid parens",
+		start: [1, 2, 3, 4],
+		rules: {forbidParens: true},
+		mainString: "s0 + s1",
+		expectedFinishableInterm: false,
+		expectedEnabledEquals: true,
+	},
 	{
 		name: "main =, unused start",
 		start: [1, 2, 3, 4],

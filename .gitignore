@@ -29,3 +29,6 @@ puzzlegames/allten/bundle_allten.js.map
 
 # Generated Clueless ambiguity reports (run npm run check:clueless-ambiguity)
 tools/reports/
+
+# Storybook static build output (src/allten/runtime) — CI artifact, not source
+src/allten/runtime/storybook-static/

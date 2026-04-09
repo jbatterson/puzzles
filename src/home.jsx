@@ -31,7 +31,7 @@ import {
 } from '../shared-contracts/suiteDashboardPreferences.js'
 import ShareIcon from './shared/ShareIcon.jsx'
 import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './shared/ShareResultToast.jsx'
-import { getDailyKey, getDateKey } from '../shared-contracts/dailyPuzzleDate.js'
+import { getDailyKey, getDateKey, computeStreak } from '../shared-contracts/dailyPuzzleDate.js'
 
 const base = import.meta.env.BASE_URL
 
@@ -176,18 +176,6 @@ function dayHasCompletion(gameKey, single, dateKey) {
         : loadCompletions(gameKey, dateKey).some(Boolean)
 }
 
-/** Consecutive days with a completion, counting backward from today. Includes today when played today. */
-function getStreak(gameKey, single = false) {
-    const hasToday = dayHasCompletion(gameKey, single, getDateKey(0))
-    const startOffset = hasToday ? 0 : 1
-    let count = 0
-    for (let dayOffset = startOffset; dayOffset <= MAX_STREAK_DAYS; dayOffset++) {
-        const dateKey = getDateKey(dayOffset)
-        if (dayHasCompletion(gameKey, single, dateKey)) count++
-        else break
-    }
-    return count
-}
 
 // ── PuzzleBoxes (multi-puzzle games) ─────────────────────────────────────────
 
@@ -353,7 +341,10 @@ export default function Home() {
 
     const [streakRefresh, setStreakRefresh] = useState(0)
     const streaks = useMemo(
-        () => Object.fromEntries(GAMES.map(g => [g.key, getStreak(g.key, !!g.single)])),
+        () => Object.fromEntries(GAMES.map(g => [g.key, computeStreak(
+            (dateKey) => dayHasCompletion(g.key, !!g.single, dateKey),
+            MAX_STREAK_DAYS,
+        )])),
         // Re-run when hub refreshes from visibility/storage or suite prefs change (streak uses prefs-aware completion).
         // eslint-disable-next-line react-hooks/exhaustive-deps -- streakRefresh, suitePrefs intentionally invalidate
         [streakRefresh, suitePrefs],

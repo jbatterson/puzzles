@@ -38,6 +38,7 @@ const suiteFiles = [
 	"puzzlegames/productiles/productiles.jsx",
 	"puzzlegames/factorfall/factorfall.jsx",
 	"puzzlegames/clueless/clueless.jsx",
+	"puzzlegames/honeycombs/honeycombs.jsx",
 ];
 
 for (const relPath of suiteFiles) {

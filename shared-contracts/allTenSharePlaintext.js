@@ -1,7 +1,6 @@
 /**
  * Plaintext share format for All Ten (results modal, hub share, clipboard).
  * Kept in shared-contracts so the hub can use it without importing All Ten runtime.
- * Jest (All Ten runtime) maps this to allTenSharePlaintext.cjs — keep exports in sync.
  */
 
 const LAUNCH_DATE = new Date(Date.parse("19 Sep 2022 00:00:00 PST"));

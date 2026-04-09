@@ -1,6 +1,5 @@
 /**
  * School hours: 7am–4pm on weekdays (local time). Used for Beast Academy links modal CTA.
- * ESM entry for Vite (named imports); Jest/All Ten use schoolTime.cjs — keep logic in sync.
  */
 export function isNowSchoolTime() {
 	const date = new Date();

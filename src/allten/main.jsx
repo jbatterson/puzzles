@@ -6,6 +6,7 @@ import { createProblemForDate } from './runtime/src/util/ProblemUtil'
 import MainContainer from './runtime/src/view/Main'
 
 import TopBar from '../shared/TopBar.jsx'
+import GameErrorBoundary from '../shared/GameErrorBoundary.jsx'
 import '../shared/style.css'
 import { computePropsFromQueryString } from './queryProps.js'
 
@@ -30,7 +31,7 @@ try {
 
   const root = createRoot(container)
   root.render(
-    <React.Fragment>
+    <GameErrorBoundary>
       <div style={{ flexShrink: 0, width: '100%' }}>
         <TopBar
           title="All Ten"
@@ -45,9 +46,9 @@ try {
         />
       </div>
       <MainContainer appState={appState} hideNativeTitleBar />
-    </React.Fragment>,
+    </GameErrorBoundary>,
   )
 } catch (ex) {
-  console.log(ex)
+  console.error(ex)
   container.innerText = `Failed to initialize. ${String(ex)}`
 }
