@@ -89,7 +89,7 @@ export const colorVariants = {
 		$$color: "$colors$cyan",
 		$$foreColor: "$colors$white",
 		$$borderColor: "transparent",
-		$$colorHover: "$colors$babyBlue",
+		$$colorHover: "$colors$mainLightHover",
 		$$foreColorHover: "$colors$whiteHover",
 		$$borderColorHover: "transparent",
 	},

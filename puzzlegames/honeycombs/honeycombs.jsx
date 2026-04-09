@@ -39,6 +39,7 @@ import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import { formatHoneycombPuzzleSourceLine } from './formatHoneycombPuzzleForCopy.js'
 import './honeycombs.css'
+import { getDateLabel } from '../../shared-contracts/dailyPuzzleDate.js'
 
 const HONEYCOMBS_TUTORIAL_HINT_PATH =
   'Tap empty hexagons to place the missing numbers.\nMake a continuous path from 1-10.'
@@ -46,12 +47,6 @@ const HONEYCOMBS_TUTORIAL_HINT_KEYBOARD =
   'Tap a dark-blue keyboard key to set it to active. \n Try starting this puzzle by placing the 5 and 6.'
 const HONEYCOMBS_TUTORIAL_HINT_ERASE =
   'Tap any placed number to erase it and set it to active.'
-
-function getDateLabel() {
-  const now = new Date()
-  const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
-  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(pst)
-}
 
 function storageKey(dateKey, idx) {
   return `honeycombs:${dateKey}:${idx}`

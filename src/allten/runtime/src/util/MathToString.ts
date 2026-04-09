@@ -28,8 +28,8 @@ export function renderExprLineToString(
 					const evalRes = evalIntermediate(exprState, el.index);
 					return String(evalRes.value);
 				}
-				intermLine = encloseLineInParens(intermLine);
-				return renderExprLineToString(exprState, evalInterm);
+			intermLine = encloseLineInParens(intermLine);
+			return renderExprLineToString({...exprState, main: intermLine}, evalInterm);
 			} else if (el.type === "op") {
 				return el.op;
 			}

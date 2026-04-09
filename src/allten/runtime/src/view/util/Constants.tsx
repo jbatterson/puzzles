@@ -35,7 +35,7 @@ export const TWENTY_YEARS_IN_SECONDS = 20 * 365 * 24 * 3600;
 export const DAY_IN_MS = 3600 * 24 * 1000;
 export const MONTH_NAMES = [
 	"January",
-	"Febuary",
+	"February",
 	"March",
 	"April",
 	"May",

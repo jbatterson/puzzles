@@ -31,30 +31,12 @@ import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateR
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import { PostSolvePrimaryButton, PostSolvePrimaryLink } from '../../src/shared/PostSolvePrimaryCta.jsx'
+import { getDailyKey, getDateLabel, getDayIndex } from '../../shared-contracts/dailyPuzzleDate.js'
 
 /** Curate uses easy geometry for all roster puzzles (full word on middle row/col). */
 const CURATE_PUZZLE_DIFFICULTY = 'easy'
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
-
-function getDailyKey() {
-    const now = new Date()
-    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
-    return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
-}
-
-function getDateLabel() {
-    const now = new Date()
-    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
-    return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(pst)
-}
-
-function getDayIndex(key) {
-    const [y, m, d] = key.split('-').map(Number)
-    const date = new Date(Date.UTC(y, m - 1, d))
-    const epoch = new Date(Date.UTC(2020, 0, 1))
-    return Math.floor((date - epoch) / 86400000)
-}
 
 const DIFFS = ['easy', 'medium', 'hard']
 

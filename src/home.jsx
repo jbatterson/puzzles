@@ -31,6 +31,7 @@ import {
 } from '../shared-contracts/suiteDashboardPreferences.js'
 import ShareIcon from './shared/ShareIcon.jsx'
 import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './shared/ShareResultToast.jsx'
+import { getDailyKey, getDateKey } from '../shared-contracts/dailyPuzzleDate.js'
 
 const base = import.meta.env.BASE_URL
 
@@ -41,19 +42,6 @@ function lsGet(key) {
     } catch {
         return null
     }
-}
-
-function getDailyKey() {
-    const now = new Date()
-    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
-    return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
-}
-
-function getDateKey(dayOffset) {
-    const d = new Date()
-    d.setDate(d.getDate() - dayOffset)
-    const pst = new Date(d.getTime() - 8 * 60 * 60 * 1000)
-    return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
 }
 
 // ── Multi-puzzle games (3 per day) ───────────────────────────────────────────

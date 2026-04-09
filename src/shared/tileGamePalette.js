@@ -21,7 +21,7 @@ const SHAPE_TO_TOKEN = {
 
 /** Resolve a palette token to hex (hex strings pass through). */
 export function tileGameFillColorForToken(token) {
-    if (token == null) return TILE_GAME_PALETTE.sky
+    if (token == null) return TILE_GAME_PALETTE.blue
     if (typeof token === 'string' && token.startsWith('#')) return token
     const hex = TILE_GAME_PALETTE[token]
     if (hex) return hex
@@ -31,6 +31,6 @@ export function tileGameFillColorForToken(token) {
 
 /** Canvas fill for a tile from its width/height (same rules as legacy tileColor). */
 export function tileGameFillColor(t) {
-    const token = SHAPE_TO_TOKEN[`${t.w},${t.h}`] ?? 'sky'
+    const token = SHAPE_TO_TOKEN[`${t.w},${t.h}`] ?? 'blue'
     return tileGameFillColorForToken(token)
 }

@@ -38,6 +38,7 @@ import {
     tileWinFlourishScale,
     tilesWinFlourishWaveForCell,
 } from '../../src/shared/tileGameWinFlourish.js'
+import { getDailyKey, getDateLabel, getDayIndex } from '../../shared-contracts/dailyPuzzleDate.js'
 
 const SNAP_SPEED = 0.25
 const SOLVE_STEP_MS = 200
@@ -45,24 +46,6 @@ const SOLVE_STEP_MS = 200
 const SUMTILES_SUITE_MODAL_SOLVE_ANIM_MAX_MS = 6 * SOLVE_STEP_MS * 2 + TILES_WIN_FLOURISH_TOTAL_MS + 200
 
 // ── Daily helpers ────────────────────────────────────────────────────────────
-function getDailyKey() {
-    const now = new Date()
-    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
-    return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
-}
-
-function getDateLabel() {
-    const now = new Date()
-    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
-    return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(pst)
-}
-
-function getDayIndex(key) {
-    const [y, m, d] = key.split('-').map(Number)
-    const date = new Date(Date.UTC(y, m - 1, d))
-    const epoch = new Date(Date.UTC(2020, 0, 1))
-    return Math.floor((date - epoch) / 86400000)
-}
 
 function getDailyPuzzles() {
     const key = getDailyKey()

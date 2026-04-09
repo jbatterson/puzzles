@@ -32,6 +32,7 @@ import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import { PostSolvePrimaryButton, PostSolvePrimaryLink } from '../../src/shared/PostSolvePrimaryCta.jsx'
 import { formatScurryPuzzleSourceLine } from './formatScurryPuzzleForCopy.js'
+import { getDailyKey, getDateLabel, getDayIndex } from '../../shared-contracts/dailyPuzzleDate.js'
 
 /** After the last winning placement: 300ms pre-celebration + 800ms `celebrating-bug` (see `placeBug`). */
 const SCURRY_SUITE_MODAL_AFTER_WIN_MS = 300 + 800 + 150
@@ -66,24 +67,6 @@ const SCURRY_TUTORIAL_HINTS = [
 ]
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
-function getDailyKey() {
-    const now = new Date()
-    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
-    return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
-}
-
-function getDateLabel() {
-    const now = new Date()
-    const pst = new Date(now.getTime() - 8 * 60 * 60 * 1000)
-    return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(pst)
-}
-
-function getDayIndex(key) {
-    const [y, m, d] = key.split('-').map(Number)
-    const date = new Date(Date.UTC(y, m - 1, d))
-    const epoch = new Date(Date.UTC(2020, 0, 1))
-    return Math.floor((date - epoch) / 86400000)
-}
 
 function getDailyPuzzles() {
     const key = getDailyKey()
