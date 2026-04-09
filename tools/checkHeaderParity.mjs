@@ -23,12 +23,14 @@ checks.push({
   ok: /showLinks\(true\)/.test(mainTsx),
 })
 checks.push({
-  name: 'All Ten stats control remains active',
-  ok: /showStats\(true\)/.test(mainTsx),
+  name: 'All Ten stats opens via puzzle chrome menu',
+  ok: /puzzleChrome=\{\{[\s\S]*onStats:\s*\(\)\s*=>\s*appState\.showStats\(true\)/.test(
+    read('src/allten/main.jsx')
+  ),
 })
 checks.push({
-  name: 'All Ten help control remains active',
-  ok: /showHelp\(true\)/.test(mainTsx),
+  name: 'All Ten help opens via puzzle chrome menu',
+  ok: /onHelp:\s*\(\)\s*=>\s*appState\.showHelp\(true\)/.test(read('src/allten/main.jsx')),
 })
 
 const suiteFiles = [
@@ -48,8 +50,8 @@ for (const relPath of suiteFiles) {
     ok: /getGameChrome\(GAME_KEYS\./.test(content),
   })
   checks.push({
-    name: `${relPath} passes showStats from shared contract`,
-    ok: /showStats=\{chrome\.showStats\}/.test(content),
+    name: `${relPath} uses puzzle chrome menu in header`,
+    ok: /puzzleChrome=\{\{/.test(content),
   })
 }
 

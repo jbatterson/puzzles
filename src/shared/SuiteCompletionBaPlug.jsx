@@ -1,0 +1,24 @@
+import React from 'react'
+
+const BA_ONLINE_HREF = 'https://beastacademy.com/online'
+
+/** Beast Academy promo under completion-modal actions (suite games + All Ten results). */
+export default function SuiteCompletionBaPlug() {
+  return (
+    <div className="suite-completion-ba-plug">
+      <p className="suite-completion-ba-plug-lead">Love puzzles?</p>
+      <p className="suite-completion-ba-plug-copy">
+        Beast Academy is a complete curriculum for aspiring math beasts ages 6-13.
+      </p>
+      <a
+        className="suite-completion-ba-plug-cta"
+        id="suite-completion-ba-online-link"
+        href={BA_ONLINE_HREF}
+        target="_blank"
+        rel="noreferrer"
+      >
+        CHECK IT OUT!
+      </a>
+    </div>
+  )
+}

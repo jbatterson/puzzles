@@ -63,7 +63,7 @@ const Body = styled("div", {
 	display: "none",
 	position: "relative",
 	width: "min(95%, 450px)",
-	maxHeight: "min(95%, 750px)",
+	maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 48px)",
 	borderRadius: "10px",
 	backgroundColor: "$bg",
 	padding: "20px 0",

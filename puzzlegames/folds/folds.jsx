@@ -1208,14 +1208,21 @@ const App = () => {
     <div className="game-container">
       <TopBar
         title={chrome.title}
-        showStats={chrome.showStats}
         onHome={() => {
           window.location.href = base
         }}
-        onHelp={() => setShowInstructions(true)}
         onCube={() => setShowLinks(true)}
-        onStats={handleStatsClick}
         linksViaTitleOnly
+        puzzleChrome={{
+          gameKey: GAME_KEYS.FOLDS,
+          onStats: handleStatsClick,
+          onHelp: () => setShowInstructions(true),
+          onTutorial: () => {
+            setMode('tutorial')
+            setTutorialIdx(0)
+          },
+          hasTutorial: (puzzleData.tutorial?.length ?? 0) > 0,
+        }}
       />
 
       <CurateCopyToast message={curateCopyHint} />
@@ -1301,17 +1308,7 @@ const App = () => {
         </div>
       ) : (
         <div className="level-nav">
-          <div className="left-spacer">
-            <button
-              className="skip-link"
-              onClick={() => {
-                setMode('tutorial')
-                setTutorialIdx(0)
-              }}
-            >
-              {CTA_LABELS.PLAY_TUTORIAL}
-            </button>
-          </div>
+          <div className="left-spacer" aria-hidden />
           <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
             <div className="level-label" style={{ textAlign: 'center' }}>
               <span className="sub">{dateLabel}</span>
@@ -1710,28 +1707,16 @@ const App = () => {
               </button>
             </>
           ) : (
-            <>
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  closeInstructions()
-                  setMode('daily')
-                  setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, 0))
-                }}
-              >
-                {CTA_LABELS.PLAY_TODAY}
-              </button>
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  closeInstructions()
-                  setMode('tutorial')
-                  setTutorialIdx(0)
-                }}
-              >
-                {CTA_LABELS.TUTORIAL_PUZZLES}
-              </button>
-            </>
+            <button
+              className="btn-primary"
+              onClick={() => {
+                closeInstructions()
+                setMode('daily')
+                setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, 0))
+              }}
+            >
+              {CTA_LABELS.PLAY_TODAY}
+            </button>
           )}
         </div>
       </SharedModalShell>

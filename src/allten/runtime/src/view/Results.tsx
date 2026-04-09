@@ -11,8 +11,8 @@ import ShareIcon from "../../../../shared/ShareIcon.jsx";
 import ShareResultToast, {
 	SHARE_RESULT_TOAST_MS,
 } from "../../../../shared/ShareResultToast.jsx";
+import SuiteCompletionBaPlug from "../../../../shared/SuiteCompletionBaPlug.jsx";
 import {MODAL_INTENTS} from "@shared-contracts/modalIntents.js";
-import {isNowSchoolTime} from "@shared-contracts/schoolTime.js";
 import {buildAllTenInPuzzleStyleSharePlaintext} from "@shared-contracts/allTenSharePlaintext.js";
 import {CTA_LABELS} from "@shared-contracts/ctaLabels.js";
 import {
@@ -43,7 +43,7 @@ const Results: React.FC<Props> = function (props: Props) {
 		top?: number;
 	} | null>(null);
 	const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const shareAnchorRef = useRef<HTMLDivElement | null>(null);
+	const shareAnchorRef = useRef<HTMLButtonElement | null>(null);
 
 	useEffect(
 		() => () => {
@@ -159,7 +159,6 @@ const Results: React.FC<Props> = function (props: Props) {
 				}
 			: undefined;
 
-	const schoolTime = isNowSchoolTime();
 	const {numPlays, numStreak, numAllTens} = profile;
 	const base = import.meta.env.BASE_URL;
 
@@ -172,42 +171,6 @@ const Results: React.FC<Props> = function (props: Props) {
 				contentClassName="suite-completion-shell"
 			>
 				<SuiteCompletionTitle>ALL TEN!</SuiteCompletionTitle>
-
-				{schoolTime ? (
-					<div className="suite-completion-promo" id="suite-completion-plug-educators">
-						<div className="suite-completion-promo-title">Are you a teacher?</div>
-						<p className="suite-completion-promo-copy">
-							Check out our interactive math curriculum for Grades 1-5 designed by
-							the global leaders in advanced math education.
-						</p>
-						<a
-							className="suite-completion-cta"
-							id="suite-completion-educators-button"
-							href="https://beastacademy.com/educators"
-							target="_blank"
-							rel="noreferrer"
-						>
-							Learn More
-						</a>
-					</div>
-				) : (
-					<div className="suite-completion-promo" id="suite-completion-plug-online">
-						<div className="suite-completion-promo-title">More challenges ahead!</div>
-						<p className="suite-completion-promo-copy">
-							Check out our interactive full math curriculum tailored to advanced
-							learners ages 6-13.
-						</p>
-						<a
-							className="suite-completion-cta"
-							id="suite-completion-online-button"
-							href="https://beastacademy.com/online"
-							target="_blank"
-							rel="noreferrer"
-						>
-							Learn More
-						</a>
-					</div>
-				)}
 
 				<div className="simple-game-stats-row suite-completion-stats">
 					<div className="simple-game-stats-col">
@@ -246,33 +209,26 @@ const Results: React.FC<Props> = function (props: Props) {
 					</div>
 				</div>
 
-				<div ref={shareAnchorRef} className="suite-completion-share-block">
+				<div className="suite-completion-actions-row">
 					<button
+						ref={shareAnchorRef}
 						type="button"
-						className="suite-completion-share-btn"
+						className="btn-secondary suite-completion-action-btn"
 						onClick={handleShare}
 						aria-label="Share results"
 					>
 						Share
 						<ShareIcon size={18} />
 					</button>
+					<a
+						href={base}
+						className="btn-primary suite-completion-action-btn suite-completion-all-puzzles"
+					>
+						{CTA_LABELS.ALL_PUZZLES}
+					</a>
 				</div>
 
-				<a
-					href={base}
-					className="btn-primary suite-completion-all-puzzles"
-					style={{
-						textAlign: "center",
-						textDecoration: "none",
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						width: "100%",
-						boxSizing: "border-box",
-					}}
-				>
-					{CTA_LABELS.ALL_PUZZLES}
-				</a>
+				<SuiteCompletionBaPlug />
 			</FloatingModalShell>
 			{show && shareUi != null && (
 				<ShareResultToast

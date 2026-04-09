@@ -9,6 +9,7 @@ import TopBar from '../shared/TopBar.jsx'
 import GameErrorBoundary from '../shared/GameErrorBoundary.jsx'
 import '../shared/style.css'
 import { computePropsFromQueryString } from './queryProps.js'
+import { GAME_KEYS } from '@shared-contracts/gameChrome.js'
 
 function recalculateHeight() {
   document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`)
@@ -35,14 +36,17 @@ try {
       <div style={{ flexShrink: 0, width: '100%' }}>
         <TopBar
           title="All Ten"
-          showStats
           onHome={() => {
             window.location.href = import.meta.env.BASE_URL
           }}
           onCube={() => appState.showLinks(true)}
-          onStats={() => appState.showStats(true)}
-          onHelp={() => appState.showHelp(true)}
           linksViaTitleOnly
+          puzzleChrome={{
+            gameKey: GAME_KEYS.ALLTEN,
+            onStats: () => appState.showStats(true),
+            onHelp: () => appState.showHelp(true),
+            hasTutorial: false,
+          }}
         />
       </div>
       <MainContainer appState={appState} hideNativeTitleBar />

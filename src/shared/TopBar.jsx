@@ -1,6 +1,7 @@
 import React from 'react'
 import { HEADER_ACTIONS, ensureHeaderActions } from '@shared-contracts/headerActions.js'
 import { CHROME_ACTION_ARIA_LABELS, CHROME_ASSET_URLS } from '@shared-contracts/chromeUi.js'
+import PuzzleChromeMenu from './PuzzleChromeMenu.jsx'
 
 /** Hub (puzzle piece) icon position inside the navy circle — tweak these until it looks centered. Positive x = right, positive y = down. */
 const HOME_PUZZLE_ICON_NUDGE_PX = { x: 1.5, y: -1.5 }
@@ -154,6 +155,11 @@ export default function TopBar({
   linksViaTitleOnly = false,
   /** Hub: logo + title also open the links modal (cube stays visible). */
   titleOpensLinks = false,
+  /**
+   * In-puzzle chrome: gear opens a menu (difficulty / stats / instructions / tutorial).
+   * When set, `showStats`, `onStats`, and `onHelp` are not shown as separate header icons.
+   */
+  puzzleChrome = null,
 }) {
   const actions = ensureHeaderActions({
     [HEADER_ACTIONS.HOME]: onHome,
@@ -244,37 +250,43 @@ export default function TopBar({
         )}
 
         <div style={styles.right}>
-          {showStats && (
-            <button
-              type="button"
-              className="titlebar-iconbtn"
-              style={styles.iconBtn}
-              onClick={actions[HEADER_ACTIONS.STATS]}
-              aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.STATS]}
-            >
-              <i className="fas fa-chart-column" style={styles.iconGlyph} aria-hidden="true" />
-            </button>
+          {puzzleChrome ? (
+            <PuzzleChromeMenu puzzleChrome={puzzleChrome} />
+          ) : (
+            <>
+              {showStats && (
+                <button
+                  type="button"
+                  className="titlebar-iconbtn"
+                  style={styles.iconBtn}
+                  onClick={actions[HEADER_ACTIONS.STATS]}
+                  aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.STATS]}
+                >
+                  <i className="fas fa-chart-column" style={styles.iconGlyph} aria-hidden="true" />
+                </button>
+              )}
+              {typeof onSettings === 'function' && (
+                <button
+                  type="button"
+                  className="titlebar-iconbtn"
+                  style={styles.iconBtn}
+                  onClick={onSettings}
+                  aria-label="Open settings"
+                >
+                  <i className="fa-solid fa-gear" style={styles.settingsIcon} aria-hidden="true" />
+                </button>
+              )}
+              <button
+                type="button"
+                className="titlebar-iconbtn"
+                style={styles.iconBtn}
+                onClick={actions[HEADER_ACTIONS.HELP]}
+                aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HELP]}
+              >
+                <i className="fas fa-question" style={styles.iconGlyph} aria-hidden="true" />
+              </button>
+            </>
           )}
-          {typeof onSettings === 'function' && (
-            <button
-              type="button"
-              className="titlebar-iconbtn"
-              style={styles.iconBtn}
-              onClick={onSettings}
-              aria-label="Open settings"
-            >
-              <i className="fa-solid fa-gear" style={styles.settingsIcon} aria-hidden="true" />
-            </button>
-          )}
-          <button
-            type="button"
-            className="titlebar-iconbtn"
-            style={styles.iconBtn}
-            onClick={actions[HEADER_ACTIONS.HELP]}
-            aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HELP]}
-          >
-            <i className="fas fa-question" style={styles.iconGlyph} aria-hidden="true" />
-          </button>
         </div>
       </div>
     </div>

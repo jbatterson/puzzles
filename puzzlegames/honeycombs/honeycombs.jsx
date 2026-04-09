@@ -299,14 +299,21 @@ export default function HoneycombsApp() {
     <div className="game-container">
       <TopBar
         title={chrome.title}
-        showStats={chrome.showStats}
         onHome={() => {
           window.location.href = base
         }}
-        onHelp={() => setShowInstructions(true)}
         onCube={() => setShowLinks(true)}
-        onStats={handleStatsClick}
         linksViaTitleOnly
+        puzzleChrome={{
+          gameKey: GAME_KEYS.HONEYCOMBS,
+          onStats: handleStatsClick,
+          onHelp: () => setShowInstructions(true),
+          onTutorial: () => {
+            setMode('tutorial')
+            setTutorialIdx(0)
+          },
+          hasTutorial: tutorialPuzzles.length > 0,
+        }}
       />
 
       <CurateCopyToast message={curateCopyHint} />
@@ -388,17 +395,7 @@ export default function HoneycombsApp() {
         </div>
       ) : (
         <div className="level-nav">
-          <div className="left-spacer">
-            <button
-              className="skip-link"
-              onClick={() => {
-                setMode('tutorial')
-                setTutorialIdx(0)
-              }}
-            >
-              {CTA_LABELS.PLAY_TUTORIAL}
-            </button>
-          </div>
+          <div className="left-spacer" aria-hidden />
           <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
             <div className="level-label" style={{ textAlign: 'center' }}>
               <span className="sub">{dateLabel}</span>
@@ -485,32 +482,18 @@ export default function HoneycombsApp() {
               </button>
             </>
           ) : (
-            <>
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ marginTop: '1.25rem', width: '100%' }}
-                onClick={() => {
-                  closeInstructions()
-                  setMode('daily')
-                  setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, 0))
-                }}
-              >
-                {CTA_LABELS.PLAY_TODAY}
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                style={{ width: '100%' }}
-                onClick={() => {
-                  closeInstructions()
-                  setMode('tutorial')
-                  setTutorialIdx(0)
-                }}
-              >
-                {CTA_LABELS.TUTORIAL_PUZZLES}
-              </button>
-            </>
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ marginTop: '1.25rem', width: '100%' }}
+              onClick={() => {
+                closeInstructions()
+                setMode('daily')
+                setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, 0))
+              }}
+            >
+              {CTA_LABELS.PLAY_TODAY}
+            </button>
           )}
         </div>
       </SharedModalShell>

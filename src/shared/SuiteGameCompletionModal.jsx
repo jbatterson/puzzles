@@ -3,7 +3,6 @@ import FloatingModalShell from './FloatingModalShell.jsx'
 import { MODAL_INTENTS } from '@shared-contracts/modalIntents.js'
 import { computeSimpleGameStats } from '@shared-contracts/simpleGameStats.js'
 import { buildHubSharePlaintext } from '@shared-contracts/hubSharePlaintext.js'
-import { isNowSchoolTime } from '@shared-contracts/schoolTime.js'
 import { GAME_KEYS, getGameChrome } from '@shared-contracts/gameChrome.js'
 import { CTA_LABELS } from '@shared-contracts/ctaLabels.js'
 import { isSuiteTimerEnabled } from '@shared-contracts/suiteDashboardPreferences.js'
@@ -17,6 +16,7 @@ import ShareIcon from './ShareIcon.jsx'
 import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './ShareResultToast.jsx'
 import SuiteCompletionTitle from './SuiteCompletionTitle.jsx'
 import SuiteCompletionHubDice from './SuiteCompletionHubDice.jsx'
+import SuiteCompletionBaPlug from './SuiteCompletionBaPlug.jsx'
 
 /** Win-modal headings (uppercase + punctuation per design). */
 const COMPLETION_HEADLINE = Object.freeze({
@@ -34,7 +34,7 @@ function pluralUnit(n, singular, plural) {
 }
 
 /**
- * All Ten–style completion surface: Beast promo, suite stats, hub-identical share, ALL PUZZLES.
+ * All Ten–style completion surface: suite stats, hub dice, share + hub CTAs, BA plug.
  * @param {{ show: boolean, onClose: () => void, gameKey: string, dateKey: string, hubDiceCompletions: boolean[], hubDicePerfects: boolean[], hubDiceMoveCounts?: (number|null)[], hubCluelessAttempts?: (number|null)[] | null }} props
  */
 export default function SuiteGameCompletionModal({
@@ -153,8 +153,6 @@ export default function SuiteGameCompletionModal({
         }
       : undefined
 
-  const schoolTime = isNowSchoolTime()
-
   const timerEnabled = isSuiteTimerEnabled()
   const timeHms = timerEnabled ? formatAllTenElapsedMsForShare(elapsedMsDisplay ?? 0) : null
 
@@ -173,42 +171,6 @@ export default function SuiteGameCompletionModal({
         contentClassName="suite-completion-shell"
       >
         <SuiteCompletionTitle>{modalTitle}</SuiteCompletionTitle>
-
-        {schoolTime ? (
-          <div className="suite-completion-promo" id="suite-completion-plug-educators">
-            <div className="suite-completion-promo-title">Are you a teacher?</div>
-            <p className="suite-completion-promo-copy">
-              Check out our interactive math curriculum for Grades 1-5 designed by the global
-              leaders in advanced math education.
-            </p>
-            <a
-              className="suite-completion-cta"
-              id="suite-completion-educators-button"
-              href="https://beastacademy.com/educators"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Learn More
-            </a>
-          </div>
-        ) : (
-          <div className="suite-completion-promo" id="suite-completion-plug-online">
-            <div className="suite-completion-promo-title">More challenges ahead!</div>
-            <p className="suite-completion-promo-copy">
-              Check out our interactive full math curriculum tailored to advanced learners ages
-              6-13.
-            </p>
-            <a
-              className="suite-completion-cta"
-              id="suite-completion-online-button"
-              href="https://beastacademy.com/online"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Learn More
-            </a>
-          </div>
-        )}
 
         <div className="simple-game-stats-row suite-completion-stats">
           <div className="simple-game-stats-col">
@@ -259,33 +221,26 @@ export default function SuiteGameCompletionModal({
           </div>
         ) : null}
 
-        <div ref={shareAnchorRef} className="suite-completion-share-block">
+        <div className="suite-completion-actions-row">
           <button
+            ref={shareAnchorRef}
             type="button"
-            className="suite-completion-share-btn"
+            className="btn-secondary suite-completion-action-btn"
             onClick={handleShare}
             aria-label="Share results"
           >
             Share
             <ShareIcon size={18} />
           </button>
+          <a
+            href={base}
+            className="btn-primary suite-completion-action-btn suite-completion-all-puzzles"
+          >
+            {CTA_LABELS.ALL_PUZZLES}
+          </a>
         </div>
 
-        <a
-          href={base}
-          className="btn-primary suite-completion-all-puzzles"
-          style={{
-            textAlign: 'center',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            boxSizing: 'border-box',
-          }}
-        >
-          {CTA_LABELS.ALL_PUZZLES}
-        </a>
+        <SuiteCompletionBaPlug />
       </FloatingModalShell>
       {show && shareUi != null && (
         <ShareResultToast

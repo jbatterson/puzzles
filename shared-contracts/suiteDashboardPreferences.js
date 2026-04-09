@@ -13,6 +13,18 @@ import { GAME_KEYS } from './gameChrome.js'
 export const SUITE_DASHBOARD_PREFS_KEY = 'suiteDashboardPreferences'
 export const SUITE_DASHBOARD_PREFS_VERSION = 1
 
+/** Fired on `window` after prefs are written (same tab + other tabs via `storage`). */
+export const SUITE_PREFS_UPDATED_EVENT = 'suite-prefs-updated'
+
+function dispatchSuitePrefsUpdated() {
+  if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return
+  try {
+    window.dispatchEvent(new CustomEvent(SUITE_PREFS_UPDATED_EVENT))
+  } catch {
+    // ignore
+  }
+}
+
 /** Games with three daily slots (hub dice). All Ten is excluded. */
 export const THREE_TIER_GAME_KEYS = Object.freeze([
   GAME_KEYS.SCURRY,
@@ -130,6 +142,7 @@ export function writeSuiteDashboardPreferences(updates) {
     if (!next.tierOn[k].some(Boolean)) next.tierOn[k] = defaultTierOn()
   }
   lsSet(SUITE_DASHBOARD_PREFS_KEY, JSON.stringify(next))
+  dispatchSuitePrefsUpdated()
 }
 
 export function isSuiteTimerEnabled(prefs = readSuiteDashboardPreferences()) {

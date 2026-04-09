@@ -226,6 +226,88 @@ body {
   outline: 3px solid rgba(26, 61, 91, 0.25);
   outline-offset: 2px;
 }
+
+/* In-puzzle header: gear opens PuzzleChromeMenu (stats / instructions / tutorial / difficulty) */
+.puzzle-chrome-menu-root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.puzzle-chrome-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(100vw - 24px, 300px);
+  max-width: min(100vw - 24px, 320px);
+  padding: 6px 0;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow:
+    1px 2px 16px 4px rgba(15, 10, 8, 0.08),
+    1px 1px 8px 1px rgba(15, 10, 8, 0.1);
+  z-index: 220;
+  box-sizing: border-box;
+}
+
+.puzzle-chrome-menu-difficulty {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  border-bottom: 1px solid rgba(26, 61, 91, 0.12);
+}
+
+.puzzle-chrome-menu-row-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.puzzle-chrome-menu-dice {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.puzzle-chrome-menu-row-text {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--puzzle-ink, #1a3d5b);
+}
+
+.puzzle-chrome-menu-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  box-sizing: border-box;
+  color: var(--puzzle-ink, #1a3d5b);
+}
+
+.puzzle-chrome-menu-item:hover {
+  background: rgba(26, 61, 91, 0.06);
+}
+
+.puzzle-chrome-menu-item:focus-visible {
+  outline: none;
+  background: rgba(26, 61, 91, 0.08);
+}
+
 .titlebar-cubebtn:focus-visible {
   outline: 3px solid rgba(26, 61, 91, 0.25);
   outline-offset: 2px;
@@ -336,7 +418,9 @@ body {
   z-index: 200;
   display: flex;
   flex-direction: column;
+  /* Prefer vertical centering, but avoid clipping the top when content is tall (fallback: start). */
   justify-content: center;
+  justify-content: safe center;
   align-items: center;
   padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px;
   overflow-y: auto;
@@ -346,7 +430,9 @@ body {
 
 .floating-modal-panel {
   width: min(95%, 450px);
-  max-height: min(95vh, 750px);
+  /* Use available viewport height (no fixed px cap) so short modals don’t get a nested scroll well. */
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 48px);
   overflow-x: hidden;
   overflow-y: auto;
   box-sizing: border-box;
@@ -453,7 +539,7 @@ body {
   color: var(--puzzle-ink-faint, rgba(26, 61, 91, 0.5));
 }
 
-/* Suite game completion modal (All Ten Results–style: promo + stats + share + hub CTA) */
+/* Suite game completion modal (All Ten Results–style: stats + dice + share/hub row + BA plug) */
 /* Applied on the same node as .floating-modal-panel — do not set width: 100% or it overrides min(95%, 450px). */
 .suite-completion-shell {
   display: flex;
@@ -481,51 +567,6 @@ body {
   font-weight: 800;
   letter-spacing: 0.04em;
   color: var(--puzzle-ink, #1a3d5b);
-}
-.suite-completion-promo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 18px 16px 16px;
-  margin: 0 0 0.25rem;
-  background: #f0f2f5;
-  border-radius: 10px;
-  box-sizing: border-box;
-  width: 100%;
-}
-.suite-completion-promo-title {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--puzzle-ink, #1a3d5b);
-  margin: 0 0 10px;
-  line-height: 1.25;
-}
-.suite-completion-promo-copy {
-  margin: 0 0 14px;
-  font-size: 0.88rem;
-  font-weight: 500;
-  line-height: 1.45;
-  color: var(--puzzle-ink, #1a3d5b);
-  max-width: 42ch;
-}
-.suite-completion-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 22px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 800;
-  text-decoration: none;
-  color: #fff !important;
-  background: #e53e3e;
-  border: none;
-  cursor: pointer;
-  transition: filter 0.14s ease;
-}
-.suite-completion-cta:hover {
-  filter: brightness(0.95);
 }
 .suite-completion-stats {
   margin: 0.35rem 0 0.15rem;
@@ -583,6 +624,82 @@ body {
   width: 100%;
   margin: 0.35rem 0 0.15rem;
 }
+
+.suite-completion-actions-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  margin: 0.35rem 0 0;
+  box-sizing: border-box;
+}
+
+.suite-completion-actions-row .btn-primary,
+.suite-completion-actions-row .btn-secondary {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  min-height: 52px;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  box-sizing: border-box;
+}
+
+.suite-completion-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.suite-completion-ba-plug {
+  text-align: center;
+  margin-top: 0.15rem;
+  padding: 0 2px 2px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.suite-completion-ba-plug-lead {
+  font-weight: 800;
+  color: var(--puzzle-ink, #1a3d5b);
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.suite-completion-ba-plug-copy {
+  margin: 0 auto 0.45rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--puzzle-ink-soft, #4a5f72);
+  max-width: 38ch;
+}
+
+/* Beast Academy “CHECK IT OUT!” — matches links modal CTA red (#ed1940 / baRed) */
+.suite-completion-ba-plug-cta {
+  display: inline-block;
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #ed1940;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.suite-completion-ba-plug-cta:hover {
+  filter: brightness(0.92);
+}
+
+.suite-completion-ba-plug-cta:focus-visible {
+  outline: 3px solid rgba(237, 25, 64, 0.35);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .suite-completion-share-btn {
   display: inline-flex;
   align-items: center;
@@ -605,16 +722,12 @@ body {
   outline: 3px solid rgba(26, 61, 91, 0.45);
   outline-offset: 2px;
 }
-.suite-completion-all-puzzles {
-  margin-top: 0.35rem;
-}
-
 /* Links modal content mirroring All Ten Links intent */
 .allten-links-wrap {
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
   margin: auto;
 }
 .allten-links-wrap--compact .allten-links-card {
@@ -684,7 +797,7 @@ body {
   gap: 12px;
   width: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
 }
 .allten-links-btn {
   text-decoration: none;

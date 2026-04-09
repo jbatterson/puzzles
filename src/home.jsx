@@ -493,7 +493,7 @@ export default function Home() {
     () => GAMES.filter((g) => !isPuzzleOnInSuitePrefs(g.key, suitePrefs)),
     [suitePrefs]
   )
-  const settingsGamesList = useMemo(() => GAMES.map(({ key, title }) => ({ key, title })), [])
+  const settingsGamesList = useMemo(() => GAMES.map(({ key, title, Icon }) => ({ key, title, Icon })), [])
 
   const [shareToast, setShareToast] = useState(null)
   const [showInstructions, setShowInstructions] = useState(false)

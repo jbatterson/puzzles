@@ -1328,14 +1328,17 @@ export default function CluelessGame() {
     <div className="game-container clueless">
       <TopBar
         title={chrome.title}
-        showStats={chrome.showStats}
         onHome={() => {
           window.location.href = base
         }}
-        onHelp={() => setShowInstructions(true)}
         onCube={() => setShowLinks(true)}
-        onStats={handleStatsClick}
         linksViaTitleOnly
+        puzzleChrome={{
+          gameKey: GAME_KEYS.CLUELESS,
+          onStats: handleStatsClick,
+          onHelp: () => setShowInstructions(true),
+          hasTutorial: false,
+        }}
       />
 
       <CurateCopyToast message={curateCopyHint} />
