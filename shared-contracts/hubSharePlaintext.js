@@ -4,8 +4,10 @@
 
 import { readSuiteGameElapsedMs } from './suiteCompletionTimer.js'
 import { formatAllTenElapsedMsForShare } from './allTenSharePlaintext.js'
+import { getEnabledTierIndices, isSuiteTimerEnabled, readSuiteDashboardPreferences } from './suiteDashboardPreferences.js'
 
 function elapsedLineForShare(gameKey, dateKey) {
+	if (!isSuiteTimerEnabled()) return ''
 	const ms = readSuiteGameElapsedMs(gameKey, dateKey)
 	if (ms == null) return ''
 	return `\n${formatAllTenElapsedMsForShare(ms)}\n`
@@ -83,12 +85,13 @@ const GAME_TITLES = Object.freeze({
 	honeycombs: 'Honeycombs',
 })
 
-function buildShareText(key, title, href, completions, perfects, moveCounts, dateKey) {
+function buildShareText(key, title, href, completions, perfects, moveCounts, dateKey, prefs) {
 	const origin = typeof window !== 'undefined' ? window.location.origin : ''
 	const playUrl = new URL(href, origin || 'http://localhost').href
 	const isTileGame = TILE_GAMES.has(key)
+	const tiers = getEnabledTierIndices(key, prefs)
 	let out = title.toUpperCase() + '\n'
-	for (let i = 0; i < 3; i++) {
+	for (const i of tiers) {
 		const label = DIFF_LABELS[i]
 		if (completions[i]) {
 			const moves = isTileGame && moveCounts && moveCounts[i] != null ? ` (${moveCounts[i]} moves)` : ''
@@ -118,12 +121,13 @@ function buildSingleShareText(gameKey, dateKey, title, href, completed, perfect)
 	return out
 }
 
-function buildCluelessShareText(dateKey, title, href, attempts) {
+function buildCluelessShareText(dateKey, title, href, attempts, prefs) {
 	const origin = typeof window !== 'undefined' ? window.location.origin : ''
 	const playUrl = new URL(href, origin || 'http://localhost').href
 	const labels = ['Easy', 'Med', 'Hard']
+	const tiers = getEnabledTierIndices('clueless', prefs)
 	let out = title.toUpperCase() + '\n'
-	for (let i = 0; i < 3; i++) {
+	for (const i of tiers) {
 		const a = attempts?.[i] ?? null
 		if (a != null) {
 			const suffix = a === 1 ? ' (⭐ First try!)' : ` ${String(Math.min(a, 99))}`
@@ -148,14 +152,17 @@ const SINGLE_PUZZLE_GAMES = new Set()
  * @returns {boolean}
  */
 export function hasShareableHubProgress(gameKey, dateKey) {
+	const prefs = readSuiteDashboardPreferences()
 	if (!GAME_TITLES[gameKey]) return false
 	if (gameKey === 'clueless') {
-		return loadCluelessAttempts(dateKey).some(a => a != null)
+		const attempts = loadCluelessAttempts(dateKey)
+		return getEnabledTierIndices('clueless', prefs).some((i) => attempts[i] != null)
 	}
 	if (SINGLE_PUZZLE_GAMES.has(gameKey)) {
 		return loadSingleCompletion(gameKey, dateKey)
 	}
-	return loadCompletions(gameKey, dateKey).some(Boolean)
+	const completions = loadCompletions(gameKey, dateKey)
+	return getEnabledTierIndices(gameKey, prefs).some((i) => completions[i])
 }
 
 /**
@@ -168,11 +175,12 @@ export function hasShareableHubProgress(gameKey, dateKey) {
 export function buildHubSharePlaintext(gameKey, dateKey, baseHref = '/') {
 	const title = GAME_TITLES[gameKey]
 	if (!title) return ''
+	const prefs = readSuiteDashboardPreferences()
 	const b = baseHref.endsWith('/') ? baseHref : `${baseHref}/`
 	const href = `${b}puzzlegames/${gameKey}/`
 
 	if (gameKey === 'clueless') {
-		return buildCluelessShareText(dateKey, title, href, loadCluelessAttempts(dateKey))
+		return buildCluelessShareText(dateKey, title, href, loadCluelessAttempts(dateKey), prefs)
 	}
 	if (SINGLE_PUZZLE_GAMES.has(gameKey)) {
 		return buildSingleShareText(
@@ -192,5 +200,6 @@ export function buildHubSharePlaintext(gameKey, dateKey, baseHref = '/') {
 		loadPerfects(gameKey, dateKey),
 		loadMoveCounts(gameKey, dateKey),
 		dateKey,
+		prefs,
 	)
 }

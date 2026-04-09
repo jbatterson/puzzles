@@ -10,5 +10,9 @@ module.exports = {
 			__dirname,
 			"../../../shared-contracts/schoolTime.cjs",
 		),
+		"^.+[/\\\\]shared-contracts[/\\\\]allTenSharePlaintext\\.js$": path.resolve(
+			__dirname,
+			"../../../shared-contracts/allTenSharePlaintext.cjs",
+		),
 	},
 };

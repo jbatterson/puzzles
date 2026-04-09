@@ -4,6 +4,8 @@ import { CHROME_ACTION_ARIA_LABELS, CHROME_ASSET_URLS } from '../../shared-contr
 
 /** Hub (puzzle piece) icon position inside the navy circle — tweak these until it looks centered. Positive x = right, positive y = down. */
 const HOME_PUZZLE_ICON_NUDGE_PX = { x: 1.5, y: -1.5 }
+/** Settings (gear) icon nudge inside the navy circle — match puzzle-piece optical centering. */
+const SETTINGS_ICON_NUDGE_PX = { x: 0, y: 0 }
 
 const styles = {
     bar: {
@@ -23,20 +25,28 @@ const styles = {
     content: {
         width: 'min(95vw, 500px)',
         height: '100%',
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
         alignItems: 'center',
-        justifyContent: 'space-between',
         boxSizing: 'border-box',
     },
     left: {
         display: 'flex',
         alignItems: 'center',
         gap: '4px',
+        justifySelf: 'start',
     },
     right: {
         display: 'flex',
         alignItems: 'center',
         gap: '4px',
+        justifySelf: 'end',
+    },
+    /** Grid center column: true horizontal center of the bar */
+    center: {
+        justifySelf: 'center',
+        minWidth: 0,
+        maxWidth: '100%',
     },
     iconBtn: {
         width: '32px',
@@ -76,6 +86,22 @@ const styles = {
         padding: 0,
         minWidth: 0,
     },
+    /** Same layout as titleWrap; used when the whole title row is a links button */
+    titleHit: {
+        display: 'flex',
+        alignItems: 'center',
+        margin: 0,
+        padding: '2px 4px',
+        minWidth: 0,
+        maxWidth: '100%',
+        background: 'none',
+        border: 'none',
+        borderRadius: '8px',
+        color: 'inherit',
+        font: 'inherit',
+        cursor: 'pointer',
+        textAlign: 'left',
+    },
     logoContainer: {
         borderRight: '2px solid #1a3d5b',
         paddingTop: '0.4em',
@@ -103,6 +129,14 @@ const styles = {
         display: 'block',
         transform: `translate(${HOME_PUZZLE_ICON_NUDGE_PX.x}px, ${HOME_PUZZLE_ICON_NUDGE_PX.y}px)`,
     },
+    settingsIcon: {
+        fontFamily: '"Font Awesome 6 Free"',
+        fontWeight: 900,
+        fontSize: '1.15rem',
+        lineHeight: 1,
+        display: 'block',
+        transform: `translate(${SETTINGS_ICON_NUDGE_PX.x}px, ${SETTINGS_ICON_NUDGE_PX.y}px)`,
+    },
 }
 
 export default function TopBar({
@@ -111,9 +145,14 @@ export default function TopBar({
     onCube,
     onStats,
     onHelp,
+    onSettings,
     showStats = false,
     /** When false, only the cube/links control is shown on the left (e.g. hub). */
     showHome = true,
+    /** Puzzle pages: hide cube; logo + title open the links modal (hub keeps the cube). */
+    linksViaTitleOnly = false,
+    /** Hub: logo + title also open the links modal (cube stays visible). */
+    titleOpensLinks = false,
 }) {
     const actions = ensureHeaderActions({
         [HEADER_ACTIONS.HOME]: onHome,
@@ -133,6 +172,9 @@ export default function TopBar({
         boxSizing: 'border-box',
     }
 
+    const titleIsLinksControl =
+        typeof onCube === 'function' && (linksViaTitleOnly || titleOpensLinks)
+
     return (
         <div className="topbar-shell" style={barStyle}>
             <div style={styles.content}>
@@ -148,32 +190,54 @@ export default function TopBar({
                             <i className="fa-solid fa-puzzle-piece" style={styles.homePuzzleIcon} aria-hidden="true" />
                         </button>
                     )}
+                    {!linksViaTitleOnly && (
+                        <button
+                            type="button"
+                            style={styles.cubeBtn}
+                            onClick={actions[HEADER_ACTIONS.LINKS]}
+                            aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.LINKS]}
+                        >
+                            <img
+                                style={styles.cubeImg}
+                                src={CHROME_ASSET_URLS.CUBE_ICON}
+                                alt=""
+                                aria-hidden="true"
+                            />
+                        </button>
+                    )}
+                </div>
+
+                {titleIsLinksControl ? (
                     <button
                         type="button"
-                        style={styles.cubeBtn}
+                        className="topbar-title-hit"
+                        style={{ ...styles.titleHit, ...styles.center }}
                         onClick={actions[HEADER_ACTIONS.LINKS]}
                         aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.LINKS]}
                     >
-                        <img
-                            style={styles.cubeImg}
-                            src={CHROME_ASSET_URLS.CUBE_ICON}
-                            alt=""
-                            aria-hidden="true"
-                        />
+                        <div style={styles.logoContainer} aria-hidden="true">
+                            <img
+                                style={styles.logo}
+                                src={CHROME_ASSET_URLS.BEAST_ACADEMY_LOGO}
+                                alt=""
+                                loading="eager"
+                            />
+                        </div>
+                        <span className="topbar-title">{title}</span>
                     </button>
-                </div>
-
-                <div style={styles.titleWrap} aria-label={title}>
-                    <div style={styles.logoContainer} aria-hidden="true">
-                        <img
-                            style={styles.logo}
-                            src={CHROME_ASSET_URLS.BEAST_ACADEMY_LOGO}
-                            alt=""
-                            loading="eager"
-                        />
+                ) : (
+                    <div style={{ ...styles.titleWrap, ...styles.center }} aria-label={title}>
+                        <div style={styles.logoContainer} aria-hidden="true">
+                            <img
+                                style={styles.logo}
+                                src={CHROME_ASSET_URLS.BEAST_ACADEMY_LOGO}
+                                alt=""
+                                loading="eager"
+                            />
+                        </div>
+                        <h1 className="topbar-title">{title}</h1>
                     </div>
-                    <h1 className="topbar-title">{title}</h1>
-                </div>
+                )}
 
                 <div style={styles.right}>
                     {showStats && (
@@ -185,6 +249,17 @@ export default function TopBar({
                             aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.STATS]}
                         >
                             <i className="fas fa-chart-column" style={styles.iconGlyph} aria-hidden="true" />
+                        </button>
+                    )}
+                    {typeof onSettings === 'function' && (
+                        <button
+                            type="button"
+                            className="titlebar-iconbtn"
+                            style={styles.iconBtn}
+                            onClick={onSettings}
+                            aria-label="Open settings"
+                        >
+                            <i className="fa-solid fa-gear" style={styles.settingsIcon} aria-hidden="true" />
                         </button>
                     )}
                     <button

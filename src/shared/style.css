@@ -87,6 +87,12 @@ html, body {
     background: #fff;
 }
 
+/* Logo + title as one control (puzzle pages — opens Beast Academy links modal) */
+.topbar-title-hit:focus-visible {
+    outline: 2px solid rgba(26, 61, 91, 0.45);
+    outline-offset: 2px;
+}
+
 .topbar-title {
     margin: 0;
     padding-top: 0;

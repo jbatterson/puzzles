@@ -4,6 +4,7 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { computeSimpleGameStats } from '../../shared-contracts/simpleGameStats.js'
 import { GAME_KEYS } from '../../shared-contracts/gameChrome.js'
 import { buildHubSharePlaintext, hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
+import { isSuiteTimerEnabled } from '../../shared-contracts/suiteDashboardPreferences.js'
 import { formatPuzzleDateHeading, readSuiteGameElapsedMs } from '../../shared-contracts/suiteCompletionTimer.js'
 import { formatAllTenElapsedMsForShare } from '../../shared-contracts/allTenSharePlaintext.js'
 import ShareIcon from './ShareIcon.jsx'
@@ -54,6 +55,7 @@ export default function SimpleGameStatsModal({ show, onClose, gameKey, dailySuit
 
     const elapsedMsForDay = useMemo(() => {
         if (!show || !useSuiteLayout || !gameKey || !dailySuiteFooter?.dateKey || !allDailyComplete) return null
+        if (!isSuiteTimerEnabled()) return null
         return readSuiteGameElapsedMs(gameKey, dailySuiteFooter.dateKey)
     }, [show, useSuiteLayout, gameKey, dailySuiteFooter?.dateKey, allDailyComplete])
 

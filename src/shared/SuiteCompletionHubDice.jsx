@@ -2,11 +2,12 @@ import React from 'react'
 import DiceFace from './DiceFace.jsx'
 import { GAME_KEYS } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
+import { getEnabledTierIndices, readSuiteDashboardPreferences } from '../../shared-contracts/suiteDashboardPreferences.js'
 
 const TILE_GAMES = new Set([GAME_KEYS.SUMTILES, GAME_KEYS.PRODUCTILES])
 
 /**
- * Hub-style three dice for the completion modal (matches home card row).
+ * Hub-style dice for the completion modal (matches home card row; respects suite tier prefs).
  * @param {{ gameKey: string, completions: boolean[], perfects: boolean[], moveCounts?: (number|null)[], cluelessAttempts?: (number|null)[] | null }} props
  */
 export default function SuiteCompletionHubDice({
@@ -18,6 +19,8 @@ export default function SuiteCompletionHubDice({
 }) {
     const isTileGame = TILE_GAMES.has(gameKey)
     const isClueless = gameKey === GAME_KEYS.CLUELESS && Array.isArray(cluelessAttempts)
+    const prefs = readSuiteDashboardPreferences()
+    const slots = getEnabledTierIndices(gameKey, prefs)
 
     return (
         <div
@@ -28,7 +31,7 @@ export default function SuiteCompletionHubDice({
                 justifyContent: 'center',
             }}
         >
-            {[0, 1, 2].map((i) => {
+            {slots.map((i) => {
                 let done = false
                 let content = null
                 if (isClueless) {

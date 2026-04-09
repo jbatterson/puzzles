@@ -13,7 +13,15 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot } from '../../shared-contracts/hubEntry.js'
+import {
+    clampDailyIndexToTierPrefs,
+    getEnabledTierIndices,
+    isSuiteCompleteForPrefs,
+    nextIncompleteEnabledTierExcluding,
+    resolveHubDailySlotWithPrefs,
+} from '../../shared-contracts/suiteDashboardPreferences.js'
+import useSuitePrefsEpoch from '../../src/shared/useSuitePrefsEpoch.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -163,10 +171,10 @@ const Bug = ({ isMoving, isFalling, isCelebrating, size = 42 }) => (
 )
 
 // ── Puzzle number boxes ──────────────────────────────────────────────────────
-function PuzzleBoxes({ current, completions, perfects, onChange }) {
+function PuzzleBoxes({ current, completions, perfects, onChange, tierSlots = [0, 1, 2] }) {
     return (
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            {[0, 1, 2].map(i => (
+            {tierSlots.map(i => (
                 <button
                     key={i}
                     onClick={() => onChange(i)}
@@ -205,8 +213,13 @@ const BugPuzzle = () => {
     const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.SCURRY, puzzleData.tutorial ?? []).mode)
     const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.SCURRY, puzzleData.tutorial ?? []).tutorialIdx)
     const [dailyIdx, setDailyIdx] = useState(() =>
-        resolveHubDailySlotOnLoad(GAME_KEYS.SCURRY, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+        resolveHubDailySlotWithPrefs(GAME_KEYS.SCURRY, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
     )
+    const suitePrefsEpoch = useSuitePrefsEpoch()
+    const tierSlots = useMemo(() => {
+        void suitePrefsEpoch
+        return getEnabledTierIndices(GAME_KEYS.SCURRY)
+    }, [suitePrefsEpoch])
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const canShareHub = useMemo(
@@ -231,7 +244,7 @@ const BugPuzzle = () => {
 
     useSuiteCompletionTimer(GAME_KEYS.SCURRY, daily.key, {
         track: !curateMode && mode === 'daily',
-        alreadyFullyComplete: completions.every(Boolean),
+        alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.SCURRY, daily.key),
     })
 
     const [tutorialHintsDismissed, setTutorialHintsDismissed] = useState(() =>
@@ -246,6 +259,12 @@ const BugPuzzle = () => {
         if (curateMode || mode !== 'daily') return
         persistHubDailySlot(GAME_KEYS.SCURRY, daily.key, dailyIdx)
     }, [curateMode, mode, daily.key, dailyIdx])
+
+    useEffect(() => {
+        if (curateMode || mode !== 'daily') return
+        const c = clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, dailyIdx)
+        if (c !== dailyIdx) setDailyIdx(c)
+    }, [curateMode, mode, suitePrefsEpoch, dailyIdx])
 
     const [bugs, setBugs] = useState([])
     const [bugsPlacedCount, setBugsPlacedCount] = useState(0)
@@ -431,10 +450,10 @@ const BugPuzzle = () => {
             if (mode === 'daily') clearScurryWip(daily.key, dailyIdx)
             if (mode === 'tutorial') {
                 if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
-                else { setMode('daily'); setDailyIdx(0) }
+                else { setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, 0)) }
             } else if (mode === 'daily') {
-                const nextUnsolved = [0, 1, 2].find(i => i !== dailyIdx && !completions[i])
-                if (nextUnsolved !== undefined) setDailyIdx(nextUnsolved)
+                const nextUnsolved = nextIncompleteEnabledTierExcluding(GAME_KEYS.SCURRY, daily.key, dailyIdx)
+                if (nextUnsolved !== null) setDailyIdx(nextUnsolved)
             }
         } else if (isOutOfBugs) {
             usedUndoOrResetRef.current = true
@@ -444,7 +463,7 @@ const BugPuzzle = () => {
 
     useEffect(() => {
         if (curateMode || mode !== 'daily') return
-        const done = completions.every(Boolean)
+        const done = isSuiteCompleteForPrefs(GAME_KEYS.SCURRY, daily.key)
         if (allDailyDoneCompletionRef.current === null) {
             allDailyDoneCompletionRef.current = done
             return
@@ -455,7 +474,7 @@ const BugPuzzle = () => {
             }, SCURRY_SUITE_MODAL_AFTER_WIN_MS)
         }
         allDailyDoneCompletionRef.current = done
-    }, [curateMode, mode, completions])
+    }, [curateMode, mode, completions, daily.key, suitePrefsEpoch])
 
     const primaryLabel = allTargetsFilled
         ? curateMode
@@ -465,7 +484,9 @@ const BugPuzzle = () => {
             : mode === 'tutorial'
               ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
               : mode === 'daily'
-                ? [0,1,2].find(i => i !== dailyIdx && !completions[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
+                ? nextIncompleteEnabledTierExcluding(GAME_KEYS.SCURRY, daily.key, dailyIdx) != null
+                    ? CTA_LABELS.NEXT_PUZZLE
+                    : CTA_LABELS.ALL_PUZZLES
                 : null
         : isOutOfBugs ? 'Retry Puzzle'
         : null
@@ -501,6 +522,7 @@ const BugPuzzle = () => {
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
                 onStats={handleStatsClick}
+                linksViaTitleOnly
             />
             <CurateCopyToast message={curateCopyHint} />
 
@@ -522,7 +544,7 @@ const BugPuzzle = () => {
             ) : mode === 'tutorial' ? (
                 <div className="level-nav">
                     <div className="left-spacer">
-                        <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
+                        <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, 0)) }}>
                             Skip Tutorial
                         </button>
                     </div>
@@ -581,6 +603,7 @@ const BugPuzzle = () => {
                                 completions={completions}
                                 perfects={perfects}
                                 onChange={setDailyIdx}
+                                tierSlots={tierSlots}
                             />
                             <div className="game-dice-share-gap" aria-hidden />
                             <GameShareNavButton gameKey={GAME_KEYS.SCURRY} dateKey={daily.key} canShare={canShareHub} />
@@ -679,11 +702,11 @@ const BugPuzzle = () => {
                     {!hasSeenInstructions ? (
                         <>
                             <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>{CTA_LABELS.PLAY_TUTORIAL}</button>
-                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.SKIP_TUTORIAL}</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, 0)) }}>{CTA_LABELS.SKIP_TUTORIAL}</button>
                         </>
                     ) : (
                         <>
-                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.PLAY_TODAY}</button>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, 0)) }}>{CTA_LABELS.PLAY_TODAY}</button>
                             <button className="btn-secondary"
                                 onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>
                                 {CTA_LABELS.TUTORIAL_PUZZLES}

@@ -1,7 +1,7 @@
+"use strict";
+
 /**
- * Plaintext share format for All Ten (results modal, hub share, clipboard).
- * Kept in shared-contracts so the hub can use it without importing All Ten runtime.
- * Jest (All Ten runtime) maps this to allTenSharePlaintext.cjs — keep exports in sync.
+ * CJS build for Jest (All Ten runtime). Keep in sync with allTenSharePlaintext.js (ESM).
  */
 
 const LAUNCH_DATE = new Date(Date.parse("19 Sep 2022 00:00:00 PST"));
@@ -13,13 +13,12 @@ const BLANK_BOX = "⬜";
 function getSortedTargets(targets) {
 	return [...targets].sort(
 		(a, b) =>
-			(a.solveOrder ? -1 : 0) +
-				(b.solveOrder ? 1 : 0) ||
+			(a.solveOrder ? -1 : 0) + (b.solveOrder ? 1 : 0) ||
 			(a.solveOrder || 0) - (b.solveOrder || 0),
 	);
 }
 
-export function allTenTargetsToSolveOrderPlaintext(targets) {
+function allTenTargetsToSolveOrderPlaintext(targets) {
 	if (!Array.isArray(targets)) return "";
 	const sorted = getSortedTargets(targets);
 	return sorted
@@ -31,8 +30,7 @@ export function allTenTargetsToSolveOrderPlaintext(targets) {
 		.join(" ");
 }
 
-/** Elapsed milliseconds as HH:MM:SS (hours padded to 2+ digits when needed). */
-export function formatAllTenElapsedMsForShare(elapsedMs) {
+function formatAllTenElapsedMsForShare(elapsedMs) {
 	const n = Number(elapsedMs);
 	if (!Number.isFinite(n)) {
 		return "00:00:00";
@@ -47,8 +45,7 @@ export function formatAllTenElapsedMsForShare(elapsedMs) {
 	return `${hh}:${mm}:${ss}`;
 }
 
-/** Same numbering as All Ten getPuzzleNumberAsString(problemDate). */
-export function getAllTenPuzzleNumberDisplayString(date) {
+function getAllTenPuzzleNumberDisplayString(date) {
 	const puzzleNumber = Math.floor(
 		(Number(date) - Number(LAUNCH_DATE)) / DAY_IN_MS,
 	);
@@ -60,12 +57,7 @@ export function getAllTenPuzzleNumberDisplayString(date) {
 	return prefix + s;
 }
 
-/**
- * @param {Array<{ number: number, solution?: unknown, solveOrder?: number | null }>} targets
- * @param {Date} problemDate — use `new Date()` when sharing “today” to match in-game behavior
- * @param {number | null | undefined} [elapsedMs] — wall-clock solve time; omitted from copy when nullish
- */
-export function buildAllTenInPuzzleStyleSharePlaintext(targets, problemDate, elapsedMs) {
+function buildAllTenInPuzzleStyleSharePlaintext(targets, problemDate, elapsedMs) {
 	if (!Array.isArray(targets) || targets.length === 0) return "";
 	const puzzleNumberStr = getAllTenPuzzleNumberDisplayString(problemDate);
 	const numCorrect = targets.filter((t) => t && t.solution != null).length;
@@ -78,3 +70,10 @@ export function buildAllTenInPuzzleStyleSharePlaintext(targets, problemDate, ela
 	lines.push(solveLine);
 	return lines.join("\n");
 }
+
+module.exports = {
+	allTenTargetsToSolveOrderPlaintext,
+	formatAllTenElapsedMsForShare,
+	getAllTenPuzzleNumberDisplayString,
+	buildAllTenInPuzzleStyleSharePlaintext,
+};

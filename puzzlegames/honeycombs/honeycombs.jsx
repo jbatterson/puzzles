@@ -20,7 +20,15 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot } from '../../shared-contracts/hubEntry.js'
+import {
+  clampDailyIndexToTierPrefs,
+  getEnabledTierIndices,
+  isSuiteCompleteForPrefs,
+  nextEnabledDailyIdxAfterWin,
+  resolveHubDailySlotWithPrefs,
+} from '../../shared-contracts/suiteDashboardPreferences.js'
+import useSuitePrefsEpoch from '../../src/shared/useSuitePrefsEpoch.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -57,10 +65,10 @@ function loadPerfects(dateKey) {
   return [0, 1, 2].map((i) => localStorage.getItem(storageKey(dateKey, i)) === '2')
 }
 
-function PuzzleBoxes({ current, completions, perfects, onChange }) {
+function PuzzleBoxes({ current, completions, perfects, onChange, tierSlots = [0, 1, 2] }) {
   return (
     <div id="puzzle-boxes" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-      {[0, 1, 2].map((i) => (
+      {tierSlots.map((i) => (
         <button
           key={i}
           type="button"
@@ -108,12 +116,17 @@ export default function HoneycombsApp() {
     getInitialTutorialNav(GAME_KEYS.HONEYCOMBS, puzzleData.tutorial ?? []).tutorialIdx,
   )
   const [dailyIdx, setDailyIdx] = useState(() =>
-    resolveHubDailySlotOnLoad(
+    resolveHubDailySlotWithPrefs(
       GAME_KEYS.HONEYCOMBS,
       getHoneycombsDailyDateKey(),
       typeof window !== 'undefined' ? window.location.search : '',
     ),
   )
+  const suitePrefsEpoch = useSuitePrefsEpoch()
+  const tierSlots = useMemo(() => {
+    void suitePrefsEpoch
+    return getEnabledTierIndices(GAME_KEYS.HONEYCOMBS)
+  }, [suitePrefsEpoch])
   const [completions, setCompletions] = useState(() => loadCompletions(daily.dateKey))
   const [perfects, setPerfects] = useState(() => loadPerfects(daily.dateKey))
   const canShareHub = useMemo(
@@ -143,7 +156,7 @@ export default function HoneycombsApp() {
 
   useSuiteCompletionTimer(GAME_KEYS.HONEYCOMBS, daily.dateKey, {
     track: !curateMode && mode === 'daily',
-    alreadyFullyComplete: completions.every(Boolean),
+    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.HONEYCOMBS, daily.dateKey),
   })
 
   const boardMountRef = useRef(null)
@@ -161,6 +174,12 @@ export default function HoneycombsApp() {
     if (curateMode || mode !== 'daily') return
     persistHubDailySlot(GAME_KEYS.HONEYCOMBS, daily.dateKey, dailyIdx)
   }, [curateMode, mode, daily.dateKey, dailyIdx])
+
+  useEffect(() => {
+    if (curateMode || mode !== 'daily') return
+    const c = clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, dailyIdx)
+    if (c !== dailyIdx) setDailyIdx(c)
+  }, [curateMode, mode, suitePrefsEpoch, dailyIdx])
 
   const activePuzzles = useMemo(
     () => (curateMode ? roster.map((r) => r.puzzle) : mode === 'tutorial' ? tutorialPuzzles : daily.puzzles),
@@ -182,7 +201,7 @@ export default function HoneycombsApp() {
       setTutorialIdx((i) => Math.min(Math.max(0, tutorialPuzzles.length - 1), i + 1))
       return
     }
-    setDailyIdx((i) => Math.min(2, i + 1))
+    setDailyIdx((i) => nextEnabledDailyIdxAfterWin(GAME_KEYS.HONEYCOMBS, i))
   }, [curateMode, roster.length, mode, tutorialPuzzles.length])
 
   const handleWinAnimationComplete = useCallback(
@@ -204,7 +223,7 @@ export default function HoneycombsApp() {
       label: CTA_LABELS.PLAY_TODAY,
       onClick: () => {
         setMode('daily')
-        setDailyIdx(0)
+        setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, 0))
       },
     }
   }, [mode, curateMode])
@@ -217,7 +236,7 @@ export default function HoneycombsApp() {
   // `onWinAnimationComplete` after the 3× trace pulse (honeycombsEngine WIN_TRACE_PULSE_TOTAL_MS).
   useLayoutEffect(() => {
     if (curateMode || mode !== 'daily') return
-    const done = completions.every(Boolean)
+    const done = isSuiteCompleteForPrefs(GAME_KEYS.HONEYCOMBS, daily.dateKey)
     if (allDailyDoneCompletionRef.current === null) {
       allDailyDoneCompletionRef.current = done
       return
@@ -226,7 +245,7 @@ export default function HoneycombsApp() {
       pendingSuiteModalRef.current = true
     }
     allDailyDoneCompletionRef.current = done
-  }, [curateMode, mode, completions])
+  }, [curateMode, mode, completions, daily.dateKey, suitePrefsEpoch])
 
   useLayoutEffect(() => {
     const mount = boardMountRef.current
@@ -284,6 +303,7 @@ export default function HoneycombsApp() {
         onHelp={() => setShowInstructions(true)}
         onCube={() => setShowLinks(true)}
         onStats={handleStatsClick}
+        linksViaTitleOnly
       />
 
       <CurateCopyToast message={curateCopyHint} />
@@ -299,7 +319,7 @@ export default function HoneycombsApp() {
       ) : mode === 'tutorial' ? (
         <div className="level-nav">
           <div className="left-spacer">
-            <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
+            <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, 0)) }}>
               {CTA_LABELS.SKIP_TUTORIAL}
             </button>
           </div>
@@ -372,6 +392,7 @@ export default function HoneycombsApp() {
                 completions={completions}
                 perfects={perfects}
                 onChange={setDailyIdx}
+                tierSlots={tierSlots}
               />
               <div className="game-dice-share-gap" aria-hidden />
               <GameShareNavButton gameKey={GAME_KEYS.HONEYCOMBS} dateKey={daily.dateKey} canShare={canShareHub} />
@@ -429,7 +450,7 @@ export default function HoneycombsApp() {
                 onClick={() => {
                   closeInstructions()
                   setMode('daily')
-                  setDailyIdx(0)
+                  setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, 0))
                 }}
               >
                 {CTA_LABELS.SKIP_TUTORIAL}
@@ -444,7 +465,7 @@ export default function HoneycombsApp() {
                 onClick={() => {
                   closeInstructions()
                   setMode('daily')
-                  setDailyIdx(0)
+                  setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, 0))
                 }}
               >
                 {CTA_LABELS.PLAY_TODAY}

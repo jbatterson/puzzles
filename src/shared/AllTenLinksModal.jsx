@@ -5,7 +5,7 @@ import { ALLTEN_LINK_TARGETS, CHROME_ASSET_URLS } from '../../shared-contracts/c
 import { isNowSchoolTime } from '../../shared-contracts/schoolTime.js'
 
 /**
- * Beast Academy promotional modal (cube in TopBar). Same markup intent as former All Ten Links.tsx.
+ * Beast Academy promotional modal (TopBar cube on hub; logo + title on puzzle pages). Same markup intent as former All Ten Links.tsx.
  * @param {{ show: boolean, onClose: () => void, compact?: boolean }} props
  */
 export default function AllTenLinksModal({ show, onClose, compact = false }) {

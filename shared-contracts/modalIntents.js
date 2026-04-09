@@ -3,6 +3,7 @@ export const MODAL_INTENTS = Object.freeze({
 	LINKS: "links",
 	STATS: "stats",
 	RESULTS: "results",
+	SETTINGS: "settings",
 });
 
 export const MODAL_CLOSE_ARIA_LABELS = Object.freeze({
@@ -10,6 +11,7 @@ export const MODAL_CLOSE_ARIA_LABELS = Object.freeze({
 	[MODAL_INTENTS.LINKS]: "Close links",
 	[MODAL_INTENTS.STATS]: "Close stats",
 	[MODAL_INTENTS.RESULTS]: "Close results",
+	[MODAL_INTENTS.SETTINGS]: "Close settings",
 	default: "Close modal",
 });
 

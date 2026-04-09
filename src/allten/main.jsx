@@ -41,6 +41,7 @@ try {
           onCube={() => appState.showLinks(true)}
           onStats={() => appState.showStats(true)}
           onHelp={() => appState.showHelp(true)}
+          linksViaTitleOnly
         />
       </div>
       <MainContainer appState={appState} hideNativeTitleBar />

@@ -4,6 +4,7 @@
  */
 
 import { GAME_KEYS } from './gameChrome.js'
+import { getEnabledTierIndices, isSuiteCompleteForPrefs, isThreeTierGameKey } from './suiteDashboardPreferences.js'
 
 const MAX_STREAK_DAYS = 365
 
@@ -49,6 +50,7 @@ function loadCluelessAttempts(dateKey) {
 }
 
 function dayHasMultiCompletion(gameKey, dateKey) {
+    if (isThreeTierGameKey(gameKey)) return isSuiteCompleteForPrefs(gameKey, dateKey)
     for (let i = 0; i < 3; i++) {
         const v = lsGet(`${gameKey}:${dateKey}:${i}`)
         if (v === '1' || v === '2') return true
@@ -57,7 +59,7 @@ function dayHasMultiCompletion(gameKey, dateKey) {
 }
 
 function dayHasCluelessCompletion(dateKey) {
-    return loadCluelessAttempts(dateKey).some(a => a != null)
+    return isSuiteCompleteForPrefs(GAME_KEYS.CLUELESS, dateKey)
 }
 
 function dayHasCompletion(gameKey, dateKey) {
@@ -78,7 +80,7 @@ function getStreak(gameKey) {
 }
 
 function aggregateMultiGameFromStorage(gameKey) {
-    const playedDates = new Set()
+    const dates = new Set()
     let stars = 0
     const escaped = gameKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const re = new RegExp(`^${escaped}:(\\d{4}-\\d{2}-\\d{2}):([0-2])$`)
@@ -88,21 +90,26 @@ function aggregateMultiGameFromStorage(gameKey) {
             if (!k) continue
             const m = k.match(re)
             if (!m) continue
-            const date = m[1]
-            const v = lsGet(k)
-            if (v === '1' || v === '2') {
-                playedDates.add(date)
-                if (v === '2') stars++
-            }
+            dates.add(m[1])
         }
     } catch {
         // ignore
     }
-    return { played: playedDates.size, stars }
+    let played = 0
+    for (const date of dates) {
+        if (!isSuiteCompleteForPrefs(gameKey, date)) continue
+        played++
+        const enabled = getEnabledTierIndices(gameKey)
+        for (const ti of enabled) {
+            const v = lsGet(`${gameKey}:${date}:${ti}`)
+            if (v === '2') stars++
+        }
+    }
+    return { played, stars }
 }
 
 function aggregateTileMovesFromStorage(gameKey) {
-    const playedDates = new Set()
+    const dates = new Set()
     const totals = [0, 0, 0]
     const counts = [0, 0, 0]
     const escaped = gameKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -121,20 +128,26 @@ function aggregateTileMovesFromStorage(gameKey) {
             const moves = parseInt(v, 10)
             if (!Number.isFinite(moves) || moves <= 0) continue
             if (idx < 0 || idx > 2) continue
-            playedDates.add(date)
+            dates.add(date)
             totals[idx] += moves
             counts[idx] += 1
         }
     } catch {
         // ignore
     }
+    let played = 0
+    for (const date of dates) {
+        if (isSuiteCompleteForPrefs(gameKey, date)) played++
+    }
+    const enabled = new Set(getEnabledTierIndices(gameKey))
     const parts = totals.map((sum, i) => {
+        if (!enabled.has(i)) return '–'
         const c = counts[i]
         if (!c) return '–'
         return String(Math.round(sum / c))
     })
     return {
-        played: playedDates.size,
+        played,
         avgMoves: parts.join('|'),
     }
 }
@@ -159,11 +172,12 @@ function aggregateCluelessFromStorage() {
     let played = 0
     let stars = 0
     for (const dateKey of dates) {
-        const attempts = loadCluelessAttempts(dateKey)
-        if (!attempts.some(a => a != null)) continue
+        if (!isSuiteCompleteForPrefs(GAME_KEYS.CLUELESS, dateKey)) continue
         played++
-        for (const a of attempts) {
-            if (a === 1) stars++
+        const attempts = loadCluelessAttempts(dateKey)
+        const enabled = getEnabledTierIndices(GAME_KEYS.CLUELESS)
+        for (const i of enabled) {
+            if (attempts[i] === 1) stars++
         }
     }
     return { played, stars }

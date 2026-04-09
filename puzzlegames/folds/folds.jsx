@@ -31,7 +31,15 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot } from '../../shared-contracts/hubEntry.js'
+import {
+    clampDailyIndexToTierPrefs,
+    getEnabledTierIndices,
+    isSuiteCompleteForPrefs,
+    nextIncompleteEnabledTierExcluding,
+    resolveHubDailySlotWithPrefs,
+} from '../../shared-contracts/suiteDashboardPreferences.js'
+import useSuitePrefsEpoch from '../../src/shared/useSuitePrefsEpoch.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -362,10 +370,10 @@ function inferFoldSequence(historyBoards) {
 }
 
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
-function PuzzleBoxes({ current, completions, perfects, onChange }) {
+function PuzzleBoxes({ current, completions, perfects, onChange, tierSlots = [0, 1, 2] }) {
     return (
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            {[0, 1, 2].map(i => (
+            {tierSlots.map(i => (
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -398,8 +406,13 @@ const App = () => {
     const [mode, setMode] = useState(() => getInitialTutorialNav(GAME_KEYS.FOLDS, puzzleData.tutorial ?? []).mode)
     const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.FOLDS, puzzleData.tutorial ?? []).tutorialIdx)
     const [dailyIdx, setDailyIdx] = useState(() =>
-        resolveHubDailySlotOnLoad(GAME_KEYS.FOLDS, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+        resolveHubDailySlotWithPrefs(GAME_KEYS.FOLDS, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
     )
+    const suitePrefsEpoch = useSuitePrefsEpoch()
+    const tierSlots = useMemo(() => {
+        void suitePrefsEpoch
+        return getEnabledTierIndices(GAME_KEYS.FOLDS)
+    }, [suitePrefsEpoch])
     const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
     const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
     const canShareHub = useMemo(
@@ -426,7 +439,7 @@ const App = () => {
 
     useSuiteCompletionTimer(GAME_KEYS.FOLDS, daily.key, {
         track: !curateMode && mode === 'daily',
-        alreadyFullyComplete: completions.every(Boolean),
+        alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.FOLDS, daily.key),
     })
 
     const [tutorialHint1Dismissed, setTutorialHint1Dismissed] = useState(false)
@@ -443,6 +456,12 @@ const App = () => {
         if (curateMode || mode !== 'daily') return
         persistHubDailySlot(GAME_KEYS.FOLDS, daily.key, dailyIdx)
     }, [curateMode, mode, daily.key, dailyIdx])
+
+    useEffect(() => {
+        if (curateMode || mode !== 'daily') return
+        const c = clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, dailyIdx)
+        if (c !== dailyIdx) setDailyIdx(c)
+    }, [curateMode, mode, suitePrefsEpoch, dailyIdx])
 
     const [tapFlash, setTapFlash] = useState(null)
     const [hoverLine, setHoverLine] = useState(null)
@@ -1005,10 +1024,10 @@ const App = () => {
             if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
             if (mode === 'tutorial') {
                 if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
-                else { setMode('daily'); setDailyIdx(0) }
+                else { setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, 0)) }
             } else {
-                const next = [0, 1, 2].find(i => i !== dailyIdx && !completions[i])
-                if (next !== undefined) setDailyIdx(next)
+                const next = nextIncompleteEnabledTierExcluding(GAME_KEYS.FOLDS, daily.key, dailyIdx)
+                if (next !== null) setDailyIdx(next)
             }
         } else if (folds <= 0) {
             usedUndoOrResetRef.current = true
@@ -1025,7 +1044,7 @@ const App = () => {
             ? curateIdx < roster.length - 1 ? CTA_LABELS.NEXT_PUZZLE : null
             : mode === 'tutorial'
               ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
-              : [0, 1, 2].find(i => i !== dailyIdx && !completions[i]) !== undefined ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
+              : nextIncompleteEnabledTierExcluding(GAME_KEYS.FOLDS, daily.key, dailyIdx) != null ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.ALL_PUZZLES
         : folds <= 0 ? 'Retry Puzzle'
         : null
 
@@ -1033,7 +1052,7 @@ const App = () => {
 
     useEffect(() => {
         if (curateMode || mode !== 'daily') return
-        const done = completions.every(Boolean)
+        const done = isSuiteCompleteForPrefs(GAME_KEYS.FOLDS, daily.key)
         if (allDailyDoneCompletionRef.current === null) {
             allDailyDoneCompletionRef.current = done
             return
@@ -1042,7 +1061,7 @@ const App = () => {
             pendingSuiteModalAfterCelebrationRef.current = true
         }
         allDailyDoneCompletionRef.current = done
-    }, [curateMode, mode, completions])
+    }, [curateMode, mode, completions, daily.key, suitePrefsEpoch])
 
     const base = import.meta.env.BASE_URL
 
@@ -1075,6 +1094,7 @@ const App = () => {
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
                 onStats={handleStatsClick}
+                linksViaTitleOnly
             />
 
             <CurateCopyToast message={curateCopyHint} />
@@ -1096,7 +1116,7 @@ const App = () => {
             ) : mode === 'tutorial' ? (
                 <div className="level-nav">
                     <div className="left-spacer">
-                        <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
+                        <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, 0)) }}>
                             Skip Tutorial
                         </button>
                     </div>
@@ -1152,7 +1172,7 @@ const App = () => {
                         <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
                             <div className="game-dice-share-phantom" aria-hidden />
                             <div className="game-dice-share-gap" aria-hidden />
-                            <PuzzleBoxes current={dailyIdx} completions={completions} perfects={perfects} onChange={setDailyIdx} />
+                            <PuzzleBoxes current={dailyIdx} completions={completions} perfects={perfects} onChange={setDailyIdx} tierSlots={tierSlots} />
                             <div className="game-dice-share-gap" aria-hidden />
                             <GameShareNavButton gameKey={GAME_KEYS.FOLDS} dateKey={daily.key} canShare={canShareHub} />
                         </div>
@@ -1386,11 +1406,11 @@ const App = () => {
                     {!hasSeenInstructions ? (
                         <>
                             <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>{CTA_LABELS.PLAY_TUTORIAL}</button>
-                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.SKIP_TUTORIAL}</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, 0)) }}>{CTA_LABELS.SKIP_TUTORIAL}</button>
                         </>
                     ) : (
                         <>
-                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.PLAY_TODAY}</button>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, 0)) }}>{CTA_LABELS.PLAY_TODAY}</button>
                             <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>{CTA_LABELS.TUTORIAL_PUZZLES}</button>
                         </>
                     )}

@@ -13,7 +13,15 @@ import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot } from '../../shared-contracts/hubEntry.js'
+import {
+    clampDailyIndexToTierPrefs,
+    getEnabledTierIndices,
+    isSuiteCompleteForPrefs,
+    nextIncompleteEnabledTierExcluding,
+    resolveHubDailySlotWithPrefs,
+} from '../../shared-contracts/suiteDashboardPreferences.js'
+import useSuitePrefsEpoch from '../../src/shared/useSuitePrefsEpoch.js'
 import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
@@ -220,10 +228,10 @@ function computeSums(tiles, size) {
 }
 
 // ── Puzzle boxes ─────────────────────────────────────────────────────────────
-function PuzzleBoxes({ current, completions, perfects, moveCounts, onChange }) {
+function PuzzleBoxes({ current, completions, perfects, moveCounts, onChange, tierSlots = [0, 1, 2] }) {
     return (
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            {[0, 1, 2].map(i => (
+            {tierSlots.map(i => (
                 <button key={i} onClick={() => onChange(i)} style={{
                     width: '28px', height: '28px', borderRadius: '6px', border: 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -263,8 +271,13 @@ export default function SumTiles() {
     const [mode, setMode]               = useState(() => getInitialTutorialNav(GAME_KEYS.SUMTILES, puzzleData.tutorial ?? []).mode)
     const [tutorialIdx, setTutorialIdx] = useState(() => getInitialTutorialNav(GAME_KEYS.SUMTILES, puzzleData.tutorial ?? []).tutorialIdx)
     const [dailyIdx, setDailyIdx]       = useState(() =>
-        resolveHubDailySlotOnLoad(GAME_KEYS.SUMTILES, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+        resolveHubDailySlotWithPrefs(GAME_KEYS.SUMTILES, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
     )
+    const suitePrefsEpoch = useSuitePrefsEpoch()
+    const tierSlots = useMemo(() => {
+        void suitePrefsEpoch
+        return getEnabledTierIndices(GAME_KEYS.SUMTILES)
+    }, [suitePrefsEpoch])
     dailyKeyRef.current = daily.key
     dailyIdxRef.current = dailyIdx
     modeRef.current = mode
@@ -300,7 +313,7 @@ export default function SumTiles() {
 
     useSuiteCompletionTimer(GAME_KEYS.SUMTILES, daily.key, {
         track: !curateMode && mode === 'daily',
-        alreadyFullyComplete: completions.every(Boolean),
+        alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.SUMTILES, daily.key),
     })
     /** When daily suite just became all-complete, open modal only after win row/col animation ends. */
     const pendingSuiteModalAfterAnimRef = useRef(false)
@@ -313,6 +326,12 @@ export default function SumTiles() {
         if (curateMode || mode !== 'daily') return
         persistHubDailySlot(GAME_KEYS.SUMTILES, daily.key, dailyIdx)
     }, [curateMode, mode, daily.key, dailyIdx])
+
+    useEffect(() => {
+        if (curateMode || mode !== 'daily') return
+        const c = clampDailyIndexToTierPrefs(GAME_KEYS.SUMTILES, dailyIdx)
+        if (c !== dailyIdx) setDailyIdx(c)
+    }, [curateMode, mode, suitePrefsEpoch, dailyIdx])
 
     useEffect(() => {
         notifyPostSolveCtaAttentionRef.current = () => setPostSolveCtaAttention(true)
@@ -491,7 +510,7 @@ export default function SumTiles() {
 
     useEffect(() => {
         if (curateMode || mode !== 'daily') return
-        const done = completions.every(Boolean)
+        const done = isSuiteCompleteForPrefs(GAME_KEYS.SUMTILES, daily.key)
         if (allDailyDoneCompletionRef.current === null) {
             allDailyDoneCompletionRef.current = done
             return
@@ -506,7 +525,7 @@ export default function SumTiles() {
         }
         if (!done) pendingSuiteModalAfterAnimRef.current = false
         allDailyDoneCompletionRef.current = done
-    }, [curateMode, mode, completions])
+    }, [curateMode, mode, completions, daily.key, suitePrefsEpoch])
 
     useEffect(() => {
         const canvas = canvasRef.current; if (!canvas) return
@@ -731,20 +750,20 @@ export default function SumTiles() {
         }
         if (mode === 'tutorial') {
             if (tutorialIdx < puzzleData.tutorial.length - 1) setTutorialIdx(i => i + 1)
-            else { setMode('daily'); setDailyIdx(0) }
+            else { setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SUMTILES, 0)) }
         } else {
-            const next = [0, 1, 2].find(i => i !== dailyIdx && !completions[i])
-            if (next !== undefined) setDailyIdx(next)
+            const next = nextIncompleteEnabledTierExcluding(GAME_KEYS.SUMTILES, daily.key, dailyIdx)
+            if (next !== null) setDailyIdx(next)
         }
     }
 
-    const allDone = completions.every(Boolean)
+    const suiteDone = isSuiteCompleteForPrefs(GAME_KEYS.SUMTILES, daily.key)
     const primaryLabel = isSolved
         ? curateMode
             ? curateIdx < roster.length - 1 ? CTA_LABELS.NEXT_PUZZLE : null
             : mode === 'tutorial'
               ? tutorialIdx < puzzleData.tutorial.length - 1 ? CTA_LABELS.NEXT_PUZZLE : CTA_LABELS.PLAY_TODAY
-              : allDone ? CTA_LABELS.ALL_PUZZLES : CTA_LABELS.NEXT_PUZZLE
+              : suiteDone ? CTA_LABELS.ALL_PUZZLES : CTA_LABELS.NEXT_PUZZLE
         : null
 
     const base = import.meta.env.BASE_URL
@@ -779,6 +798,7 @@ export default function SumTiles() {
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
                 onStats={handleStatsClick}
+                linksViaTitleOnly
             />
 
             <CurateCopyToast message={curateCopyHint} />
@@ -800,7 +820,7 @@ export default function SumTiles() {
             ) : mode === 'tutorial' ? (
                 <div className="level-nav">
                     <div className="left-spacer">
-                        <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(0) }}>
+                        <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SUMTILES, 0)) }}>
                             Skip Tutorial
                         </button>
                     </div>
@@ -833,7 +853,7 @@ export default function SumTiles() {
                         <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
                             <div className="game-dice-share-phantom" aria-hidden />
                             <div className="game-dice-share-gap" aria-hidden />
-                            <PuzzleBoxes current={dailyIdx} completions={completions} perfects={perfects} moveCounts={moveCounts} onChange={setDailyIdx} />
+                            <PuzzleBoxes current={dailyIdx} completions={completions} perfects={perfects} moveCounts={moveCounts} onChange={setDailyIdx} tierSlots={tierSlots} />
                             <div className="game-dice-share-gap" aria-hidden />
                             <GameShareNavButton gameKey={GAME_KEYS.SUMTILES} dateKey={daily.key} canShare={canShareHub} />
                         </div>
@@ -890,11 +910,11 @@ export default function SumTiles() {
                     {!hasSeenInstructions ? (
                         <>
                             <button className="btn-primary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>{CTA_LABELS.PLAY_TUTORIAL}</button>
-                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.SKIP_TUTORIAL}</button>
+                            <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SUMTILES, 0)) }}>{CTA_LABELS.SKIP_TUTORIAL}</button>
                         </>
                     ) : (
                         <>
-                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(0) }}>{CTA_LABELS.PLAY_TODAY}</button>
+                            <button className="btn-primary" onClick={() => { closeInstructions(); setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SUMTILES, 0)) }}>{CTA_LABELS.PLAY_TODAY}</button>
                             <button className="btn-secondary" onClick={() => { closeInstructions(); setMode('tutorial'); setTutorialIdx(0) }}>{CTA_LABELS.TUTORIAL_PUZZLES}</button>
                         </>
                     )}

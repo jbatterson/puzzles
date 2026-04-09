@@ -16,7 +16,15 @@ import {
     PUZZLE_SUITE_SURFACE_INCOMPLETE,
 } from '../../shared-contracts/chromeUi.js'
 import CluelessIcon from '../../src/shared/icons/CluelessIcon.jsx'
-import { persistHubDailySlot, resolveHubDailySlotOnLoad } from '../../shared-contracts/hubEntry.js'
+import { persistHubDailySlot } from '../../shared-contracts/hubEntry.js'
+import {
+    clampDailyIndexToTierPrefs,
+    getEnabledTierIndices,
+    isSuiteCompleteForPrefs,
+    nextIncompleteEnabledTierExcluding,
+    resolveHubDailySlotWithPrefs,
+} from '../../shared-contracts/suiteDashboardPreferences.js'
+import useSuitePrefsEpoch from '../../src/shared/useSuitePrefsEpoch.js'
 import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
@@ -414,8 +422,13 @@ function retreatAlongAxis(fromIdx, axisMode, inputOrder, locked) {
 export default function CluelessGame() {
     const chrome = getGameChrome(GAME_KEYS.CLUELESS)
     const [difficultyIdx, setDifficultyIdx] = useState(() =>
-        resolveHubDailySlotOnLoad(GAME_KEYS.CLUELESS, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
+        resolveHubDailySlotWithPrefs(GAME_KEYS.CLUELESS, getDailyKey(), typeof window !== 'undefined' ? window.location.search : ''),
     )
+    const suitePrefsEpoch = useSuitePrefsEpoch()
+    const tierSlots = useMemo(() => {
+        void suitePrefsEpoch
+        return getEnabledTierIndices(GAME_KEYS.CLUELESS)
+    }, [suitePrefsEpoch])
     const difficulty = DIFFS[difficultyIdx] || 'easy'
     const roster = useMemo(() => buildTierRoster(puzzleData, ['easy', 'medium', 'hard']), [])
     const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
@@ -521,7 +534,7 @@ export default function CluelessGame() {
 
     useSuiteCompletionTimer(GAME_KEYS.CLUELESS, daily.key, {
         track: !curateMode,
-        alreadyFullyComplete: attemptsByDiff.every(a => a != null),
+        alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.CLUELESS, daily.key),
     })
 
     useEffect(() => {
@@ -531,7 +544,13 @@ export default function CluelessGame() {
 
     useEffect(() => {
         if (curateMode) return
-        const done = attemptsByDiff.every(a => a != null)
+        const c = clampDailyIndexToTierPrefs(GAME_KEYS.CLUELESS, difficultyIdx)
+        if (c !== difficultyIdx) setDifficultyIdx(c)
+    }, [curateMode, suitePrefsEpoch, difficultyIdx])
+
+    useEffect(() => {
+        if (curateMode) return
+        const done = isSuiteCompleteForPrefs(GAME_KEYS.CLUELESS, daily.key)
         if (allDifficultiesDoneCompletionRef.current === null) {
             allDifficultiesDoneCompletionRef.current = done
             return
@@ -546,19 +565,19 @@ export default function CluelessGame() {
             return
         }
         allDifficultiesDoneCompletionRef.current = done
-    }, [curateMode, attemptsByDiff, winCelebrationActive])
+    }, [curateMode, attemptsByDiff, winCelebrationActive, daily.key, suitePrefsEpoch])
 
     useEffect(() => {
         if (curateMode || winCelebrationActive) return
         if (!pendingSuiteCompletionModalRef.current) return
-        if (!attemptsByDiff.every(a => a != null)) {
+        if (!isSuiteCompleteForPrefs(GAME_KEYS.CLUELESS, daily.key)) {
             pendingSuiteCompletionModalRef.current = false
             return
         }
         pendingSuiteCompletionModalRef.current = false
         const t = window.setTimeout(() => setShowCompletionModal(true), 500)
         return () => window.clearTimeout(t)
-    }, [winCelebrationActive, curateMode, attemptsByDiff])
+    }, [winCelebrationActive, curateMode, attemptsByDiff, daily.key, suitePrefsEpoch])
 
     // Load/restore state whenever difficulty changes
     useEffect(() => {
@@ -952,11 +971,12 @@ export default function CluelessGame() {
     const canCheckPuzzle = hasCheckableLetter && !boardAlreadyChecked
 
     const base = import.meta.env.BASE_URL
-    const nextUnsolvedIdx = [0, 1, 2].find(i => i !== difficultyIdx && attemptsByDiff[i] == null)
+    const nextUnsolvedIdx = nextIncompleteEnabledTierExcluding(GAME_KEYS.CLUELESS, daily.key, difficultyIdx)
 
     const cluelessPostSolveCtaAttention = !winCelebrationActive
 
     const postSolveCta = useMemo(() => {
+        void suitePrefsEpoch
         const att = cluelessPostSolveCtaAttention
         if (curateMode) {
             return curateIdx < roster.length - 1 ? (
@@ -965,7 +985,7 @@ export default function CluelessGame() {
                 </PostSolvePrimaryButton>
             ) : null
         }
-        if (nextUnsolvedIdx !== undefined) {
+        if (nextUnsolvedIdx != null) {
             return (
                 <PostSolvePrimaryButton attention={att} onClick={() => setDifficultyIdx(nextUnsolvedIdx)}>
                     Next Puzzle
@@ -981,7 +1001,7 @@ export default function CluelessGame() {
                 All Puzzles
             </PostSolvePrimaryLink>
         )
-    }, [curateMode, curateIdx, roster.length, nextUnsolvedIdx, base, cluelessPostSolveCtaAttention])
+    }, [curateMode, curateIdx, roster.length, nextUnsolvedIdx, base, cluelessPostSolveCtaAttention, daily.key, suitePrefsEpoch])
 
     const handleStatsClick = useCallback(() => {
         if (curateMode) {
@@ -1198,6 +1218,7 @@ export default function CluelessGame() {
                 onHelp={() => setShowInstructions(true)}
                 onCube={() => setShowLinks(true)}
                 onStats={handleStatsClick}
+                linksViaTitleOnly
             />
 
             <CurateCopyToast message={curateCopyHint} />
@@ -1230,7 +1251,8 @@ export default function CluelessGame() {
                             <div className="game-dice-share-phantom" aria-hidden />
                             <div className="game-dice-share-gap" aria-hidden />
                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                {['Easy', 'Med', 'Hard'].map((label, i) => {
+                                {tierSlots.map((i) => {
+                                    const label = ['Easy', 'Med', 'Hard'][i]
                                     const isActive = i === difficultyIdx
                                     const a = attemptsByDiff[i]
                                     const done = a != null

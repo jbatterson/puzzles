@@ -6,6 +6,7 @@ import { buildHubSharePlaintext } from '../../shared-contracts/hubSharePlaintext
 import { isNowSchoolTime } from '../../shared-contracts/schoolTime.js'
 import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
 import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
+import { isSuiteTimerEnabled } from '../../shared-contracts/suiteDashboardPreferences.js'
 import {
     finalizeSuiteGameTimerFromModal,
     formatPuzzleDateHeading,
@@ -151,10 +152,8 @@ export default function SuiteGameCompletionModal({
 
     const schoolTime = isNowSchoolTime()
 
-    const timeHms =
-        elapsedMsDisplay != null
-            ? formatAllTenElapsedMsForShare(elapsedMsDisplay)
-            : formatAllTenElapsedMsForShare(0)
+    const timerEnabled = isSuiteTimerEnabled()
+    const timeHms = timerEnabled ? formatAllTenElapsedMsForShare(elapsedMsDisplay ?? 0) : null
 
     const showDiceBlock =
         Array.isArray(hubDiceCompletions) &&
@@ -244,12 +243,14 @@ export default function SuiteGameCompletionModal({
                             moveCounts={hubDiceMoveCounts}
                             cluelessAttempts={hubCluelessAttempts ?? null}
                         />
-                        <div
-                            className="suite-completion-solve-elapsed"
-                            aria-label={`Elapsed time ${timeHms}`}
-                        >
-                            {timeHms}
-                        </div>
+                        {timeHms != null ? (
+                            <div
+                                className="suite-completion-solve-elapsed"
+                                aria-label={`Elapsed time ${timeHms}`}
+                            >
+                                {timeHms}
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
 

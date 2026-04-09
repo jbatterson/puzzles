@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react'
 import TopBar from './shared/TopBar.jsx'
 import AllTenLinksModal from './shared/AllTenLinksModal.jsx'
+import SuiteSettingsModal from './shared/SuiteSettingsModal.jsx'
 import './shared/style.css'
 import BugIcon from './shared/icons/BugIcon.jsx'
 import FoldsIcon from './shared/icons/FoldsIcon.jsx'
@@ -17,8 +18,17 @@ import {
     formatAllTenElapsedMsForShare,
     getAllTenPuzzleNumberDisplayString,
 } from '../shared-contracts/allTenSharePlaintext.js'
-import { hubHrefFirstUnfinishedClueless, hubHrefFirstUnfinishedThree } from '../shared-contracts/hubEntry.js'
-import { buildHubSharePlaintext } from '../shared-contracts/hubSharePlaintext.js'
+import { buildHubSharePlaintext, hasShareableHubProgress } from '../shared-contracts/hubSharePlaintext.js'
+import {
+    SUITE_DASHBOARD_PREFS_KEY,
+    getEnabledTierIndices,
+    hubHrefFirstUnfinishedCluelessWithPrefs,
+    hubHrefFirstUnfinishedThreeWithPrefs,
+    isPuzzleOnInSuitePrefs,
+    isSuiteCompleteForPrefs,
+    isThreeTierGameKey,
+    readSuiteDashboardPreferences,
+} from '../shared-contracts/suiteDashboardPreferences.js'
 import ShareIcon from './shared/ShareIcon.jsx'
 import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './shared/ShareResultToast.jsx'
 
@@ -169,14 +179,13 @@ function loadAllTenSolveElapsedMsForHubDateKey(dateKey) {
 
 const MAX_STREAK_DAYS = 365
 
-/** True if at least one puzzle of this type was completed on that calendar day (PST). */
+/** True if the player’s enabled suite for that game is fully complete on that calendar day (PST). */
 function dayHasCompletion(gameKey, single, dateKey) {
     if (gameKey === 'allten') return loadAllTenSolvedCountForHubDateKey(dateKey) > 0
-    return gameKey === 'clueless'
-        ? loadCluelessAttempts(dateKey).some(a => a != null)
-        : single
-            ? loadSingleCompletion(gameKey, dateKey)
-            : loadCompletions(gameKey, dateKey).some(Boolean)
+    if (isThreeTierGameKey(gameKey)) return isSuiteCompleteForPrefs(gameKey, dateKey)
+    return single
+        ? loadSingleCompletion(gameKey, dateKey)
+        : loadCompletions(gameKey, dateKey).some(Boolean)
 }
 
 /** Consecutive days with a completion, counting backward from today. Includes today when played today. */
@@ -196,14 +205,15 @@ function getStreak(gameKey, single = false) {
 
 const TILE_GAMES = new Set(['sumtiles', 'productiles'])
 
-function PuzzleBoxes({ gameKey, completions, perfects, moveCounts }) {
+function PuzzleBoxes({ gameKey, completions, perfects, moveCounts, tierSlots }) {
     const isTileGame = TILE_GAMES.has(gameKey)
     const c = completions ?? [false, false, false]
     const p = perfects ?? [false, false, false]
     const mc = moveCounts ?? [null, null, null]
+    const slots = tierSlots ?? [0, 1, 2]
     return (
         <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-            {[0, 1, 2].map(i => {
+            {slots.map(i => {
                 const done = c[i]
                 const perfect = p[i]
                 const moves = mc[i] != null ? mc[i] : null
@@ -270,10 +280,11 @@ function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
     )
 }
 
-function CluelessBoxes({ attempts }) {
+function CluelessBoxes({ attempts, tierSlots }) {
+    const slots = tierSlots ?? [0, 1, 2]
     return (
         <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-            {[0, 1, 2].map(i => {
+            {slots.map(i => {
                 const a = attempts?.[i] ?? null
                 const done = a != null
                 const content = !done ? <DiceFace count={i + 1} size={20} /> : (a === 1 ? '★' : String(Math.min(a, 99)))
@@ -323,6 +334,10 @@ const today = new Date().toLocaleDateString('en-US', {
 export default function Home() {
     const dateKey = useMemo(() => getDailyKey(), [])
 
+    const [suitePrefs, setSuitePrefs] = useState(() => readSuiteDashboardPreferences())
+    const [showSettings, setShowSettings] = useState(false)
+    const refreshSuitePrefs = useCallback(() => setSuitePrefs(readSuiteDashboardPreferences()), [])
+
     const completions = useMemo(() =>
         Object.fromEntries(GAMES.filter(g => !g.single && g.key !== 'clueless' && g.key !== 'allten').map(g => [g.key, loadCompletions(g.key, dateKey)])),
     [dateKey])
@@ -349,11 +364,28 @@ export default function Home() {
     [dateKey])
 
     const [streakRefresh, setStreakRefresh] = useState(0)
-    const streaks = useMemo(() =>
-        Object.fromEntries(GAMES.map(g => [g.key, getStreak(g.key, !!g.single)])),
-    [dateKey, streakRefresh])
+    const streaks = useMemo(
+        () => Object.fromEntries(GAMES.map(g => [g.key, getStreak(g.key, !!g.single)])),
+        // Re-run when hub refreshes from visibility/storage or suite prefs change (streak uses prefs-aware completion).
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- streakRefresh, suitePrefs intentionally invalidate
+        [streakRefresh, suitePrefs],
+    )
 
-    const allTenTodayCount = useMemo(() => loadAllTenSolvedCountForHubDateKey(dateKey), [dateKey, streakRefresh])
+    const allTenTodayCount = useMemo(
+        () => loadAllTenSolvedCountForHubDateKey(dateKey),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- streakRefresh intentionally invalidates after play
+        [dateKey, streakRefresh],
+    )
+
+    const gamesOnDashboard = useMemo(
+        () => GAMES.filter((g) => isPuzzleOnInSuitePrefs(g.key, suitePrefs)),
+        [suitePrefs],
+    )
+    const gamesHidden = useMemo(
+        () => GAMES.filter((g) => !isPuzzleOnInSuitePrefs(g.key, suitePrefs)),
+        [suitePrefs],
+    )
+    const settingsGamesList = useMemo(() => GAMES.map(({ key, title }) => ({ key, title })), [])
 
     const [shareToast, setShareToast] = useState(null)
     const [showInstructions, setShowInstructions] = useState(false)
@@ -373,20 +405,23 @@ export default function Home() {
         }
         document.addEventListener('visibilitychange', onVisible)
         window.addEventListener('pageshow', onPageShow)
-        window.addEventListener('storage', bumpStreaks)
+        const onStorage = (e) => {
+            bumpStreaks()
+            if (e.key === SUITE_DASHBOARD_PREFS_KEY) refreshSuitePrefs()
+        }
+        window.addEventListener('storage', onStorage)
         return () => {
             document.removeEventListener('visibilitychange', onVisible)
             window.removeEventListener('pageshow', onPageShow)
-            window.removeEventListener('storage', bumpStreaks)
+            window.removeEventListener('storage', onStorage)
         }
-    }, [])
+    }, [refreshSuitePrefs])
 
     const hasAnyCompletion = useCallback((key, single) => {
         if (key === 'allten') return allTenTodayCount > 0
-        if (key === 'clueless') return cluelessAttempts.some(a => a != null)
         if (single) return singleCompletions[key]
-        return completions[key]?.some(Boolean)
-    }, [allTenTodayCount, cluelessAttempts, completions, singleCompletions])
+        return hasShareableHubProgress(key, dateKey)
+    }, [allTenTodayCount, dateKey, singleCompletions])
 
     const handleShare = useCallback((e, key, single) => {
         e.preventDefault()
@@ -664,6 +699,47 @@ export default function Home() {
                 .hp-modal-body p { margin: 0 0 1rem; }
                 .hp-modal-body ul { margin: 0 0 1rem; padding-left: 1.25rem; }
                 .hp-modal-body li { margin-bottom: 0.5rem; }
+
+                .hp-tiles-section { margin-top: 22px; }
+                .hp-section-label {
+                    font-size: 0.72rem;
+                    font-weight: 900;
+                    letter-spacing: 0.12em;
+                    color: var(--puzzle-ink-muted);
+                    margin-bottom: 10px;
+                }
+                .hp-tile-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+                    gap: 10px;
+                }
+                a.hp-tile {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    padding: 10px 6px;
+                    border-radius: var(--radius);
+                    text-decoration: none;
+                    color: inherit;
+                    background: var(--tile);
+                    box-shadow: var(--shadow);
+                    min-height: 88px;
+                    transition: background 140ms ease, transform 140ms ease;
+                }
+                a.hp-tile:hover {
+                    background: var(--tileHover);
+                    transform: translateY(-1px);
+                }
+                .hp-tile-title {
+                    font-size: 10px;
+                    font-weight: 800;
+                    letter-spacing: 0.06em;
+                    text-align: center;
+                    line-height: 1.2;
+                    color: var(--puzzle-ink-soft);
+                }
             `}</style>
 
             <div className="hp-shell">
@@ -672,6 +748,8 @@ export default function Home() {
                         title="PUZZLES"
                         showHome={false}
                         showStats={false}
+                        titleOpensLinks
+                        onSettings={() => setShowSettings(true)}
                         onCube={() => setShowLinks(true)}
                         onHelp={() => setShowInstructions(true)}
                     />
@@ -687,16 +765,18 @@ export default function Home() {
 
                     <div className="hp-divider" />
 
+                    <div className="hp-section-label">MY PUZZLES</div>
                     <section className="hp-list">
-                    {GAMES.map(({ key, href, Icon, title, desc, single }) => {
+                    {gamesOnDashboard.map(({ key, href, Icon, title, desc, single }) => {
+                        const tierSlots = isThreeTierGameKey(key) ? getEnabledTierIndices(key, suitePrefs) : [0, 1, 2]
                         const cardHref =
                             key === 'allten'
                                 ? href
                                 : single
                                   ? href
                                   : key === 'clueless'
-                                    ? hubHrefFirstUnfinishedClueless(href, cluelessAttempts)
-                                    : hubHrefFirstUnfinishedThree(href, completions[key])
+                                    ? hubHrefFirstUnfinishedCluelessWithPrefs(href, cluelessAttempts, suitePrefs)
+                                    : hubHrefFirstUnfinishedThreeWithPrefs(href, completions[key], suitePrefs)
                         const canShare = hasAnyCompletion(key, single)
                         return (
                         <div key={href} className="hp-cardWrapper">
@@ -731,7 +811,7 @@ export default function Home() {
                                                 </div>
                                             ) : null
                                         ) : key === 'clueless' ? (
-                                            <CluelessBoxes attempts={cluelessAttempts} />
+                                            <CluelessBoxes attempts={cluelessAttempts} tierSlots={tierSlots} />
                                         ) : single ? (
                                             <SinglePuzzleBox
                                                 completed={singleCompletions[key]}
@@ -745,6 +825,7 @@ export default function Home() {
                                                 completions={completions[key]}
                                                 perfects={perfects[key]}
                                                 moveCounts={moveCounts[key]}
+                                                tierSlots={tierSlots}
                                             />
                                         )}
                                         {streaks[key] > 0 && (
@@ -793,9 +874,39 @@ export default function Home() {
                         )
                     })}
                     </section>
+
+                    {gamesHidden.length > 0 ? (
+                        <section className="hp-tiles-section" aria-label="Other puzzles">
+                            <div className="hp-section-label">OTHER PUZZLES</div>
+                            <div className="hp-tile-grid">
+                                {gamesHidden.map(({ key, href, Icon, title, single }) => {
+                                    const tileHref =
+                                        key === 'allten'
+                                            ? href
+                                            : single
+                                              ? href
+                                              : key === 'clueless'
+                                                ? hubHrefFirstUnfinishedCluelessWithPrefs(href, cluelessAttempts, suitePrefs)
+                                                : hubHrefFirstUnfinishedThreeWithPrefs(href, completions[key], suitePrefs)
+                                    return (
+                                        <a key={key} className="hp-tile" href={tileHref}>
+                                            <Icon size={40} />
+                                            <span className="hp-tile-title">{title.toUpperCase()}</span>
+                                        </a>
+                                    )
+                                })}
+                            </div>
+                        </section>
+                    ) : null}
                 </main>
             </div>
 
+            <SuiteSettingsModal
+                show={showSettings}
+                onClose={() => setShowSettings(false)}
+                games={settingsGamesList}
+                onSaved={refreshSuitePrefs}
+            />
             <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
 
             {showInstructions && (
@@ -817,7 +928,7 @@ export default function Home() {
                                 <li><strong>Stars</strong> in unnumbered puzzles indicate perfect solves made without using check, undo, or reset, or deletions on Honeycombs.</li>
                             </ul>
                             <p><strong>Share</strong> copies your results to the clipboard.</p>
-                            <p><strong>Streaks</strong> for each puzzle type are maintained by completing at least one puzzle daily.</p>
+                            <p><strong>Streaks</strong> for each puzzle type are maintained by completing your selected daily set (all enabled difficulties) each day.</p>
                         </div>
                     </div>
                 </div>
