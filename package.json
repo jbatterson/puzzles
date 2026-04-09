@@ -20,6 +20,7 @@
     "dedupe:clueless-combined": "python tools/clueless/cluelessCombinedReport.py --dedupe-only",
     "stats:clueless-combined": "python tools/clueless/cluelessCombinedReport.py --stats-from-combined",
     "prune:clueless-overlap": "python tools/clueless/cluelessPruneOverlap.py",
+    "clueless:sync-word-usage": "node tools/clueless/syncCluelessWordUsage.mjs",
     "check:migration": "npm run check:allten-boundary && npm run check:header-parity && npm --prefix src/allten/runtime run test -- AppState.test.ts && npm run build",
     "predev": "npm run check:allten-boundary",
     "dev": "vite",

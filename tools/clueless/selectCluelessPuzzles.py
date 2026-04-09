@@ -14,6 +14,7 @@ Usage:
   python tools/clueless/selectCluelessPuzzles.py --seed 42
   python tools/clueless/selectCluelessPuzzles.py --pool path/to/pool.csv
   python tools/clueless/selectCluelessPuzzles.py --max-word-uses 3 --max-overlap 1
+  python tools/clueless/selectCluelessPuzzles.py --out-random a.jsonl --out-coverage b.jsonl
 """
 from __future__ import annotations
 
@@ -273,6 +274,20 @@ def main() -> None:
     parser.add_argument("--max-word-uses", type=int, default=5)
     parser.add_argument("--max-overlap", type=int, default=2)
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument(
+        "--out-random",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="JSONL for random-greedy selection (default: tools/reports/clueless-selected-random.jsonl)",
+    )
+    parser.add_argument(
+        "--out-coverage",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="JSONL for multi-pass coverage (default: tools/reports/clueless-selected-coverage.jsonl)",
+    )
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -332,13 +347,13 @@ def main() -> None:
     print(flush=True)
     print("=== Writing outputs ===", flush=True)
 
-    out1 = reports_dir / "clueless-selected-random.jsonl"
-    out2 = reports_dir / "clueless-selected-coverage.jsonl"
+    out1 = args.out_random or (reports_dir / "clueless-selected-random.jsonl")
+    out2 = args.out_coverage or (reports_dir / "clueless-selected-coverage.jsonl")
     write_output(out1, selected1)
     write_output(out2, selected2)
 
-    print(f"  {out1.name}: {len(selected1):,} puzzles", flush=True)
-    print(f"  {out2.name}: {len(selected2):,} puzzles", flush=True)
+    print(f"  {out1}: {len(selected1):,} puzzles", flush=True)
+    print(f"  {out2}: {len(selected2):,} puzzles", flush=True)
     print(f"  Total elapsed: {time.time() - t0:.1f}s", flush=True)
 
 

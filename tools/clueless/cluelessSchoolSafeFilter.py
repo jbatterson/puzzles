@@ -6,6 +6,8 @@ curated Wordle CSV (word column).
 Words are chosen for broad classroom / school-library suitability: substances,
 violence, crime, profanity-adjacent terms, sensitive body/medical terms, etc.
 Extend BLOCKLIST below if policy tightens.
+
+Use --no-curated to filter a JSONL only without rewriting wordle-answers-zipf-curated.csv.
 """
 from __future__ import annotations
 
@@ -76,6 +78,75 @@ BLOCKLIST: frozenset[str] = frozenset(
         "whack",
         "enema",
         "ovary",
+        # AoA / advanced or sensitive vocab cull (younger readers)
+        "abbot",
+        "agora",
+        "allay",
+        "avail",
+        "azure",
+        "beech",
+        "beset",
+        "billy",
+        "blond",
+        "booty",
+        "briar",
+        "cabal",
+        "cairn",
+        "china",
+        "chaff",
+        "chard",
+        "crump",
+        "dandy",
+        "detox",
+        "diode",
+        "ester",
+        "fella",
+        "femme",
+        "fibre",
+        "forgo",
+        "frock",
+        "furor",
+        "godly",
+        "gypsy",
+        "haute",
+        "hydro",
+        "inter",
+        "junta",
+        "kappa",
+        "leper",
+        "liege",
+        "loath",
+        "lorry",
+        "masse",
+        "midge",
+        "modal",
+        "nadir",
+        "natal",
+        "olden",
+        "omega",
+        "pagan",
+        "palsy",
+        "papal",
+        "pinto",
+        "quasi",
+        "roger",
+        "ruddy",
+        "rupee",
+        "salvo",
+        "sheik",
+        "shunt",
+        "smite",
+        "snuff",
+        "swami",
+        "synod",
+        "terra",
+        "theta",
+        "tonga",
+        "verso",
+        "whoop",
+        "wight",
+        "willy",
+        "woken",
     }
 )
 
@@ -112,12 +183,17 @@ def main() -> None:
     ap.add_argument("-i", "--puzzles-in", type=Path, default=default_puzzles)
     ap.add_argument("-o", "--puzzles-out", type=Path, default=default_out_puzzles)
     ap.add_argument("--curated-csv", type=Path, default=default_csv, help="Curated Wordle CSV to rewrite without blocked words")
+    ap.add_argument(
+        "--no-curated",
+        action="store_true",
+        help="Only filter puzzles JSONL; do not read or rewrite the curated CSV",
+    )
     args = ap.parse_args()
 
     if not args.puzzles_in.is_file():
         print(f"Not found: {args.puzzles_in}", file=sys.stderr)
         sys.exit(1)
-    if not args.curated_csv.is_file():
+    if not args.no_curated and not args.curated_csv.is_file():
         print(f"Not found: {args.curated_csv}", file=sys.stderr)
         sys.exit(1)
 
@@ -129,6 +205,16 @@ def main() -> None:
     with args.puzzles_out.open("w", encoding="utf-8") as f:
         for e in kept:
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
+
+    if args.no_curated:
+        try:
+            rel_p = args.puzzles_out.relative_to(root)
+        except ValueError:
+            rel_p = args.puzzles_out
+        print(f"Puzzles: {len(puzzles):,} -> {len(kept):,} (removed {removed_n:,})", flush=True)
+        print(f"Wrote {rel_p}", flush=True)
+        print(f"Blocklist ({len(BLOCKLIST)} words) (--no-curated: CSV unchanged)", flush=True)
+        return
 
     text = args.curated_csv.read_text(encoding="utf-8")
     lines = text.splitlines()

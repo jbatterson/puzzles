@@ -9,6 +9,10 @@ Usage:
   python tools/clueless/buildCandidatePool.py path/to/wordle_answers.txt
   python tools/clueless/buildCandidatePool.py path/to/wordle_answers.txt --curated path/to/curated.csv
   python tools/clueless/buildCandidatePool.py path/to/wordle_answers.txt -o pool.csv
+
+Dedup modes (--dedup):
+  hv         Keep only (h1,h2,h3) <= (v1,v2,v3) lexicographically (default; legacy).
+  transpose  Keep one of each transpose pair: min of (h1..v3) vs (v1..h3) as 6-tuples.
 """
 from __future__ import annotations
 
@@ -100,9 +104,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build complete CSV of all valid unique-solution Clueless puzzles"
     )
-    parser.add_argument("wordle_answers", type=Path, help="Full Wordle answer list (one word per line)")
+    parser.add_argument(
+        "wordle_answers",
+        type=Path,
+        help="Full lexicon for alternate-letter checks (one 5-letter word per line, e.g. wordle_guesses.txt)",
+    )
     parser.add_argument("--curated", type=Path, default=default_curated, help="Curated CSV (word,zipf_frequency,...)")
     parser.add_argument("-o", "--output", type=Path, default=default_out, help="Output CSV path")
+    parser.add_argument(
+        "--dedup",
+        choices=("hv", "transpose"),
+        default="hv",
+        help="How to drop orientation duplicates before uniqueness filter (default: hv)",
+    )
     args = parser.parse_args()
 
     for label, p in [("Wordle answers", args.wordle_answers), ("Curated CSV", args.curated)]:
@@ -117,8 +131,9 @@ def main() -> None:
     curated, zipf = load_curated(args.curated)
     curated_set = set(curated)
 
-    print(f"Full Wordle list: {len(full_set)} words", flush=True)
-    print(f"Curated list:     {len(curated_set)} words", flush=True)
+    print(f"Alternate-check lexicon: {len(full_set)} words", flush=True)
+    print(f"Curated list:              {len(curated_set)} words", flush=True)
+    print(f"Dedup mode:                {args.dedup}", flush=True)
 
     by_pos = build_pos_index(list(curated_set))
     alt = build_alt_table(list(curated_set), full_set)
@@ -180,8 +195,14 @@ def main() -> None:
 
                             ht = (h1, h2, h3)
                             vt = (v1, v2, v3)
-                            if ht > vt:
-                                continue
+                            if args.dedup == "hv":
+                                if ht > vt:
+                                    continue
+                            else:
+                                forward = (h1, h2, h3, v1, v2, v3)
+                                backward = (v1, v2, v3, h1, h2, h3)
+                                if forward > backward:
+                                    continue
 
                             total_distinct += 1
 
