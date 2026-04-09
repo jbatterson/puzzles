@@ -9,6 +9,9 @@ export const FOLDS_PALETTE = {
     amber: '#ea9a19',
 }
 
+/** Canonical palette keys (order stable for daily color shuffles). */
+export const FOLDS_PALETTE_TOKEN_KEYS = Object.keys(FOLDS_PALETTE)
+
 /**
  * SVG/CSS fill for a board color value (palette token or legacy hex).
  * Runtime-only colors (e.g. mixed brown) use hex strings and pass through.

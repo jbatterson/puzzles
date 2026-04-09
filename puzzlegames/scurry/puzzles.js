@@ -1,11 +1,11 @@
 export default {
 
 tutorial: [
-    { targets: [3, 11], maxBugs: 1, prePlaced: [7] },
-    { targets: [1, 3, 12], maxBugs: 2, prePlaced: [7] },
+    { targets: [9, 17], maxBugs: 1, prePlaced: [13] },
+    { targets: [16, 18, 7], maxBugs: 2, prePlaced: [12] },
     { targets: [7, 18, 20], maxBugs: 2, prePlaced: [13] },
-    { targets: [3, 13, 16, 20], maxBugs: 2, prePlaced: [12, 14] },
-    { targets: [4, 12, 24], maxBugs: 2, prePlaced: [13] },
+    { targets: [23, 13, 6, 10], maxBugs: 2, prePlaced: [12, 14] },
+    { targets: [6, 10, 18], maxBugs: 2, prePlaced: [13] },
     { targets: [1, 13, 19], maxBugs: 2, prePlaced: [13] },
     { targets: [11, 13, 14], maxBugs: 2, prePlaced: [12] },
     { targets: [16, 18, 19, 20], maxBugs: 3, prePlaced: [19] },

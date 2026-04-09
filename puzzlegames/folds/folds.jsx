@@ -1,6 +1,24 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react'
 import puzzleData from './puzzles.js'
 import { fillColor } from './palette.js'
+import { applyFoldsDailyPresentation } from './foldsDailyPresentation.js'
+import {
+    S,
+    H,
+    PAD,
+    N,
+    up,
+    cent,
+    pts,
+    HEX_POLY,
+    HEX_BOUNDS,
+    HEX_VIEWBOX,
+    isInsideHex,
+    isPointInsideHex,
+    snap,
+    ALL_TRIANGLES,
+    FOLD_FLOURISH_MIN_RC,
+} from './foldsGeometry.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
@@ -33,75 +51,11 @@ const FOLDS_WIN_REWIND_FADE_MS = 800
 /** After replay: delay before flourish (0 = none; still one async tick via setTimeout). */
 const FOLDS_WIN_REPLAY_PAUSE_MS = 100
 
-// ── Geometry (unchanged) ─────────────────────────────────────────────────────
-const S = 62, H = S * Math.sqrt(3) / 2, PAD = 40, N = 4, ANIM_MS = 450
-const up = (r, c) => (r + c) % 2 === 0
-const cent = (r, c) => ({ x: PAD + (c + 1) * S / 2, y: PAD + (up(r, c) ? H * (r + 2 / 3) : H * (r + 1 / 3)) })
-const pts = (r, c) => {
-    const x = PAD + c * S / 2, y = PAD + r * H
-    return up(r, c)
-        ? `${x + S / 2},${y} ${x},${y + H} ${x + S},${y + H}`
-        : `${x},${y} ${x + S},${y} ${x + S / 2},${y + H}`
-}
+const ANIM_MS = 450
 const easeIO = (t) => (t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2)
 const BROWN = '#653700'
 /** Emphasized fold line / touch confirm (lighter than suite ink for legibility on the grid). */
 const FOLD_LINE_ACCENT = '#205786'
-
-const HEX_POLY = (() => {
-    const L = N * S, V0 = { x: PAD + S / 2, y: PAD }, V1 = { x: V0.x + L, y: V0.y }, V2 = { x: V1.x + L / 2, y: V1.y + N * H }
-    const V3 = { x: V2.x - L / 2, y: V2.y + N * H }, V4 = { x: V3.x - L, y: V3.y }, V5 = { x: V4.x - L / 2, y: V4.y - N * H }
-    return [V0, V1, V2, V3, V4, V5]
-})()
-
-const HEX_BOUNDS = (() => {
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-    HEX_POLY.forEach(p => {
-        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x)
-        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y)
-    })
-    return { minX, minY, width: maxX - minX, height: maxY - minY }
-})()
-
-const VB_PAD = 14
-const HEX_VIEWBOX = { x: HEX_BOUNDS.minX - VB_PAD, y: HEX_BOUNDS.minY - VB_PAD, w: HEX_BOUNDS.width + 2 * VB_PAD, h: HEX_BOUNDS.height + 2 * VB_PAD }
-
-const isInsideHex = (r, c) => {
-    const p = cent(r, c); let inside = false
-    for (let i = 0, j = HEX_POLY.length - 1; i < HEX_POLY.length; j = i++) {
-        const xi = HEX_POLY[i].x, yi = HEX_POLY[i].y, xj = HEX_POLY[j].x, yj = HEX_POLY[j].y
-        if (((yi > p.y) !== (yj > p.y)) && (p.x < (xj - xi) * (p.y - yi) / (yj - yi + 1e-12) + xi)) inside = !inside
-    }
-    return inside
-}
-
-const isPointInsideHex = (x, y) => {
-    let inside = false
-    for (let i = 0, j = HEX_POLY.length - 1; i < HEX_POLY.length; j = i++) {
-        const xi = HEX_POLY[i].x, yi = HEX_POLY[i].y, xj = HEX_POLY[j].x, yj = HEX_POLY[j].y
-        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi)) inside = !inside
-    }
-    return inside
-}
-
-const snap = (px, py) => {
-    const re = Math.round((py - PAD) / H), ce = Math.round(2 * (px - PAD) / S) - 1
-    let best = Infinity, br = 0, bc = 0
-    for (let r = Math.max(0, re - 2); r <= Math.min(10, re + 2); r++)
-        for (let c = Math.max(-6, ce - 4); c <= Math.min(20, ce + 4); c++) {
-            const p = cent(r, c), d = (p.x - px) ** 2 + (p.y - py) ** 2
-            if (d < best) { best = d; br = r; bc = c }
-        }
-    return [br, bc]
-}
-
-const ALL_TRIANGLES = (() => {
-    const tris = []
-    for (let r = 0; r <= 8; r++) for (let c = -5; c <= 18; c++) if (isInsideHex(r, c)) tris.push({ r, c, key: `${r},${c}` })
-    return tris
-})()
-
-const FOLD_FLOURISH_MIN_RC = Math.min(...ALL_TRIANGLES.map(t => t.r + t.c))
 
 function foldFlourishWaveIndex(r, c) {
     return Math.min(FOLDS_FLOURISH_WAVE_CAP, Math.max(0, r + c - FOLD_FLOURISH_MIN_RC))
@@ -638,7 +592,8 @@ const App = () => {
     const puzzle = useMemo(() => {
         if (curateMode) return roster[curateIdx]?.puzzle
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
-        return daily.puzzles[dailyIdx]
+        const raw = daily.puzzles[dailyIdx]
+        return applyFoldsDailyPresentation(raw, daily.key, dailyIdx)
     }, [curateMode, curateIdx, roster, mode, tutorialIdx, dailyIdx, daily])
 
     const [board, setBoard] = useState(puzzle.start)

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import puzzleData from './puzzles.js'
+import { applyScurryDailyPresentation } from './scurryDailyPresentation.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
@@ -250,7 +251,8 @@ const BugPuzzle = () => {
     const level = useMemo(() => {
         if (curateMode) return roster[curateIdx]?.puzzle
         if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
-        return daily.puzzles[dailyIdx]
+        const raw = daily.puzzles[dailyIdx]
+        return applyScurryDailyPresentation(raw, daily.key, dailyIdx)
     }, [curateMode, curateIdx, roster, mode, tutorialIdx, dailyIdx, daily])
 
     const applyFreshBoard = useCallback(() => {
