@@ -1,4 +1,4 @@
-import {formatAllTenElapsedMsForShare} from "../../../../../shared-contracts/allTenSharePlaintext.js";
+import {formatAllTenElapsedMsForShare} from "@shared-contracts/allTenSharePlaintext.js";
 import {pstStringify} from "./Dates";
 
 /** Wall-clock session timer for the daily puzzle; survives reload while in progress. */

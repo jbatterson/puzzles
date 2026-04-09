@@ -4,7 +4,7 @@ import GameErrorBoundary from '../../src/shared/GameErrorBoundary.jsx'
 import App from './folds.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-    <GameErrorBoundary>
-        <App />
-    </GameErrorBoundary>
+  <GameErrorBoundary>
+    <App />
+  </GameErrorBoundary>
 )

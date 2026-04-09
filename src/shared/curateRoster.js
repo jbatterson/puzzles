@@ -44,7 +44,13 @@ export function parseCurateParams(search) {
  * @param {unknown} puzzle
  * @param {number} [jsonPrefixLength]
  */
-export function formatCurateClipboard(gameSlug, tier, indexOneBased, puzzle, jsonPrefixLength = 100) {
+export function formatCurateClipboard(
+  gameSlug,
+  tier,
+  indexOneBased,
+  puzzle,
+  jsonPrefixLength = 100
+) {
   const line1 = `${gameSlug} ${tier} ${indexOneBased}`
   const line2 = JSON.stringify(puzzle).slice(0, jsonPrefixLength)
   return `${line1}\n${line2}`

@@ -404,7 +404,6 @@ export default class AppState {
 	 */
 	showResultCopiedModal(value: boolean) {
 		this.resultCopiedModalShowing = value;
-		console.log(this.resultCopiedModalShowing);
 	}
 
 	/**

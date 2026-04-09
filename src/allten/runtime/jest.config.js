@@ -1,8 +1,12 @@
+const Path = require("path");
 const {defaults} = require("jest-config");
 
 module.exports = {
 	testPathIgnorePatterns: [...defaults.testPathIgnorePatterns, "tsout"],
 	testEnvironment: "jsdom",
+	moduleNameMapper: {
+		"^@shared-contracts/(.*)$": Path.join(__dirname, "../../../shared-contracts/$1"),
+	},
 	/**
 	 * No moduleNameMapper needed. babel.config.js in this directory is a
 	 * Babel project-wide config (unlike the "babel" key in package.json, which

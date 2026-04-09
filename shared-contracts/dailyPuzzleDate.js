@@ -5,29 +5,29 @@
  */
 
 const PAC_YMD = new Intl.DateTimeFormat('en-US', {
-	timeZone: 'America/Los_Angeles',
-	year: 'numeric',
-	month: '2-digit',
-	day: '2-digit',
+  timeZone: 'America/Los_Angeles',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
 })
 
 const PAC_LABEL = new Intl.DateTimeFormat('en-US', {
-	timeZone: 'America/Los_Angeles',
-	month: 'long',
-	day: 'numeric',
+  timeZone: 'America/Los_Angeles',
+  month: 'long',
+  day: 'numeric',
 })
 
 function formatPacificDateKey(date) {
-	const parts = PAC_YMD.formatToParts(date)
-	const y = parts.find((p) => p.type === 'year').value
-	const m = parts.find((p) => p.type === 'month').value
-	const d = parts.find((p) => p.type === 'day').value
-	return `${y}-${m}-${d}`
+  const parts = PAC_YMD.formatToParts(date)
+  const y = parts.find((p) => p.type === 'year').value
+  const m = parts.find((p) => p.type === 'month').value
+  const d = parts.find((p) => p.type === 'day').value
+  return `${y}-${m}-${d}`
 }
 
 /** Today's daily-puzzle date key in Pacific Time ("YYYY-MM-DD"). */
 export function getDailyKey() {
-	return formatPacificDateKey(new Date())
+  return formatPacificDateKey(new Date())
 }
 
 /**
@@ -35,22 +35,22 @@ export function getDailyKey() {
  * @param {number} dayOffset 0 = today, 1 = yesterday, …
  */
 export function getDateKey(dayOffset) {
-	const d = new Date()
-	d.setDate(d.getDate() - dayOffset)
-	return formatPacificDateKey(d)
+  const d = new Date()
+  d.setDate(d.getDate() - dayOffset)
+  return formatPacificDateKey(d)
 }
 
 /** Days since epoch (2020-01-01 UTC) for a YYYY-MM-DD key. Pure calendar math — no timezone. */
 export function getDayIndex(key) {
-	const [y, m, d] = key.split('-').map(Number)
-	const date = new Date(Date.UTC(y, m - 1, d))
-	const epoch = new Date(Date.UTC(2020, 0, 1))
-	return Math.floor((date - epoch) / 86400000)
+  const [y, m, d] = key.split('-').map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
+  const epoch = new Date(Date.UTC(2020, 0, 1))
+  return Math.floor((date - epoch) / 86400000)
 }
 
 /** Human-readable date in Pacific Time, e.g. "April 9". */
 export function getDateLabel() {
-	return PAC_LABEL.format(new Date())
+  return PAC_LABEL.format(new Date())
 }
 
 /**
@@ -63,12 +63,12 @@ export function getDateLabel() {
  * @returns {number}
  */
 export function computeStreak(hasCompletion, maxDays = 365) {
-	const hasToday = hasCompletion(getDateKey(0))
-	const startOffset = hasToday ? 0 : 1
-	let count = 0
-	for (let dayOffset = startOffset; dayOffset <= maxDays; dayOffset++) {
-		if (hasCompletion(getDateKey(dayOffset))) count++
-		else break
-	}
-	return count
+  const hasToday = hasCompletion(getDateKey(0))
+  const startOffset = hasToday ? 0 : 1
+  let count = 0
+  for (let dayOffset = startOffset; dayOffset <= maxDays; dayOffset++) {
+    if (hasCompletion(getDateKey(dayOffset))) count++
+    else break
+  }
+  return count
 }

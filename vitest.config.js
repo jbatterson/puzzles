@@ -1,8 +1,17 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 export default defineConfig({
-	test: {
-		environment: 'jsdom',
-		include: ['shared-contracts/__tests__/**/*.test.js'],
-	},
+  resolve: {
+    alias: {
+      '@shared-contracts': path.resolve(__dirname, 'shared-contracts'),
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    include: ['shared-contracts/__tests__/**/*.test.js'],
+  },
 })

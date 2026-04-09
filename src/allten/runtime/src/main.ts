@@ -15,9 +15,6 @@ import AppState from "./state/AppState";
 import {ProblemProps} from "./state/Problem";
 import {createProblemForDate} from "./util/ProblemUtil";
 
-// Note: all code related to input cursor positioning was removed. The diff
-// can be found in commit 6c346d4074a6e560dda004d425a3f1cb14ad4b93.
-
 function render(container: HTMLElement, props: ProblemProps) {
 	const problemDate = new Date();
 	const appState = new AppState(

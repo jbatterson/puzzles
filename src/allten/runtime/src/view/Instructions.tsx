@@ -13,8 +13,8 @@ import IconButton from "./IconButton";
 import TargetDisplay from "./TargetDisplay";
 import ExpressionDisplay from "./ExpressionDisplay";
 import SharedModalShell from "../../../../shared/SharedModalShell.jsx";
-import {MODAL_INTENTS} from "../../../../../shared-contracts/modalIntents.js";
-import {CTA_LABELS} from "../../../../../shared-contracts/ctaLabels.js";
+import {MODAL_INTENTS} from "@shared-contracts/modalIntents.js";
+import {CTA_LABELS} from "@shared-contracts/ctaLabels.js";
 
 export type Props = {
 	hideHelp: () => void;

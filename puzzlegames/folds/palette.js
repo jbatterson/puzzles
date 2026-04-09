@@ -1,12 +1,12 @@
-import { PUZZLE_SUITE_INK } from '../../shared-contracts/chromeUi.js'
+import { PUZZLE_SUITE_INK } from '@shared-contracts/chromeUi.js'
 
 /** Token → display hex for Folds puzzle cells. Edit here to retheme all puzzles. */
 export const FOLDS_PALETTE = {
-    red: '#9d270c',
-    green: '#3f6d37',
-    dkblue: '#1a3d5b',
-    blue: '#2571b1',
-    amber: '#ea9a19',
+  red: '#9d270c',
+  green: '#3f6d37',
+  dkblue: '#1a3d5b',
+  blue: '#2571b1',
+  amber: '#ea9a19',
 }
 
 /** Canonical palette keys (order stable for daily color shuffles). */
@@ -17,10 +17,10 @@ export const FOLDS_PALETTE_TOKEN_KEYS = Object.keys(FOLDS_PALETTE)
  * Runtime-only colors (e.g. mixed brown) use hex strings and pass through.
  */
 export function fillColor(token) {
-    if (token == null) return PUZZLE_SUITE_INK
-    if (typeof token === 'string' && token.startsWith('#')) return token
-    const hex = FOLDS_PALETTE[token]
-    if (hex) return hex
-    if (import.meta.env.DEV) console.warn('Unknown Folds color token:', token)
-    return '#888888'
+  if (token == null) return PUZZLE_SUITE_INK
+  if (typeof token === 'string' && token.startsWith('#')) return token
+  const hex = FOLDS_PALETTE[token]
+  if (hex) return hex
+  if (import.meta.env.DEV) console.warn('Unknown Folds color token:', token)
+  return '#888888'
 }

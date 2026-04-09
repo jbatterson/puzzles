@@ -35,7 +35,7 @@ import {
 	MEDIUM_KEYBOARD_BREAKPOINT,
 } from "./util/Constants";
 import StatsPage from "./StatsPage";
-import {CTA_LABELS} from "../../../../../shared-contracts/ctaLabels.js";
+import {CTA_LABELS} from "@shared-contracts/ctaLabels.js";
 
 export type Props = {
 	appState: AppState;

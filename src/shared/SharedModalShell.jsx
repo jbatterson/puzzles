@@ -8,6 +8,6 @@ import FloatingModalShell from './FloatingModalShell.jsx'
 const INSTRUCTIONS_PANEL_CLASS = 'game-instructions-modal'
 
 export default function SharedModalShell({ contentClassName = '', ...rest }) {
-    const merged = [INSTRUCTIONS_PANEL_CLASS, contentClassName].filter(Boolean).join(' ')
-    return <FloatingModalShell {...rest} contentClassName={merged} />
+  const merged = [INSTRUCTIONS_PANEL_CLASS, contentClassName].filter(Boolean).join(' ')
+  return <FloatingModalShell {...rest} contentClassName={merged} />
 }

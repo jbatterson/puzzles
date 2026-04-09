@@ -1,6 +1,5 @@
 export default {
-
-tutorial: [
+  tutorial: [
     { targets: [9, 17], maxBugs: 1, prePlaced: [13] },
     { targets: [16, 18, 7], maxBugs: 2, prePlaced: [12] },
     { targets: [7, 18, 20], maxBugs: 2, prePlaced: [13] },
@@ -11,8 +10,8 @@ tutorial: [
     { targets: [16, 18, 19, 20], maxBugs: 3, prePlaced: [19] },
     { targets: [6, 7, 9, 14, 24], maxBugs: 3, prePlaced: [7, 8] },
     { targets: [7, 14, 23, 24], maxBugs: 3, prePlaced: [18] },
-],
-easy: [
+  ],
+  easy: [
     { targets: [3, 13, 18, 20], maxBugs: 2, prePlaced: [19, 14] },
     { targets: [2, 4, 13, 14, 18], maxBugs: 2, prePlaced: [8, 14, 18] },
     { targets: [2, 12, 13, 14], maxBugs: 1, prePlaced: [7, 13, 8] },
@@ -40,7 +39,6 @@ easy: [
     { targets: [3, 13, 15, 18], maxBugs: 1, prePlaced: [8, 9, 13] },
     { targets: [8, 16, 19, 20], maxBugs: 2, prePlaced: [19, 13] },
     { targets: [1, 3, 13, 15, 19], maxBugs: 2, prePlaced: [7, 13, 9] },
-    { targets: [2, 4, 13, 14, 18], maxBugs: 2, prePlaced: [8, 14, 18] },
     { targets: [3, 5, 12, 13, 18], maxBugs: 2, prePlaced: [13, 18, 8] },
     { targets: [1, 7, 9, 19], maxBugs: 1, prePlaced: [14, 13, 7] },
     { targets: [12, 13, 15, 25], maxBugs: 2, prePlaced: [19, 14] },
@@ -52,25 +50,18 @@ easy: [
     { targets: [6, 18, 19, 24], maxBugs: 2, prePlaced: [18, 19] },
     { targets: [7, 12, 17, 19], maxBugs: 1, prePlaced: [18, 12, 13] },
     { targets: [6, 11, 18, 21, 23], maxBugs: 3, prePlaced: [18, 17] },
-    { targets: [3, 5, 14, 18, 19], maxBugs: 2, prePlaced: [9, 14, 18] },
     { targets: [8, 11, 18, 23], maxBugs: 2, prePlaced: [17, 13] },
-    { targets: [5, 6, 7, 8, 15], maxBugs: 2, prePlaced: [8, 9, 7] },
     { targets: [9, 11, 17, 23], maxBugs: 2, prePlaced: [18, 17] },
     { targets: [3, 15, 18, 23], maxBugs: 2, prePlaced: [18, 14] },
-    { targets: [8, 11, 18, 19, 23], maxBugs: 2, prePlaced: [19, 13, 17] },
     { targets: [3, 11, 13, 18], maxBugs: 1, prePlaced: [7, 12, 18] },
-    { targets: [12, 13, 15, 22, 24], maxBugs: 2, prePlaced: [12, 13, 19] },
     { targets: [7, 16, 18, 19, 20], maxBugs: 2, prePlaced: [17, 18, 13] },
     { targets: [8, 16, 18, 23], maxBugs: 1, prePlaced: [12, 13, 18] },
-    { targets: [3, 6, 13, 15, 18], maxBugs: 2, prePlaced: [9, 13, 12] },
     { targets: [2, 14, 19, 20], maxBugs: 2, prePlaced: [19, 14] },
     { targets: [3, 5, 12, 13], maxBugs: 2, prePlaced: [13, 8] },
-    { targets: [3, 6, 13, 17, 18], maxBugs: 2, prePlaced: [7, 13, 17] },
-    { targets: [6, 13, 14, 16, 18], maxBugs: 2, prePlaced: [12, 18, 14] },
     { targets: [3, 8, 11, 18], maxBugs: 2, prePlaced: [7, 13] },
     { targets: [11, 18, 19, 21], maxBugs: 2, prePlaced: [17, 18] },
-    ],
-medium: [
+  ],
+  medium: [
     { targets: [2, 4, 5, 11, 13, 14, 15, 23], maxBugs: 6, prePlaced: [8, 14] }, //medium
     { targets: [1, 3, 9, 17, 19, 20], maxBugs: 5, prePlaced: [13] }, //medium
     { targets: [3, 5, 15, 18, 20], maxBugs: 3, prePlaced: [14, 9] }, //medium
@@ -158,8 +149,8 @@ medium: [
     { targets: [1, 11, 14, 18, 24], maxBugs: 3, prePlaced: [18, 13] }, //medium
     { targets: [1, 2, 3, 5, 11, 16], maxBugs: 5, prePlaced: [7] }, //medium
     { targets: [4, 6, 18, 19, 20], maxBugs: 3, prePlaced: [14, 19] }, //medium
-],
-hard: [
+  ],
+  hard: [
     { targets: [1, 3, 5, 7, 9, 15, 16, 18], maxBugs: 5, prePlaced: [12, 8, 9] },
     { targets: [1, 2, 3, 4, 6, 11, 14, 21], maxBugs: 6, prePlaced: [8, 7] },
     { targets: [1, 3, 5, 9, 10, 16, 18, 20], maxBugs: 6, prePlaced: [9, 8] },
@@ -224,7 +215,5 @@ hard: [
     { targets: [6, 11, 13, 14, 15, 21, 23, 24], maxBugs: 6, prePlaced: [19, 18] },
     { targets: [1, 2, 4, 12, 13, 17], maxBugs: 3, prePlaced: [7, 12, 8] },
     { targets: [1, 5, 11, 15, 18, 21, 22, 23], maxBugs: 5, prePlaced: [18, 14, 17] },
-
-],
-
+  ],
 }

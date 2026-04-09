@@ -44,9 +44,9 @@ Before treating the Webpack bundle path as fully retired (no root scripts, no co
 Use this table when satisfying “2 consecutive release candidates” in Stats Migration Entry Criteria and Toolchain Convergence Entry Criteria:
 
 | RC tag / date | `check:migration` | Manual C + D (real profile) | Notes |
-|---------------|-------------------|-------------------------------|-------|
-|               | pass / fail       | pass / fail                   |       |
-|               | pass / fail       | pass / fail                   |       |
+| ------------- | ----------------- | --------------------------- | ----- |
+|               | pass / fail       | pass / fail                 |       |
+|               | pass / fail       | pass / fail                 |       |
 
 ## Rollback (one release cycle)
 

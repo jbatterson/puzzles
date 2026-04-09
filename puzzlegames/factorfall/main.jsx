@@ -5,7 +5,7 @@ import '../../src/shared/style.css'
 import Factorfall from './factorfall.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-    <GameErrorBoundary>
-        <Factorfall />
-    </GameErrorBoundary>
+  <GameErrorBoundary>
+    <Factorfall />
+  </GameErrorBoundary>
 )

@@ -15,7 +15,7 @@ export function computePropsFromQueryString(search) {
     props.start = n.split(',').map((a) => parseInt(a, 10))
   } else if (n) {
     throw new Error(
-      'URL must include ?n=abcd, where abcd is 4 digits or a comma separated list of numbers.',
+      'URL must include ?n=abcd, where abcd is 4 digits or a comma separated list of numbers.'
     )
   }
 

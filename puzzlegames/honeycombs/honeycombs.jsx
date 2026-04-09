@@ -1,11 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-  useLayoutEffect,
-} from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
 import puzzleData, { getDailyHoneycombsPuzzles, getHoneycombsDailyDateKey } from './puzzles.js'
 import { createHoneycombsEngine } from './honeycombsEngine.js'
 import TopBar from '../../src/shared/TopBar.jsx'
@@ -16,21 +9,24 @@ import SuiteGameCompletionModal from '../../src/shared/SuiteGameCompletionModal.
 import useSuiteCompletionTimer from '../../src/shared/useSuiteCompletionTimer.js'
 import AllTenLinksModal from '../../src/shared/AllTenLinksModal.jsx'
 import useInstructionsGate from '../../src/shared/useInstructionsGate.js'
-import { MODAL_INTENTS } from '../../shared-contracts/modalIntents.js'
-import { GAME_KEYS, getGameChrome } from '../../shared-contracts/gameChrome.js'
-import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '../../shared-contracts/chromeUi.js'
-import { CTA_LABELS } from '../../shared-contracts/ctaLabels.js'
-import { persistHubDailySlot } from '../../shared-contracts/hubEntry.js'
+import { MODAL_INTENTS } from '@shared-contracts/modalIntents.js'
+import { GAME_KEYS, getGameChrome } from '@shared-contracts/gameChrome.js'
+import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '@shared-contracts/chromeUi.js'
+import { CTA_LABELS } from '@shared-contracts/ctaLabels.js'
+import { persistHubDailySlot } from '@shared-contracts/hubEntry.js'
 import {
   clampDailyIndexToTierPrefs,
   getEnabledTierIndices,
   isSuiteCompleteForPrefs,
   nextEnabledDailyIdxAfterWin,
   resolveHubDailySlotWithPrefs,
-} from '../../shared-contracts/suiteDashboardPreferences.js'
+} from '@shared-contracts/suiteDashboardPreferences.js'
 import useSuitePrefsEpoch from '../../src/shared/useSuitePrefsEpoch.js'
-import { getInitialTutorialNav, persistTutorialResumeState } from '../../shared-contracts/tutorialResume.js'
-import { hasShareableHubProgress } from '../../shared-contracts/hubSharePlaintext.js'
+import {
+  getInitialTutorialNav,
+  persistTutorialResumeState,
+} from '@shared-contracts/tutorialResume.js'
+import { hasShareableHubProgress } from '@shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import HoneycombsIcon from '../../src/shared/icons/HoneycombsIcon.jsx'
 import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
@@ -39,14 +35,13 @@ import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import { formatHoneycombPuzzleSourceLine } from './formatHoneycombPuzzleForCopy.js'
 import './honeycombs.css'
-import { getDateLabel } from '../../shared-contracts/dailyPuzzleDate.js'
+import { getDateLabel } from '@shared-contracts/dailyPuzzleDate.js'
 
 const HONEYCOMBS_TUTORIAL_HINT_PATH =
   'Tap empty hexagons to place the missing numbers.\nMake a continuous path from 1-10.'
 const HONEYCOMBS_TUTORIAL_HINT_KEYBOARD =
   'Tap a dark-blue keyboard key to set it to active. \n Try starting this puzzle by placing the 5 and 6.'
-const HONEYCOMBS_TUTORIAL_HINT_ERASE =
-  'Tap any placed number to erase it and set it to active.'
+const HONEYCOMBS_TUTORIAL_HINT_ERASE = 'Tap any placed number to erase it and set it to active.'
 
 function storageKey(dateKey, idx) {
   return `honeycombs:${dateKey}:${idx}`
@@ -90,7 +85,7 @@ function PuzzleBoxes({ current, completions, perfects, onChange, tierSlots = [0,
             transformOrigin: 'center center',
           }}
         >
-          {completions[i] ? (perfects[i] ? '★' : '✓') : <DiceFace count={i + 1} size={20} />}
+          {completions[i] ? perfects[i] ? '★' : '✓' : <DiceFace count={i + 1} size={20} />}
         </button>
       ))}
     </div>
@@ -104,18 +99,18 @@ export default function HoneycombsApp() {
   const baseRaw = import.meta.env.BASE_URL || '/'
   const base = baseRaw.endsWith('/') ? baseRaw : `${baseRaw}/`
 
-  const [mode, setMode] = useState(() =>
-    getInitialTutorialNav(GAME_KEYS.HONEYCOMBS, puzzleData.tutorial ?? []).mode,
+  const [mode, setMode] = useState(
+    () => getInitialTutorialNav(GAME_KEYS.HONEYCOMBS, puzzleData.tutorial ?? []).mode
   )
-  const [tutorialIdx, setTutorialIdx] = useState(() =>
-    getInitialTutorialNav(GAME_KEYS.HONEYCOMBS, puzzleData.tutorial ?? []).tutorialIdx,
+  const [tutorialIdx, setTutorialIdx] = useState(
+    () => getInitialTutorialNav(GAME_KEYS.HONEYCOMBS, puzzleData.tutorial ?? []).tutorialIdx
   )
   const [dailyIdx, setDailyIdx] = useState(() =>
     resolveHubDailySlotWithPrefs(
       GAME_KEYS.HONEYCOMBS,
       getHoneycombsDailyDateKey(),
-      typeof window !== 'undefined' ? window.location.search : '',
-    ),
+      typeof window !== 'undefined' ? window.location.search : ''
+    )
   )
   const suitePrefsEpoch = useSuitePrefsEpoch()
   const tierSlots = useMemo(() => {
@@ -126,7 +121,7 @@ export default function HoneycombsApp() {
   const [perfects, setPerfects] = useState(() => loadPerfects(daily.dateKey))
   const canShareHub = useMemo(
     () => hasShareableHubProgress(GAME_KEYS.HONEYCOMBS, daily.dateKey),
-    [daily.dateKey, completions],
+    [daily.dateKey, completions]
   )
   const [showLinks, setShowLinks] = useState(false)
   const [showStats, setShowStats] = useState(false)
@@ -138,16 +133,12 @@ export default function HoneycombsApp() {
   const [tutorialHintKeyboardDismissed, setTutorialHintKeyboardDismissed] = useState(false)
   const [tutorialHintEraseDismissed, setTutorialHintEraseDismissed] = useState(false)
 
-  const {
-    hasSeenInstructions,
-    showInstructions,
-    setShowInstructions,
-    closeInstructions,
-  } = useInstructionsGate('honeycombs:hasSeenInstructions', {
-    openOnMount: !curateMode,
-    completionStoragePrefix: 'honeycombs',
-    initiallyClosed: curateMode,
-  })
+  const { hasSeenInstructions, showInstructions, setShowInstructions, closeInstructions } =
+    useInstructionsGate('honeycombs:hasSeenInstructions', {
+      openOnMount: !curateMode,
+      completionStoragePrefix: 'honeycombs',
+      initiallyClosed: curateMode,
+    })
 
   useSuiteCompletionTimer(GAME_KEYS.HONEYCOMBS, daily.dateKey, {
     track: !curateMode && mode === 'daily',
@@ -177,8 +168,13 @@ export default function HoneycombsApp() {
   }, [curateMode, mode, suitePrefsEpoch, dailyIdx])
 
   const activePuzzles = useMemo(
-    () => (curateMode ? roster.map((r) => r.puzzle) : mode === 'tutorial' ? tutorialPuzzles : daily.puzzles),
-    [curateMode, roster, mode, tutorialPuzzles, daily.puzzles],
+    () =>
+      curateMode
+        ? roster.map((r) => r.puzzle)
+        : mode === 'tutorial'
+          ? tutorialPuzzles
+          : daily.puzzles,
+    [curateMode, roster, mode, tutorialPuzzles, daily.puzzles]
   )
   const activePuzzleIdx = curateMode ? curateIdx : mode === 'tutorial' ? tutorialIdx : dailyIdx
 
@@ -208,7 +204,7 @@ export default function HoneycombsApp() {
       pendingSuiteModalRef.current = false
       setShowCompletionModal(true)
     },
-    [curateMode, mode, dailyIdx],
+    [curateMode, mode, dailyIdx]
   )
 
   const tutorialFinalAction = useMemo(() => {
@@ -262,7 +258,17 @@ export default function HoneycombsApp() {
       engine.destroy()
       engineRef.current = null
     }
-  }, [activePuzzles, curateMode, daily.dateKey, base, onRequestNext, bumpCompletions, handleWinAnimationComplete, mode, tutorialFinalAction])
+  }, [
+    activePuzzles,
+    curateMode,
+    daily.dateKey,
+    base,
+    onRequestNext,
+    bumpCompletions,
+    handleWinAnimationComplete,
+    mode,
+    tutorialFinalAction,
+  ])
 
   useLayoutEffect(() => {
     engineRef.current?.initPuzzle(activePuzzleIdx)
@@ -282,7 +288,7 @@ export default function HoneycombsApp() {
         () => {
           setCurateCopyHint('Copy failed')
           window.setTimeout(() => setCurateCopyHint(null), 2500)
-        },
+        }
       )
       return
     }
@@ -294,7 +300,9 @@ export default function HoneycombsApp() {
       <TopBar
         title={chrome.title}
         showStats={chrome.showStats}
-        onHome={() => { window.location.href = base }}
+        onHome={() => {
+          window.location.href = base
+        }}
         onHelp={() => setShowInstructions(true)}
         onCube={() => setShowLinks(true)}
         onStats={handleStatsClick}
@@ -314,14 +322,22 @@ export default function HoneycombsApp() {
       ) : mode === 'tutorial' ? (
         <div className="level-nav">
           <div className="left-spacer">
-            <button className="skip-link" onClick={() => { setMode('daily'); setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, 0)) }}>
+            <button
+              className="skip-link"
+              onClick={() => {
+                setMode('daily')
+                setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.HONEYCOMBS, 0))
+              }}
+            >
               {CTA_LABELS.SKIP_TUTORIAL}
             </button>
           </div>
           <div className="selector-group">
             <button
               className={`nav-arrow ${tutorialIdx === 0 ? 'disabled' : ''}`}
-              onClick={() => { if (tutorialIdx > 0) setTutorialIdx((i) => i - 1) }}
+              onClick={() => {
+                if (tutorialIdx > 0) setTutorialIdx((i) => i - 1)
+              }}
             >
               ←
             </button>
@@ -361,7 +377,9 @@ export default function HoneycombsApp() {
             </div>
             <button
               className={`nav-arrow ${tutorialIdx === tutorialPuzzles.length - 1 ? 'disabled' : ''}`}
-              onClick={() => { if (tutorialIdx < tutorialPuzzles.length - 1) setTutorialIdx((i) => i + 1) }}
+              onClick={() => {
+                if (tutorialIdx < tutorialPuzzles.length - 1) setTutorialIdx((i) => i + 1)
+              }}
             >
               →
             </button>
@@ -371,7 +389,13 @@ export default function HoneycombsApp() {
       ) : (
         <div className="level-nav">
           <div className="left-spacer">
-            <button className="skip-link" onClick={() => { setMode('tutorial'); setTutorialIdx(0) }}>
+            <button
+              className="skip-link"
+              onClick={() => {
+                setMode('tutorial')
+                setTutorialIdx(0)
+              }}
+            >
               {CTA_LABELS.PLAY_TUTORIAL}
             </button>
           </div>
@@ -379,7 +403,10 @@ export default function HoneycombsApp() {
             <div className="level-label" style={{ textAlign: 'center' }}>
               <span className="sub">{dateLabel}</span>
             </div>
-            <div className="game-dice-share-anchor" style={{ display: 'flex', alignItems: 'center' }}>
+            <div
+              className="game-dice-share-anchor"
+              style={{ display: 'flex', alignItems: 'center' }}
+            >
               <div className="game-dice-share-phantom" aria-hidden />
               <div className="game-dice-share-gap" aria-hidden />
               <PuzzleBoxes
@@ -390,7 +417,11 @@ export default function HoneycombsApp() {
                 tierSlots={tierSlots}
               />
               <div className="game-dice-share-gap" aria-hidden />
-              <GameShareNavButton gameKey={GAME_KEYS.HONEYCOMBS} dateKey={daily.dateKey} canShare={canShareHub} />
+              <GameShareNavButton
+                gameKey={GAME_KEYS.HONEYCOMBS}
+                dateKey={daily.dateKey}
+                canShare={canShareHub}
+              />
             </div>
           </div>
           <div className="stats-group" />
@@ -413,14 +444,16 @@ export default function HoneycombsApp() {
         onClose={closeInstructions}
         intent={MODAL_INTENTS.INSTRUCTIONS}
       >
-        <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>Honeycombs</h1>
+        <h1 className="title" style={{ marginBottom: '2rem', textAlign: 'center' }}>
+          Honeycombs
+        </h1>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
             <HoneycombsIcon size={80} />
           </div>
           <p style={{ fontSize: '1.1rem', lineHeight: '1.6', color: '#333' }}>
-            Fill the honeycomb so the numbered hexagons form one connected path that visits every hexagon
-            in the honeycomb. Orange hexagons are fixed clues on the path.
+            Fill the honeycomb so the numbered hexagons form one connected path that visits every
+            hexagon in the honeycomb. Orange hexagons are fixed clues on the path.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

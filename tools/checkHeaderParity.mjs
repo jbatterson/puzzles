@@ -1,65 +1,65 @@
-import fs from "node:fs";
-import path from "node:path";
+import fs from 'node:fs'
+import path from 'node:path'
 
-const repoRoot = path.resolve(import.meta.dirname, "..");
+const repoRoot = path.resolve(import.meta.dirname, '..')
 
 function read(relPath) {
-	return fs.readFileSync(path.join(repoRoot, relPath), "utf8");
+  return fs.readFileSync(path.join(repoRoot, relPath), 'utf8')
 }
 
-const checks = [];
+const checks = []
 
-const mainTsx = read("src/allten/runtime/src/view/Main.tsx");
+const mainTsx = read('src/allten/runtime/src/view/Main.tsx')
 checks.push({
-	name: "All Ten left icon is home",
-	ok: /icon="home"/.test(mainTsx),
-});
+  name: 'All Ten left icon is home',
+  ok: /icon="home"/.test(mainTsx),
+})
 checks.push({
-	name: "All Ten home goes to /puzzles/",
-	ok: /window\.location\.href\s*=\s*"\/puzzles\/";/.test(mainTsx),
-});
+  name: 'All Ten home goes to /puzzles/',
+  ok: /window\.location\.href\s*=\s*"\/puzzles\/";/.test(mainTsx),
+})
 checks.push({
-	name: "All Ten links control still opens links modal",
-	ok: /showLinks\(true\)/.test(mainTsx),
-});
+  name: 'All Ten links control still opens links modal',
+  ok: /showLinks\(true\)/.test(mainTsx),
+})
 checks.push({
-	name: "All Ten stats control remains active",
-	ok: /showStats\(true\)/.test(mainTsx),
-});
+  name: 'All Ten stats control remains active',
+  ok: /showStats\(true\)/.test(mainTsx),
+})
 checks.push({
-	name: "All Ten help control remains active",
-	ok: /showHelp\(true\)/.test(mainTsx),
-});
+  name: 'All Ten help control remains active',
+  ok: /showHelp\(true\)/.test(mainTsx),
+})
 
 const suiteFiles = [
-	"puzzlegames/scurry/scurry.jsx",
-	"puzzlegames/folds/folds.jsx",
-	"puzzlegames/sumtiles/sumtiles.jsx",
-	"puzzlegames/productiles/productiles.jsx",
-	"puzzlegames/factorfall/factorfall.jsx",
-	"puzzlegames/clueless/clueless.jsx",
-	"puzzlegames/honeycombs/honeycombs.jsx",
-];
+  'puzzlegames/scurry/scurry.jsx',
+  'puzzlegames/folds/folds.jsx',
+  'puzzlegames/sumtiles/sumtiles.jsx',
+  'puzzlegames/productiles/productiles.jsx',
+  'puzzlegames/factorfall/factorfall.jsx',
+  'puzzlegames/clueless/clueless.jsx',
+  'puzzlegames/honeycombs/honeycombs.jsx',
+]
 
 for (const relPath of suiteFiles) {
-	const content = read(relPath);
-	checks.push({
-		name: `${relPath} uses shared chrome contract`,
-		ok: /getGameChrome\(GAME_KEYS\./.test(content),
-	});
-	checks.push({
-		name: `${relPath} passes showStats from shared contract`,
-		ok: /showStats=\{chrome\.showStats\}/.test(content),
-	});
+  const content = read(relPath)
+  checks.push({
+    name: `${relPath} uses shared chrome contract`,
+    ok: /getGameChrome\(GAME_KEYS\./.test(content),
+  })
+  checks.push({
+    name: `${relPath} passes showStats from shared contract`,
+    ok: /showStats=\{chrome\.showStats\}/.test(content),
+  })
 }
 
-const failed = checks.filter((c) => !c.ok);
+const failed = checks.filter((c) => !c.ok)
 if (failed.length) {
-	console.error("Header parity check failed:");
-	for (const check of failed) {
-		console.error(`- ${check.name}`);
-	}
-	process.exit(1);
+  console.error('Header parity check failed:')
+  for (const check of failed) {
+    console.error(`- ${check.name}`)
+  }
+  process.exit(1)
 }
 
-console.log("Header parity check passed.");
+console.log('Header parity check passed.')

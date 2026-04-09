@@ -14,7 +14,10 @@
 		"resolveJsonModule": true,
 		"noUncheckedIndexedAccess": true,
 		"noEmit": true,
-		"types": []
+		"types": [],
+		"paths": {
+			"@shared-contracts/*": ["../../../shared-contracts/*"]
+		}
 	},
 	"include": ["src/**/*"]
 }

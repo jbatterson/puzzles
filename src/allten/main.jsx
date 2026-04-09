@@ -46,7 +46,7 @@ try {
         />
       </div>
       <MainContainer appState={appState} hideNativeTitleBar />
-    </GameErrorBoundary>,
+    </GameErrorBoundary>
   )
 } catch (ex) {
   console.error(ex)

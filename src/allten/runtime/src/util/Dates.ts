@@ -90,4 +90,4 @@ export function jumpDays(date: Date, nDays: number): Date {
 	return newDate;
 }
 
-export {isNowSchoolTime} from "../../../../../shared-contracts/schoolTime.js";
+export {isNowSchoolTime} from "@shared-contracts/schoolTime.js";

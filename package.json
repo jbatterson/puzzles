@@ -6,6 +6,8 @@
   "scripts": {
     "check:allten-boundary": "node tools/checkAllTenBoundary.mjs",
     "check:header-parity": "node tools/checkHeaderParity.mjs",
+    "check:puzzle-schemas": "node --import ./tools/registerSharedContractsResolve.mjs tools/checkPuzzleSchemas.mjs",
+    "compact:puzzles": "node --import ./tools/registerSharedContractsResolve.mjs tools/compactPuzzleData.mjs",
     "check:clueless-ambiguity": "node tools/clueless/checkCluelessAmbiguity.mjs",
     "check:clueless-ambiguity-jsonl": "python tools/clueless/checkCluelessAmbiguityJsonl.py",
     "strip:clueless-ambiguous": "python tools/clueless/checkCluelessAmbiguityJsonl.py -i tools/reports/clueless-combined-pruned.jsonl --vocab tools/reports/wordle-answers-zipf.csv --output-clean tools/reports/clueless-combined-pruned-unambiguous.jsonl",
@@ -21,7 +23,7 @@
     "stats:clueless-combined": "python tools/clueless/cluelessCombinedReport.py --stats-from-combined",
     "prune:clueless-overlap": "python tools/clueless/cluelessPruneOverlap.py",
     "clueless:sync-word-usage": "node tools/clueless/syncCluelessWordUsage.mjs",
-    "check:migration": "npm run check:allten-boundary && npm run check:header-parity && npm --prefix src/allten/runtime run test && npm run build",
+    "check:migration": "npm run check:allten-boundary && npm run check:header-parity && npm run check:puzzle-schemas && npm test && npm --prefix src/allten/runtime run test && npm run build",
     "predev": "npm run check:allten-boundary",
     "dev": "vite",
     "prebuild": "npm run check:allten-boundary",
@@ -30,6 +32,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -56,6 +60,7 @@
     "gh-pages": "^6.3.0",
     "globals": "^16.5.0",
     "jsdom": "^29.0.2",
+    "prettier": "^3.6.2",
     "vite": "^7.3.1",
     "vitest": "^4.1.4"
   }

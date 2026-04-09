@@ -72,7 +72,6 @@ const StatsPage: React.FC<Props> = function (props: Props) {
 			/>
 		);
 	}
-	// const numSolved = validSolutions.length;
 
 	return (
 		<Modal close={hideStats} show={show} extraPad center>

@@ -11,10 +11,10 @@ import ShareIcon from "../../../../shared/ShareIcon.jsx";
 import ShareResultToast, {
 	SHARE_RESULT_TOAST_MS,
 } from "../../../../shared/ShareResultToast.jsx";
-import {MODAL_INTENTS} from "../../../../../shared-contracts/modalIntents.js";
-import {isNowSchoolTime} from "../../../../../shared-contracts/schoolTime.js";
-import {buildAllTenInPuzzleStyleSharePlaintext} from "../../../../../shared-contracts/allTenSharePlaintext.js";
-import {CTA_LABELS} from "../../../../../shared-contracts/ctaLabels.js";
+import {MODAL_INTENTS} from "@shared-contracts/modalIntents.js";
+import {isNowSchoolTime} from "@shared-contracts/schoolTime.js";
+import {buildAllTenInPuzzleStyleSharePlaintext} from "@shared-contracts/allTenSharePlaintext.js";
+import {CTA_LABELS} from "@shared-contracts/ctaLabels.js";
 import {
 	formatSolveElapsedHms,
 	readPersistedSolveElapsedMs,

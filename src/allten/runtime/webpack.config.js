@@ -39,6 +39,9 @@ module.exports = {
 	},
 	resolve: {
 		extensions,
+		alias: {
+			"@shared-contracts": Path.resolve(__dirname, "../../../shared-contracts"),
+		},
 	},
 	mode: production ? "production" : "development",
 	devtool: production ? false : "cheap-module-source-map",

@@ -19,9 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const repoSlug = process.env.GITHUB_REPOSITORY?.split('/')?.[1]
-  const prodBase =
-    env.VITE_BASE_PATH ||
-    (repoSlug ? `/${repoSlug}/` : '/puzzles/')
+  const prodBase = env.VITE_BASE_PATH || (repoSlug ? `/${repoSlug}/` : '/puzzles/')
   const base = mode === 'development' ? '/' : prodBase
 
   return {
@@ -52,15 +50,10 @@ export default defineConfig(({ mode }) => {
        * Pin explicit ESM/CJS files so dev + build always resolve.
        */
       alias: {
-        'mobx-react-lite': path.resolve(
-          __dirname,
-          'node_modules/mobx-react-lite/es/index.js',
-        ),
+        '@shared-contracts': path.resolve(__dirname, 'shared-contracts'),
+        'mobx-react-lite': path.resolve(__dirname, 'node_modules/mobx-react-lite/es/index.js'),
         mobx: path.resolve(__dirname, 'node_modules/mobx/dist/mobx.esm.js'),
-        'fast-printf': path.resolve(
-          __dirname,
-          'node_modules/fast-printf/dist/src/printf.js',
-        ),
+        'fast-printf': path.resolve(__dirname, 'node_modules/fast-printf/dist/src/printf.js'),
       },
     },
     optimizeDeps: {
