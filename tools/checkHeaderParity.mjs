@@ -38,7 +38,6 @@ const suiteFiles = [
   'puzzlegames/folds/folds.jsx',
   'puzzlegames/sumtiles/sumtiles.jsx',
   'puzzlegames/productiles/productiles.jsx',
-  'puzzlegames/factorfall/factorfall.jsx',
   'puzzlegames/clueless/clueless.jsx',
   'puzzlegames/honeycombs/honeycombs.jsx',
 ]

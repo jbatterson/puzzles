@@ -450,7 +450,7 @@ export default function HoneycombsApp() {
           </div>
           <p style={{ fontSize: '1.1rem', lineHeight: '1.6', color: '#333' }}>
             Fill the honeycomb so the numbered hexagons form one connected path that visits every
-            hexagon in the honeycomb. Orange hexagons are fixed clues on the path.
+            hexagon in the honeycomb.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

@@ -1667,7 +1667,7 @@ const App = () => {
             <FoldsIcon size={80} />
           </div>
           <p style={{ fontSize: '1.1rem', lineHeight: '1.6' }}>
-            Fold the shapes along the grid lines to match the faded <b>target pattern</b>.
+            Fold the shapes along the grid lines <br/>to match the <b>target pattern</b>.
             <br />
             {coarsePointer ? (
               <>
@@ -1676,7 +1676,7 @@ const App = () => {
               </>
             ) : (
               <>
-                Hover over a fold line to highlight it. Click the line to fold the triangles across
+                Hover over a fold line to highlight it. <br/>Click the line to fold the triangles across
                 it.
               </>
             )}
@@ -1706,8 +1706,34 @@ const App = () => {
                 {CTA_LABELS.SKIP_TUTORIAL}
               </button>
             </>
+          ) : (puzzleData.tutorial?.length ?? 0) > 0 ? (
+            <>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  closeInstructions()
+                  setMode('daily')
+                  setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, 0))
+                }}
+              >
+                {CTA_LABELS.PLAY_TODAYS_PUZZLES_UPPER}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  closeInstructions()
+                  setMode('tutorial')
+                  setTutorialIdx(0)
+                }}
+              >
+                {CTA_LABELS.PLAY_TUTORIAL_UPPER}
+              </button>
+            </>
           ) : (
             <button
+              type="button"
               className="btn-primary"
               onClick={() => {
                 closeInstructions()
@@ -1715,7 +1741,7 @@ const App = () => {
                 setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.FOLDS, 0))
               }}
             >
-              {CTA_LABELS.PLAY_TODAY}
+              {CTA_LABELS.PLAY_TODAYS_PUZZLES_UPPER}
             </button>
           )}
         </div>

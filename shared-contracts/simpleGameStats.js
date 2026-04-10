@@ -199,7 +199,6 @@ export function computeSimpleGameStats(gameKey) {
   if (
     gameKey === GAME_KEYS.SCURRY ||
     gameKey === GAME_KEYS.FOLDS ||
-    gameKey === GAME_KEYS.FACTORFALL ||
     gameKey === GAME_KEYS.HONEYCOMBS
   ) {
     const { played, stars } = aggregateMultiGameFromStorage(gameKey)

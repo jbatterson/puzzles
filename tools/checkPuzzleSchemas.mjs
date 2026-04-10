@@ -49,12 +49,6 @@ const GAMES = [
     tiers: ['tutorial', 'easy', 'medium', 'hard'],
     keys: ['s', 't', 'b'],
   },
-  {
-    id: 'factorfall',
-    rel: 'puzzlegames/factorfall/puzzles.js',
-    tiers: ['tutorial', 'easy', 'medium', 'hard'],
-    keys: ['target', 'board', 'queue'],
-  },
 ]
 
 const HONEYCOMB_SIZES = new Set(['small', 'medium', 'large'])

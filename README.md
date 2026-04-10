@@ -13,7 +13,6 @@ A suite of daily math and word puzzles built with React and Vite, deployed to Gi
 | **Honeycombs**  | Fill each honeycomb to form a connected path from 1 to 10.                      |
 | **Sum Tiles**   | Slide tiles so every row and column hits its target sum.                        |
 | **Productiles** | Slide tiles so every row and column hits its target product.                    |
-| **Factorfall**  | Drop factors to clear groups that multiply to the target.                       |
 
 ## Local Development
 
@@ -59,7 +58,7 @@ npm run check:migration   # full gate: boundary + header parity + puzzle schemas
 npm run check:allten-boundary   # All Ten / suite integration boundary
 npm run check:header-parity     # shared chrome contract across all games
 npm run check:puzzle-schemas    # required keys on each game's puzzles.js tiers
-npm run compact:puzzles         # re-compact folds/sumtiles/productiles/factorfall/honeycombs data (one line per puzzle)
+npm run compact:puzzles         # re-compact folds/sumtiles/productiles/honeycombs data (one line per puzzle)
 npm run lint                    # ESLint: suite .js/.jsx + root tooling .mjs (Node)
 npm run format                  # Prettier — suite, shared-contracts, tools (excludes src/allten/runtime/)
 npm run format:check            # CI-friendly Prettier check
@@ -67,7 +66,7 @@ npm run format:check            # CI-friendly Prettier check
 
 `src/allten/runtime/` keeps its own Prettier and ESLint; run `npm --prefix src/allten/runtime run lint` / `pretty-check` there.
 
-Five large `puzzlegames/…/puzzles.js` files are listed in `.prettierignore` so Prettier does not reformat them. Folds uses three lines per puzzle (`start`, `target`, `folds`) with a blank line between puzzles; the other four use one line per puzzle. Run `npm run compact:puzzles` after bulk edits if layout drifts.
+Four large `puzzlegames/…/puzzles.js` files are listed in `.prettierignore` so Prettier does not reformat them. Folds uses three lines per puzzle (`start`, `target`, `folds`) with a blank line between puzzles; the other three use one line per puzzle. Run `npm run compact:puzzles` after bulk edits if layout drifts.
 
 CI runs `check:migration` on every push and pull request (see [`.github/workflows/migration_safety.yml`](.github/workflows/migration_safety.yml)).
 

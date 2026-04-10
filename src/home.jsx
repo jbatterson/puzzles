@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useCallback } from 'react'
+import React, { useMemo, useState, useCallback } from 'react'
 import TopBar from './shared/TopBar.jsx'
 import AllTenLinksModal from './shared/AllTenLinksModal.jsx'
 import SuiteSettingsModal from './shared/SuiteSettingsModal.jsx'
@@ -7,21 +7,11 @@ import BugIcon from './shared/icons/BugIcon.jsx'
 import FoldsIcon from './shared/icons/FoldsIcon.jsx'
 import ProductilesIcon from './shared/icons/ProductilesIcon.jsx'
 import SumTilesIcon from './shared/icons/SumTilesIcon.jsx'
-import FactorfallIcon from './shared/icons/FactorfallIcon.jsx'
 import CluelessIcon from './shared/icons/CluelessIcon.jsx'
 import AllTenIcon from './shared/icons/AllTenIcon.jsx'
 import HoneycombsIcon from './shared/icons/HoneycombsIcon.jsx'
 import DiceFace from './shared/DiceFace.jsx'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '@shared-contracts/chromeUi.js'
-import {
-  buildAllTenInPuzzleStyleSharePlaintext,
-  formatAllTenElapsedMsForShare,
-  getAllTenPuzzleNumberDisplayString,
-} from '@shared-contracts/allTenSharePlaintext.js'
-import {
-  buildHubSharePlaintext,
-  hasShareableHubProgress,
-} from '@shared-contracts/hubSharePlaintext.js'
 import {
   SUITE_DASHBOARD_PREFS_KEY,
   getEnabledTierIndices,
@@ -32,9 +22,7 @@ import {
   isThreeTierGameKey,
   readSuiteDashboardPreferences,
 } from '@shared-contracts/suiteDashboardPreferences.js'
-import ShareIcon from './shared/ShareIcon.jsx'
-import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './shared/ShareResultToast.jsx'
-import { getDailyKey, getDateKey, computeStreak } from '@shared-contracts/dailyPuzzleDate.js'
+import { getDailyKey, computeStreak } from '@shared-contracts/dailyPuzzleDate.js'
 
 const base = import.meta.env.BASE_URL
 
@@ -141,35 +129,6 @@ function loadAllTenSolvedCountForHubDateKey(dateKey) {
   }
 }
 
-/** Parsed `-targets` array for the hub puzzle day, or null. */
-function loadAllTenTargetsForHubDateKey(dateKey) {
-  const k = hubDateKeyToAllTenTargetsKey(dateKey)
-  if (!k) return null
-  try {
-    const raw = lsGet(k)
-    if (!raw) return null
-    const arr = JSON.parse(raw)
-    return Array.isArray(arr) ? arr : null
-  } catch {
-    return null
-  }
-}
-
-/** Persisted solve time for All Ten (ms), same key as in-game results. */
-function loadAllTenSolveElapsedMsForHubDateKey(dateKey) {
-  const targetsKey = hubDateKeyToAllTenTargetsKey(dateKey)
-  if (!targetsKey) return null
-  const prefix = targetsKey.replace(/-targets$/, '')
-  try {
-    const raw = lsGet(`${prefix}-solveElapsedMs`)
-    if (raw == null) return null
-    const n = parseInt(raw, 10)
-    return Number.isFinite(n) ? n : null
-  } catch {
-    return null
-  }
-}
-
 // ── Streaks ───────────────────────────────────────────────────────────────────
 
 const MAX_STREAK_DAYS = 365
@@ -184,6 +143,15 @@ function dayHasCompletion(gameKey, single, dateKey) {
 }
 
 // ── PuzzleBoxes (multi-puzzle games) ─────────────────────────────────────────
+
+/** Optical centering: star glyph sits low in the dice box without a nudge. */
+function HubDiceStar() {
+  return (
+    <span style={{ display: 'inline-block', transform: 'translateY(-1px)' }} aria-hidden="true">
+      ★
+    </span>
+  )
+}
 
 const TILE_GAMES = new Set(['sumtiles', 'productiles'])
 
@@ -208,7 +176,7 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts, tierSlots }) 
             '✓'
           )
         ) : perfect ? (
-          '★'
+          <HubDiceStar />
         ) : (
           '✓'
         )
@@ -255,14 +223,14 @@ function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
   const content = useAttempts
     ? attempts != null
       ? attempts === 1
-        ? '★'
+        ? <HubDiceStar />
         : String(Math.min(attempts, 99))
       : failed
         ? '•'
         : '1'
     : completed
       ? perfect
-        ? '★'
+        ? <HubDiceStar />
         : '✓'
       : '1'
   return (
@@ -298,7 +266,7 @@ function CluelessBoxes({ attempts, tierSlots }) {
         const content = !done ? (
           <DiceFace count={i + 1} size={20} />
         ) : a === 1 ? (
-          '★'
+          <HubDiceStar />
         ) : (
           String(Math.min(a, 99))
         )
@@ -380,13 +348,6 @@ const GAMES = [
     Icon: ProductilesIcon,
     title: 'Productiles',
     desc: 'Slide tiles so every row and column hits its product.',
-  },
-  {
-    key: 'factorfall',
-    href: `${base}puzzlegames/factorfall/`,
-    Icon: FactorfallIcon,
-    title: 'Factorfall',
-    desc: 'Drop factors to clear groups that multiply to the target.',
   },
 ]
 
@@ -495,16 +456,7 @@ export default function Home() {
   )
   const settingsGamesList = useMemo(() => GAMES.map(({ key, title, Icon }) => ({ key, title, Icon })), [])
 
-  const [shareToast, setShareToast] = useState(null)
-  const [showInstructions, setShowInstructions] = useState(false)
   const [showLinks, setShowLinks] = useState(false)
-  const toastTimeoutRef = useRef(null)
-  React.useEffect(
-    () => () => {
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
-    },
-    []
-  )
 
   React.useEffect(() => {
     const bumpStreaks = () => setStreakRefresh((n) => n + 1)
@@ -528,58 +480,6 @@ export default function Home() {
     }
   }, [refreshSuitePrefs])
 
-  const hasAnyCompletion = useCallback(
-    (key, single) => {
-      if (key === 'allten') return allTenTodayCount > 0
-      if (single) return singleCompletions[key]
-      return hasShareableHubProgress(key, dateKey)
-    },
-    [allTenTodayCount, dateKey, singleCompletions]
-  )
-
-  const handleShare = useCallback(
-    (e, key, single) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (!hasAnyCompletion(key, single)) return
-      const game = GAMES.find((g) => g.key === key)
-      if (!game) return
-      const text =
-        key === 'allten'
-          ? (() => {
-              const targets = loadAllTenTargetsForHubDateKey(dateKey)
-              const now = new Date()
-              const elapsedMs = loadAllTenSolveElapsedMsForHubDateKey(dateKey)
-              if (targets && targets.length) {
-                return buildAllTenInPuzzleStyleSharePlaintext(targets, now, elapsedMs ?? undefined)
-              }
-              const timeLine =
-                elapsedMs != null && Number.isFinite(elapsedMs)
-                  ? `\n${formatAllTenElapsedMsForShare(elapsedMs)}`
-                  : ''
-              return `All Ten #${getAllTenPuzzleNumberDisplayString(now)}\n${allTenTodayCount}/10${timeLine}\n`
-            })()
-          : buildHubSharePlaintext(key, dateKey, base)
-      navigator.clipboard.writeText(text).then(() => {
-        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
-        setShareToast({ key, preview: text, fadeOut: false })
-        toastTimeoutRef.current = setTimeout(() => {
-          setShareToast((prev) => (prev ? { ...prev, fadeOut: true } : null))
-          toastTimeoutRef.current = null
-        }, SHARE_RESULT_TOAST_MS)
-      })
-    },
-    [dateKey, allTenTodayCount, hasAnyCompletion]
-  )
-
-  const dismissShareToast = useCallback(() => {
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current)
-      toastTimeoutRef.current = null
-    }
-    setShareToast(null)
-  }, [])
-
   return (
     <>
       <style>{`
@@ -593,6 +493,11 @@ export default function Home() {
                     --tile: #f4f4f4;
                     --tileHover: #eeeeee;
                     --shadow: 0 1px 0 rgba(26, 61, 91, 0.06);
+                    /* MY PUZZLES title cards — cool light gray, softer chrome */
+                    --hp-card-bg: #f7f8f9;
+                    --hp-card-hover: #f1f3f5;
+                    --hp-card-shadow: 0 1px 0 rgba(26, 61, 91, 0.04);
+                    --hp-card-focus: rgba(26, 61, 91, 0.26);
                     --radius: 10px;
                 }
 
@@ -669,15 +574,21 @@ export default function Home() {
                     color: inherit;
                     padding: 12px;
                     border-radius: var(--radius);
-                    transition: background 140ms ease, transform 140ms ease;
+                    background: var(--hp-card-bg);
+                    box-shadow: var(--hp-card-shadow);
+                    transition: background 140ms ease, transform 140ms ease, box-shadow 140ms ease;
                 }
 
                 a.hp-card:hover {
-                    background: rgba(26, 61, 91, 0.06);
+                    background: var(--hp-card-hover);
+                    box-shadow: 0 1px 0 rgba(26, 61, 91, 0.055);
                     transform: translateY(-1px);
                 }
 
-                a.hp-card:active { transform: translateY(0px); }
+                a.hp-card:active {
+                    transform: translateY(0px);
+                    box-shadow: var(--hp-card-shadow);
+                }
 
                 .hp-iconTile {
                     width: 96px;
@@ -713,106 +624,9 @@ export default function Home() {
                 }
 
                 a.hp-card:focus-visible {
-                    outline: 3px solid rgba(26, 61, 91, 0.35);
+                    outline: 3px solid var(--hp-card-focus);
                     outline-offset: 3px;
                 }
-
-                .hp-cardWrapper {
-                    display: flex;
-                    align-items: stretch;
-                    position: relative;
-                }
-                .hp-cardWrapper .hp-card { flex: 1; min-width: 0; }
-                /* Let the row shrink on narrow viewports; default flex min-width:auto was forcing overflow. */
-                .hp-cardWrapper .hp-shareCol { min-width: 0; }
-
-                .hp-shareBtn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 8px 12px;
-                    margin: 12px;
-                    align-self: center;
-                    background: var(--puzzle-ink);
-                    color: var(--white);
-                    border: none;
-                    border-radius: 8px;
-                    font-size: 12px;
-                    font-weight: 700;
-                    letter-spacing: 0.02em;
-                    cursor: pointer;
-                    transition: background 140ms ease, filter 140ms ease;
-                }
-                .hp-shareBtn:hover:not(:disabled) { background: var(--puzzle-ink-hover); }
-                .hp-shareBtn:focus-visible {
-                    outline: 3px solid rgba(26, 61, 91, 0.45);
-                    outline-offset: 2px;
-                }
-                .hp-shareBtn:disabled {
-                    background: var(--puzzle-surface-incomplete, #d4d9e5);
-                    color: var(--puzzle-ink, #1a3d5b);
-                    cursor: default;
-                    filter: none;
-                }
-                .hp-shareBtn:disabled:hover {
-                    background: var(--puzzle-surface-incomplete, #d4d9e5);
-                }
-
-                .toast-panel {
-                    max-width: 420px;
-                    background: rgba(26, 61, 91, 0.95);
-                    color: var(--white);
-                    padding: 14px 16px;
-                    border-radius: 12px;
-                    box-shadow: 0 10px 28px rgba(26, 61, 91, 0.25);
-                    z-index: 50;
-                }
-                .toast-text { font-size: 0.9rem; line-height: 1.4; }
-                .hp-instructions-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: #fff;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    z-index: 100;
-                    padding: 40px 20px;
-                    overflow-y: auto;
-                }
-                .hp-modal-content {
-                    width: 100%;
-                    max-width: 500px;
-                    padding: 40px 20px;
-                    display: flex;
-                    flex-direction: column;
-                    position: relative;
-                }
-                .hp-modal-close {
-                    position: absolute;
-                    top: 16px;
-                    right: 16px;
-                    background: none;
-                    border: none;
-                    font-size: 22px;
-                    font-weight: 900;
-                    cursor: pointer;
-                }
-                .hp-modal-title { margin-bottom: 0.75rem; text-align: center; }
-                .hp-modal-icons {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    gap: 1.5rem;
-                    margin-bottom: 1.25rem;
-                    flex-wrap: wrap;
-                }
-                .hp-modal-body { font-size: 1rem; line-height: 1.6; }
-                .hp-modal-body p { margin: 0 0 1rem; }
-                .hp-modal-body ul { margin: 0 0 1rem; padding-left: 1.25rem; }
-                .hp-modal-body li { margin-bottom: 0.5rem; }
 
                 .hp-tiles-section { margin-top: 22px; }
                 .hp-section-label {
@@ -863,9 +677,9 @@ export default function Home() {
             showHome={false}
             showStats={false}
             titleOpensLinks
+            hubBaLinksMenu
             onSettings={() => setShowSettings(true)}
             onCube={() => setShowLinks(true)}
-            onHelp={() => setShowInstructions(true)}
           />
         </div>
 
@@ -893,112 +707,73 @@ export default function Home() {
                     : key === 'clueless'
                       ? hubHrefFirstUnfinishedCluelessWithPrefs(href, cluelessAttempts, suitePrefs)
                       : hubHrefFirstUnfinishedThreeWithPrefs(href, completions[key], suitePrefs)
-              const canShare = hasAnyCompletion(key, single)
               return (
-                <div key={href} className="hp-cardWrapper">
-                  <a className="hp-card" href={cardHref}>
-                    <div className="hp-iconTile">
-                      <Icon size={56} />
-                    </div>
-                    <div className="hp-meta">
-                      <div className="hp-cardTitle">{title}</div>
-                      <div className="hp-desc">{desc}</div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        {key === 'allten' ? (
-                          allTenTodayCount > 0 ? (
-                            <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                              <div
-                                style={{
-                                  width: '28px',
-                                  height: '28px',
-                                  borderRadius: '6px',
-                                  background:
-                                    allTenTodayCount >= 10
-                                      ? '#6b9b3b'
-                                      : PUZZLE_SUITE_SURFACE_INCOMPLETE,
-                                  color: allTenTodayCount >= 10 ? '#fff' : PUZZLE_SUITE_INK,
-                                  fontWeight: 900,
-                                  fontSize: '1rem',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                                aria-label={`${allTenTodayCount} of 10 targets solved`}
-                              >
-                                {allTenTodayCount}
-                              </div>
-                            </div>
-                          ) : null
-                        ) : key === 'clueless' ? (
-                          <CluelessBoxes attempts={cluelessAttempts} tierSlots={tierSlots} />
-                        ) : single ? (
-                          <SinglePuzzleBox
-                            completed={singleCompletions[key]}
-                            perfect={singlePerfects[key]}
-                            attempts={singleAttempts[key]}
-                            failed={singleFailed[key]}
-                          />
-                        ) : (
-                          <PuzzleBoxes
-                            gameKey={key}
-                            completions={completions[key]}
-                            perfects={perfects[key]}
-                            moveCounts={moveCounts[key]}
-                            tierSlots={tierSlots}
-                          />
-                        )}
-                        {streaks[key] > 0 && (
-                          <span
-                            style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: 1.35 }}
-                          >
-                            Streak: {streaks[key]}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </a>
-                  <div
-                    className="hp-shareCol"
-                    style={{
-                      position: 'relative',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      /* Don’t stretch to card height — toast uses top:100% of this box */
-                      alignSelf: 'flex-start',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      className="hp-shareBtn"
-                      disabled={!canShare}
-                      onClick={(e) => handleShare(e, key, single)}
-                      aria-label={canShare ? 'Share results' : 'Share results (no progress yet)'}
-                    >
-                      <ShareIcon size={18} />
-                      Share
-                    </button>
-                    {shareToast?.key === key && (
-                      <ShareResultToast
-                        preview={shareToast.preview}
-                        fadeOut={shareToast.fadeOut}
-                        align="end"
-                        onDismiss={dismissShareToast}
-                        onTransitionEnd={(e) => {
-                          if (e.target !== e.currentTarget || e.propertyName !== 'opacity') return
-                          setShareToast((prev) => (prev?.fadeOut ? null : prev))
-                        }}
-                      />
-                    )}
+                <a key={key} className="hp-card" href={cardHref}>
+                  <div className="hp-iconTile">
+                    <Icon size={56} />
                   </div>
-                </div>
+                  <div className="hp-meta">
+                    <div className="hp-cardTitle">{title}</div>
+                    <div className="hp-desc">{desc}</div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {key === 'allten' ? (
+                        allTenTodayCount > 0 ? (
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                            <div
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                background:
+                                  allTenTodayCount >= 10
+                                    ? '#6b9b3b'
+                                    : PUZZLE_SUITE_SURFACE_INCOMPLETE,
+                                color: allTenTodayCount >= 10 ? '#fff' : PUZZLE_SUITE_INK,
+                                fontWeight: 900,
+                                fontSize: '1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                              aria-label={`${allTenTodayCount} of 10 targets solved`}
+                            >
+                              {allTenTodayCount}
+                            </div>
+                          </div>
+                        ) : null
+                      ) : key === 'clueless' ? (
+                        <CluelessBoxes attempts={cluelessAttempts} tierSlots={tierSlots} />
+                      ) : single ? (
+                        <SinglePuzzleBox
+                          completed={singleCompletions[key]}
+                          perfect={singlePerfects[key]}
+                          attempts={singleAttempts[key]}
+                          failed={singleFailed[key]}
+                        />
+                      ) : (
+                        <PuzzleBoxes
+                          gameKey={key}
+                          completions={completions[key]}
+                          perfects={perfects[key]}
+                          moveCounts={moveCounts[key]}
+                          tierSlots={tierSlots}
+                        />
+                      )}
+                      {streaks[key] > 0 && (
+                        <span style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: 1.35 }}>
+                          Streak: {streaks[key]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </a>
               )
             })}
           </section>
@@ -1040,59 +815,6 @@ export default function Home() {
         onSaved={refreshSuitePrefs}
       />
       <AllTenLinksModal show={showLinks} onClose={() => setShowLinks(false)} />
-
-      {showInstructions && (
-        <div
-          className="hp-instructions-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="How progress works"
-        >
-          <div className="hp-modal-content">
-            <button
-              type="button"
-              className="hp-modal-close"
-              onClick={() => setShowInstructions(false)}
-              aria-label="Close"
-            >
-              ✕
-            </button>
-            <h2 className="hp-modal-title" style={{ fontSize: '1.5rem', fontWeight: 900 }}>
-              Puzzle Info
-            </h2>
-            <div className="hp-modal-icons" aria-hidden>
-              <BugIcon size={48} />
-              <FoldsIcon size={48} />
-              <SumTilesIcon size={48} />
-            </div>
-            <div className="hp-modal-body">
-              <p>Each day has puzzles of each type listed in order from easiest to hardest.</p>
-              <p>
-                <strong>Progress</strong> boxes show how you did on today&apos;s puzzles:
-              </p>
-              <ul>
-                <li>
-                  <strong>Green</strong> indicates completed puzzles.{' '}
-                </li>
-                <li>
-                  <strong>Numbers</strong> in completed puzzles indicate moves or guesses used.
-                </li>
-                <li>
-                  <strong>Stars</strong> in unnumbered puzzles indicate perfect solves made without
-                  using check, undo, or reset, or deletions on Honeycombs.
-                </li>
-              </ul>
-              <p>
-                <strong>Share</strong> copies your results to the clipboard.
-              </p>
-              <p>
-                <strong>Streaks</strong> for each puzzle type are maintained by completing your
-                selected daily set (all enabled difficulties) each day.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

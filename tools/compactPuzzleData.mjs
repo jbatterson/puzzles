@@ -1,5 +1,5 @@
 /**
- * Rewrites selected puzzlegames (folds, sumtiles, productiles, factorfall, honeycombs).
+ * Rewrites selected puzzlegames (folds, sumtiles, productiles, honeycombs).
  * Folds: each puzzle is start / target / folds on separate lines, blank line between puzzles.
  * Other games: one puzzle object per line.
  * Run from repo root: node --import ./tools/registerSharedContractsResolve.mjs tools/compactPuzzleData.mjs
@@ -11,13 +11,6 @@ import { pathToFileURL } from 'node:url'
 const repoRoot = path.resolve(import.meta.dirname, '..')
 
 const TIER_ORDER = ['tutorial', 'easy', 'medium', 'hard']
-
-const FACTORFALL_HEADER = `// ── Factorfall puzzle data ────────────────────────────────────────────────────
-// Colors
-const R = '#744b77'
-const B = '#faa80a'
-
-`
 
 const HONEYCOMBS_HEADER = `// Honeycombs puzzle definitions — batched like other suite games (easy / medium / hard).
 // Format per puzzle: { size: 'small'|'medium'|'large', clues: [[row, col, value], ...] }
@@ -36,26 +29,21 @@ function jsKey(key) {
 
 /**
  * @param {unknown} value
- * @param {{ factorfallColors?: boolean }} ctx
  */
-function toJs(value, ctx = {}) {
+function toJs(value) {
   if (value === null) return 'null'
   const t = typeof value
   if (t === 'number' || t === 'boolean') return String(value)
   if (t === 'string') {
-    if (ctx.factorfallColors) {
-      if (value === '#744b77') return 'R'
-      if (value === '#faa80a') return 'B'
-    }
     return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`
   }
   if (Array.isArray(value)) {
-    const inner = value.map((v) => toJs(v, ctx)).join(', ')
+    const inner = value.map((v) => toJs(v)).join(', ')
     return `[${inner}]`
   }
   if (t === 'object') {
     const o = /** @type {Record<string, unknown>} */ (value)
-    const parts = Object.keys(o).map((k) => `${jsKey(k)}: ${toJs(o[k], ctx)}`)
+    const parts = Object.keys(o).map((k) => `${jsKey(k)}: ${toJs(o[k])}`)
     return `{ ${parts.join(', ')} }`
   }
   return 'undefined'
@@ -63,14 +51,13 @@ function toJs(value, ctx = {}) {
 
 /**
  * @param {Record<string, unknown[]>} data
- * @param {{ factorfallColors?: boolean }} ctx
  */
-function formatExportBody(data, ctx) {
+function formatExportBody(data) {
   const tiers = TIER_ORDER.filter((t) => Object.prototype.hasOwnProperty.call(data, t))
   const blocks = tiers.map((tier) => {
     const list = data[tier]
     if (!Array.isArray(list)) throw new Error(`Tier "${tier}" is not an array`)
-    const lines = list.map((p) => `    ${toJs(p, ctx)},`)
+    const lines = list.map((p) => `    ${toJs(p)},`)
     return `  ${tier}: [\n${lines.join('\n')}\n  ],`
   })
   return `export default {\n${blocks.join('\n\n')}\n}\n`
@@ -91,7 +78,7 @@ function formatFoldsExportBody(data) {
       for (const k of ['start', 'target', 'folds']) {
         if (!(k in po)) throw new Error(`Folds ${tier}[${i}] missing "${k}"`)
       }
-      return `    {\n      start: ${toJs(po.start, {})},\n      target: ${toJs(po.target, {})},\n      folds: ${toJs(po.folds, {})},\n    },`
+      return `    {\n      start: ${toJs(po.start)},\n      target: ${toJs(po.target)},\n      folds: ${toJs(po.folds)},\n    },`
     })
     return `  ${tier}: [\n${puzzleBlocks.join('\n\n')}\n  ],`
   })
@@ -107,7 +94,7 @@ function formatHoneycombsFile(puzzleData, tailFromGetHoneycombs) {
   const blocks = tiers.map((tier) => {
     const list = puzzleData[tier]
     if (!Array.isArray(list)) throw new Error(`Tier "${tier}" is not an array`)
-    const lines = list.map((p) => `    ${toJs(p, {})},`)
+    const lines = list.map((p) => `    ${toJs(p)},`)
     return `  ${tier}: [\n${lines.join('\n')}\n  ],`
   })
   const body = `const puzzleData = {\n${blocks.join('\n\n')}\n}\n\nexport default puzzleData\n\n`
@@ -136,25 +123,9 @@ async function main() {
   for (const rel of ['puzzlegames/sumtiles/puzzles.js', 'puzzlegames/productiles/puzzles.js']) {
     const data = await loadDefault(rel)
     const abs = path.join(repoRoot, rel)
-    fs.writeFileSync(
-      abs,
-      formatExportBody(/** @type {Record<string, unknown[]>} */ (data), {}),
-      'utf8'
-    )
+    fs.writeFileSync(abs, formatExportBody(/** @type {Record<string, unknown[]>} */ (data)), 'utf8')
     console.log('Wrote', rel)
   }
-
-  const factorfallPath = path.join(repoRoot, 'puzzlegames/factorfall/puzzles.js')
-  const factorfallData = await loadDefault('puzzlegames/factorfall/puzzles.js')
-  fs.writeFileSync(
-    factorfallPath,
-    FACTORFALL_HEADER +
-      formatExportBody(/** @type {Record<string, unknown[]>} */ (factorfallData), {
-        factorfallColors: true,
-      }),
-    'utf8'
-  )
-  console.log('Wrote puzzlegames/factorfall/puzzles.js')
 
   const honeyPath = path.join(repoRoot, 'puzzlegames/honeycombs/puzzles.js')
   const honeyText = fs.readFileSync(honeyPath, 'utf8')

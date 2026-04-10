@@ -1158,8 +1158,6 @@ export default function SumTiles() {
             Slide the tiles so the <b>sum</b> of the numbers in every row and column matches its
             target.
             <br />
-            <br />
-            Square tiles can slide in all four directions. Long rectangles only slide the long way.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1186,8 +1184,34 @@ export default function SumTiles() {
                 {CTA_LABELS.SKIP_TUTORIAL}
               </button>
             </>
+          ) : (puzzleData.tutorial?.length ?? 0) > 0 ? (
+            <>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  closeInstructions()
+                  setMode('daily')
+                  setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SUMTILES, 0))
+                }}
+              >
+                {CTA_LABELS.PLAY_TODAYS_PUZZLES_UPPER}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  closeInstructions()
+                  setMode('tutorial')
+                  setTutorialIdx(0)
+                }}
+              >
+                {CTA_LABELS.PLAY_TUTORIAL_UPPER}
+              </button>
+            </>
           ) : (
             <button
+              type="button"
               className="btn-primary"
               onClick={() => {
                 closeInstructions()
@@ -1195,7 +1219,7 @@ export default function SumTiles() {
                 setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SUMTILES, 0))
               }}
             >
-              {CTA_LABELS.PLAY_TODAY}
+              {CTA_LABELS.PLAY_TODAYS_PUZZLES_UPPER}
             </button>
           )}
         </div>

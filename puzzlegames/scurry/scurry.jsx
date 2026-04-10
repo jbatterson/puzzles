@@ -811,7 +811,7 @@ const BugPuzzle = () => {
             Place bugs to fill all of the highlighted squares.
             <br />
             <br />
-            Placing a bug causes its neighbors to <b>scurry</b>, pushing them away in all
+            Placing a bug causes its neighbors to <b>scurry</b>, <br/>pushing them away in all
             directions.
           </p>
         </div>
@@ -839,8 +839,34 @@ const BugPuzzle = () => {
                 {CTA_LABELS.SKIP_TUTORIAL}
               </button>
             </>
+          ) : (puzzleData.tutorial?.length ?? 0) > 0 ? (
+            <>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  closeInstructions()
+                  setMode('daily')
+                  setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, 0))
+                }}
+              >
+                {CTA_LABELS.PLAY_TODAYS_PUZZLES_UPPER}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  closeInstructions()
+                  setMode('tutorial')
+                  setTutorialIdx(0)
+                }}
+              >
+                {CTA_LABELS.PLAY_TUTORIAL_UPPER}
+              </button>
+            </>
           ) : (
             <button
+              type="button"
               className="btn-primary"
               onClick={() => {
                 closeInstructions()
@@ -848,7 +874,7 @@ const BugPuzzle = () => {
                 setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, 0))
               }}
             >
-              {CTA_LABELS.PLAY_TODAY}
+              {CTA_LABELS.PLAY_TODAYS_PUZZLES_UPPER}
             </button>
           )}
         </div>

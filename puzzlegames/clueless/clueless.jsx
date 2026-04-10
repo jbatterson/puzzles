@@ -1618,13 +1618,6 @@ export default function CluelessGame() {
             Each puzzle uses six five-letter, classroom-appropriate words — no plurals, proper
             nouns, abbreviations, or acronyms.
           </p>
-          <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-            When every blank is filled with the correct letter, the puzzle completes automatically.
-          </p>
-          <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1rem' }}>
-            Tap <strong>CHECK</strong> to choose <strong>CHECK PUZZLE</strong> (all blanks) or{' '}
-            <strong>CHECK SQUARE</strong> (only the highlighted blank).
-          </p>
         </div>
 
         <button className="btn-primary" onClick={closeInstructions}>

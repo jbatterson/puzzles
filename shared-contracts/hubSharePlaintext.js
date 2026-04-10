@@ -83,7 +83,6 @@ const GAME_TITLES = Object.freeze({
   scurry: 'Scurry',
   clueless: 'Clueless',
   folds: 'Folds',
-  factorfall: 'Factorfall',
   sumtiles: 'Sum Tiles',
   productiles: 'Productiles',
   honeycombs: 'Honeycombs',

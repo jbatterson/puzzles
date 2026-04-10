@@ -67,7 +67,6 @@ export default defineConfig(({ mode }) => {
           folds: 'puzzlegames/folds/index.html',
           sumtiles: 'puzzlegames/sumtiles/index.html',
           productiles: 'puzzlegames/productiles/index.html',
-          factorfall: 'puzzlegames/factorfall/index.html',
           clueless: 'puzzlegames/clueless/index.html',
           honeycombs: 'puzzlegames/honeycombs/index.html',
           allten: 'puzzlegames/allten/index.html',

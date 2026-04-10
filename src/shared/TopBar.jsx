@@ -2,6 +2,7 @@ import React from 'react'
 import { HEADER_ACTIONS, ensureHeaderActions } from '@shared-contracts/headerActions.js'
 import { CHROME_ACTION_ARIA_LABELS, CHROME_ASSET_URLS } from '@shared-contracts/chromeUi.js'
 import PuzzleChromeMenu from './PuzzleChromeMenu.jsx'
+import HubBaLinksMenu from './HubBaLinksMenu.jsx'
 
 /** Hub (puzzle piece) icon position inside the navy circle — tweak these until it looks centered. Positive x = right, positive y = down. */
 const HOME_PUZZLE_ICON_NUDGE_PX = { x: 1.5, y: -1.5 }
@@ -155,9 +156,12 @@ export default function TopBar({
   linksViaTitleOnly = false,
   /** Hub: logo + title also open the links modal (cube stays visible). */
   titleOpensLinks = false,
+  /** Hub: cube opens Beast Academy links dropdown instead of calling `onCube`. */
+  hubBaLinksMenu = false,
   /**
    * In-puzzle chrome: gear opens a menu (difficulty / stats / instructions / tutorial).
    * When set, `showStats`, `onStats`, and `onHelp` are not shown as separate header icons.
+   * When unset, the header `?` is shown only if `onHelp` is provided (hub omits it).
    */
   puzzleChrome = null,
 }) {
@@ -200,21 +204,24 @@ export default function TopBar({
               />
             </button>
           )}
-          {!linksViaTitleOnly && (
-            <button
-              type="button"
-              style={styles.cubeBtn}
-              onClick={actions[HEADER_ACTIONS.LINKS]}
-              aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.LINKS]}
-            >
-              <img
-                style={styles.cubeImg}
-                src={CHROME_ASSET_URLS.CUBE_ICON}
-                alt=""
-                aria-hidden="true"
-              />
-            </button>
-          )}
+          {!linksViaTitleOnly &&
+            (hubBaLinksMenu ? (
+              <HubBaLinksMenu />
+            ) : (
+              <button
+                type="button"
+                style={styles.cubeBtn}
+                onClick={actions[HEADER_ACTIONS.LINKS]}
+                aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.LINKS]}
+              >
+                <img
+                  style={styles.cubeImg}
+                  src={CHROME_ASSET_URLS.CUBE_ICON}
+                  alt=""
+                  aria-hidden="true"
+                />
+              </button>
+            ))}
         </div>
 
         {titleIsLinksControl ? (
@@ -276,15 +283,17 @@ export default function TopBar({
                   <i className="fa-solid fa-gear" style={styles.settingsIcon} aria-hidden="true" />
                 </button>
               )}
-              <button
-                type="button"
-                className="titlebar-iconbtn"
-                style={styles.iconBtn}
-                onClick={actions[HEADER_ACTIONS.HELP]}
-                aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HELP]}
-              >
-                <i className="fas fa-question" style={styles.iconGlyph} aria-hidden="true" />
-              </button>
+              {typeof onHelp === 'function' && (
+                <button
+                  type="button"
+                  className="titlebar-iconbtn"
+                  style={styles.iconBtn}
+                  onClick={actions[HEADER_ACTIONS.HELP]}
+                  aria-label={CHROME_ACTION_ARIA_LABELS[HEADER_ACTIONS.HELP]}
+                >
+                  <i className="fas fa-question" style={styles.iconGlyph} aria-hidden="true" />
+                </button>
+              )}
             </>
           )}
         </div>

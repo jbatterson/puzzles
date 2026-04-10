@@ -40,7 +40,6 @@ describe('createDefaultSuiteDashboardPreferences', () => {
       GAME_KEYS.HONEYCOMBS,
       GAME_KEYS.SUMTILES,
       GAME_KEYS.PRODUCTILES,
-      GAME_KEYS.FACTORFALL,
     ]
     for (const key of threeTierKeys) {
       expect(tierOn[key]).toEqual([true, true, true])
