@@ -1,4 +1,4 @@
-// ── Factorfall puzzle data ────────────────────────────────────────────────────
+// ── Factorfall puzzle data ────────────────────────────────────────────────────pre removal
 // Colors
 const R = '#744b77'
 const B = '#faa80a'
