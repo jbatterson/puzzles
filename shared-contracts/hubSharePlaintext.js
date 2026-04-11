@@ -5,13 +5,11 @@
 
 import { readSuiteGameElapsedMs } from './suiteCompletionTimer.js'
 import { formatAllTenElapsedMsForShare } from './allTenSharePlaintext.js'
+import { isTileGameKey } from './gameChrome.js'
 import {
-  lsGet,
   loadCompletions,
   loadPerfects,
   loadMoveCounts,
-  CLUELESS_DIFFS,
-  loadCluelessAttempt,
   loadCluelessAttempts,
 } from './hubProgress.js'
 import {
@@ -27,17 +25,6 @@ function elapsedLineForShare(gameKey, dateKey) {
   return `\n${formatAllTenElapsedMsForShare(ms)}\n`
 }
 
-function loadSingleCompletion(gameKey, dateKey) {
-  if (gameKey === 'clueless') return loadCluelessAttempt(dateKey, 'medium') != null
-  return ['1', '2'].includes(lsGet(`${gameKey}:${dateKey}`))
-}
-
-function loadSinglePerfect(gameKey, dateKey) {
-  if (gameKey === 'clueless') return loadCluelessAttempt(dateKey, 'medium') === 1
-  return lsGet(`${gameKey}:${dateKey}`) === '2'
-}
-
-const TILE_GAMES = new Set(['sumtiles', 'productiles'])
 const DIFF_LABELS = ['Easy', 'Med', 'Hard']
 
 const GAME_TITLES = Object.freeze({
@@ -52,7 +39,7 @@ const GAME_TITLES = Object.freeze({
 function buildShareText(key, title, href, completions, perfects, moveCounts, dateKey, prefs) {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const playUrl = new URL(href, origin || 'http://localhost').href
-  const isTileGame = TILE_GAMES.has(key)
+  const isTileGame = isTileGameKey(key)
   const tiers = getEnabledTierIndices(key, prefs)
   let out = title.toUpperCase() + '\n'
   for (const i of tiers) {
@@ -70,21 +57,6 @@ function buildShareText(key, title, href, completions, perfects, moveCounts, dat
     }
   }
   out += elapsedLineForShare(key, dateKey)
-  out += playUrl
-  return out
-}
-
-function buildSingleShareText(gameKey, dateKey, title, href, completed, perfect) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const playUrl = new URL(href, origin || 'http://localhost').href
-  let out = title.toUpperCase() + '\n'
-  if (completed) {
-    const star = perfect ? ' (⭐ First try!)' : ''
-    out += `🟩${star}\n`
-  } else {
-    out += `⬜\n`
-  }
-  out += elapsedLineForShare(gameKey, dateKey)
   out += playUrl
   return out
 }
@@ -108,9 +80,6 @@ function buildCluelessShareText(dateKey, title, href, attempts, prefs) {
   return out
 }
 
-/** Games that use one completion slot per day (`gameKey:dateKey` storage). */
-const SINGLE_PUZZLE_GAMES = new Set()
-
 /**
  * Whether the hub would show an enabled share for this game/date (any completion / Clueless attempt).
  * Align with `src/home.jsx` hasAnyCompletion for non–All Ten games.
@@ -124,9 +93,6 @@ export function hasShareableHubProgress(gameKey, dateKey) {
   if (gameKey === 'clueless') {
     const attempts = loadCluelessAttempts(dateKey)
     return getEnabledTierIndices('clueless', prefs).some((i) => attempts[i] != null)
-  }
-  if (SINGLE_PUZZLE_GAMES.has(gameKey)) {
-    return loadSingleCompletion(gameKey, dateKey)
   }
   const completions = loadCompletions(gameKey, dateKey)
   return getEnabledTierIndices(gameKey, prefs).some((i) => completions[i])
@@ -148,16 +114,6 @@ export function buildHubSharePlaintext(gameKey, dateKey, baseHref = '/') {
 
   if (gameKey === 'clueless') {
     return buildCluelessShareText(dateKey, title, href, loadCluelessAttempts(dateKey), prefs)
-  }
-  if (SINGLE_PUZZLE_GAMES.has(gameKey)) {
-    return buildSingleShareText(
-      gameKey,
-      dateKey,
-      title,
-      href,
-      loadSingleCompletion(gameKey, dateKey),
-      loadSinglePerfect(gameKey, dateKey)
-    )
   }
   return buildShareText(
     gameKey,

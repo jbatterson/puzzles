@@ -1,13 +1,12 @@
 import React from 'react'
 import DiceFace from './DiceFace.jsx'
-import { GAME_KEYS } from '@shared-contracts/gameChrome.js'
+import { HubDiceStar, HubDiceCheck } from './HubDiceStar.jsx'
+import { GAME_KEYS, isTileGameKey } from '@shared-contracts/gameChrome.js'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '@shared-contracts/chromeUi.js'
 import {
   getEnabledTierIndices,
   readSuiteDashboardPreferences,
 } from '@shared-contracts/suiteDashboardPreferences.js'
-
-const TILE_GAMES = new Set([GAME_KEYS.SUMTILES, GAME_KEYS.PRODUCTILES])
 
 /**
  * Hub-style dice for the completion modal (matches home card row; respects suite tier prefs).
@@ -20,7 +19,7 @@ export default function SuiteCompletionHubDice({
   moveCounts,
   cluelessAttempts,
 }) {
-  const isTileGame = TILE_GAMES.has(gameKey)
+  const isTileGame = isTileGameKey(gameKey)
   const isClueless = gameKey === GAME_KEYS.CLUELESS && Array.isArray(cluelessAttempts)
   const prefs = readSuiteDashboardPreferences()
   const slots = getEnabledTierIndices(gameKey, prefs)
@@ -43,7 +42,7 @@ export default function SuiteCompletionHubDice({
           content = !done ? (
             <DiceFace count={i + 1} size={20} />
           ) : a === 1 ? (
-            '★'
+            <HubDiceStar />
           ) : (
             String(Math.min(a, 99))
           )
@@ -54,16 +53,16 @@ export default function SuiteCompletionHubDice({
             <DiceFace count={i + 1} size={20} />
           ) : isTileGame ? (
             perfects[i] ? (
-              '★'
+              <HubDiceStar />
             ) : moves != null ? (
               String(Math.min(moves, 99))
             ) : (
-              '✓'
+              <HubDiceCheck />
             )
           ) : perfects[i] ? (
-            '★'
+            <HubDiceStar />
           ) : (
-            '✓'
+            <HubDiceCheck />
           )
         }
         return (

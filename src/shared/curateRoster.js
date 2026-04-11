@@ -75,6 +75,29 @@ function formatFoldsPuzzleForPuzzlesJs(puzzle) {
 
 const CLUELESS_KEY_ORDER = ['h1', 'h2', 'h3', 'v1', 'v2', 'v3']
 
+/** Honeycombs — matches puzzlegames/honeycombs/puzzles.js */
+function formatHoneycombPuzzleForPuzzlesJs(puzzle) {
+  if (!puzzle || typeof puzzle !== 'object') return JSON.stringify(puzzle)
+  const { size, clues } = puzzle
+  if (typeof size !== 'string' || !Array.isArray(clues)) return JSON.stringify(puzzle)
+  const tripleStr = (t) => {
+    if (!Array.isArray(t) || t.length < 3) return JSON.stringify(t)
+    return `[${t[0]}, ${t[1]}, ${t[2]}]`
+  }
+  return `{ size: '${size}', clues: [${clues.map(tripleStr).join(', ')}] }`
+}
+
+/** Scurry — matches puzzlegames/scurry/puzzles.js */
+function formatScurryPuzzleForPuzzlesJs(puzzle) {
+  if (!puzzle || typeof puzzle !== 'object') return JSON.stringify(puzzle)
+  const { targets, maxBugs, prePlaced } = puzzle
+  if (!Array.isArray(targets) || typeof maxBugs !== 'number' || !Array.isArray(prePlaced)) {
+    return JSON.stringify(puzzle)
+  }
+  const nums = (arr) => arr.join(', ')
+  return `{ targets: [${nums(targets)}], maxBugs: ${maxBugs}, prePlaced: [${nums(prePlaced)}] }`
+}
+
 /** Clueless — matches puzzlegames/clueless/puzzles.js */
 function formatCluelessPuzzleForPuzzlesJs(puzzle) {
   if (!puzzle || typeof puzzle !== 'object') return null
@@ -123,6 +146,12 @@ export function formatCurateClipboard(
       break
     case 'folds':
       line2 = formatFoldsPuzzleForPuzzlesJs(puzzle)
+      break
+    case 'honeycombs':
+      line2 = formatHoneycombPuzzleForPuzzlesJs(puzzle)
+      break
+    case 'scurry':
+      line2 = formatScurryPuzzleForPuzzlesJs(puzzle)
       break
     case 'clueless':
       line2 = formatCluelessPuzzleForPuzzlesJs(puzzle)

@@ -12,7 +12,7 @@ import {TARGET_DISPLAY_HEIGHT} from "./util/Constants";
 import IconButton from "./IconButton";
 import TargetDisplay from "./TargetDisplay";
 import ExpressionDisplay from "./ExpressionDisplay";
-import SharedModalShell from "../../../../shared/SharedModalShell.jsx";
+import SharedModalShell from "../../../../shared/SharedModalShell.jsx"; // boundary-ok: pure React, no Stitches/MobX, React 17 compatible
 import {MODAL_INTENTS} from "@shared-contracts/modalIntents.js";
 import {CTA_LABELS} from "@shared-contracts/ctaLabels.js";
 

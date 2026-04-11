@@ -122,9 +122,10 @@ export default function SuiteGameCompletionModal({
     setShareUi(null)
   }, [])
 
-  const handleShare = useCallback(() => {
+  const handleShare = useCallback(async () => {
     const text = buildHubSharePlaintext(gameKey, dateKey, base)
-    navigator.clipboard.writeText(text).then(() => {
+    try {
+      await navigator.clipboard.writeText(text)
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
       const r = shareAnchorRef.current?.getBoundingClientRect()
       setShareUi({
@@ -136,7 +137,9 @@ export default function SuiteGameCompletionModal({
         setShareUi((prev) => (prev ? { ...prev, fadeOut: true } : null))
         toastTimeoutRef.current = null
       }, SHARE_RESULT_TOAST_MS)
-    })
+    } catch {
+      // clipboard unavailable (non-secure context or permission denied) — no-op
+    }
   }, [gameKey, dateKey, base])
 
   const shareToastViewportStyle =

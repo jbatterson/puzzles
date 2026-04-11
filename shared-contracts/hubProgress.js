@@ -26,7 +26,9 @@ export function loadPerfects(gameKey, dateKey) {
 export function loadMoveCounts(gameKey, dateKey) {
   return [0, 1, 2].map((i) => {
     const v = lsGet(`${gameKey}:${dateKey}:${i}:moves`)
-    return v != null ? parseInt(v, 10) : null
+    if (v == null) return null
+    const n = parseInt(v, 10)
+    return Number.isFinite(n) ? n : null
   })
 }
 

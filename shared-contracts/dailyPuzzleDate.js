@@ -48,9 +48,17 @@ export function getDayIndex(key) {
   return Math.floor((date - epoch) / 86400000)
 }
 
-/** Human-readable date in Pacific Time, e.g. "April 9". */
-export function getDateLabel() {
-  return PAC_LABEL.format(new Date())
+/**
+ * Human-readable date in Pacific Time, e.g. "April 9".
+ * Pass a YYYY-MM-DD `dateKey` to format a specific puzzle day (safe for long-lived tabs).
+ * Called without arguments falls back to the current wall-clock date.
+ * @param {string} [dateKey]
+ */
+export function getDateLabel(dateKey) {
+  if (!dateKey) return PAC_LABEL.format(new Date())
+  const [y, m, d] = String(dateKey).split('-').map(Number)
+  // Noon UTC ensures the date is the same calendar day in Pacific time.
+  return PAC_LABEL.format(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)))
 }
 
 /**

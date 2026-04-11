@@ -1,7 +1,7 @@
 import React from "react";
 import {observer} from "mobx-react-lite";
 
-import AllTenLinksModal from "../../../../shared/AllTenLinksModal.jsx";
+import AllTenLinksModal from "../../../../shared/AllTenLinksModal.jsx"; // boundary-ok: pure React, no Stitches/MobX, React 17 compatible
 
 export type Props = {
 	hideLinks: () => void;

@@ -11,6 +11,7 @@ import CluelessIcon from './shared/icons/CluelessIcon.jsx'
 import AllTenIcon from './shared/icons/AllTenIcon.jsx'
 import HoneycombsIcon from './shared/icons/HoneycombsIcon.jsx'
 import DiceFace from './shared/DiceFace.jsx'
+import { HubDiceStar, HubDiceCheck } from './shared/HubDiceStar.jsx'
 import { PUZZLE_SUITE_INK, PUZZLE_SUITE_SURFACE_INCOMPLETE } from '@shared-contracts/chromeUi.js'
 import {
   SUITE_DASHBOARD_PREFS_KEY,
@@ -23,6 +24,8 @@ import {
   readSuiteDashboardPreferences,
 } from '@shared-contracts/suiteDashboardPreferences.js'
 import { getDailyKey, computeStreak } from '@shared-contracts/dailyPuzzleDate.js'
+import { formatPuzzleDateHeading } from '@shared-contracts/suiteCompletionTimer.js'
+import { isTileGameKey } from '@shared-contracts/gameChrome.js'
 import {
   lsGet,
   loadCompletions,
@@ -103,19 +106,8 @@ function dayHasCompletion(gameKey, single, dateKey) {
 
 // ── PuzzleBoxes (multi-puzzle games) ─────────────────────────────────────────
 
-/** Optical centering: star glyph sits low in the dice box without a nudge. */
-function HubDiceStar() {
-  return (
-    <span style={{ display: 'inline-block', transform: 'translateY(-1px)' }} aria-hidden="true">
-      ★
-    </span>
-  )
-}
-
-const TILE_GAMES = new Set(['sumtiles', 'productiles'])
-
 function PuzzleBoxes({ gameKey, completions, perfects, moveCounts, tierSlots }) {
-  const isTileGame = TILE_GAMES.has(gameKey)
+  const isTileGame = isTileGameKey(gameKey)
   const c = completions ?? [false, false, false]
   const p = perfects ?? [false, false, false]
   const mc = moveCounts ?? [null, null, null]
@@ -134,12 +126,12 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts, tierSlots }) 
           ) : moves != null ? (
             String(Math.min(moves, 99))
           ) : (
-            '✓'
+            <HubDiceCheck />
           )
         ) : perfect ? (
           <HubDiceStar />
         ) : (
-          '✓'
+          <HubDiceCheck />
         )
         return (
           <div
@@ -192,7 +184,7 @@ function SinglePuzzleBox({ completed, perfect, attempts, failed }) {
     : completed
       ? perfect
         ? <HubDiceStar />
-        : '✓'
+        : <HubDiceCheck />
       : '1'
   return (
     <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
@@ -312,14 +304,9 @@ const GAMES = [
   },
 ]
 
-const today = new Date().toLocaleDateString('en-US', {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-})
-
 export default function Home() {
-  const dateKey = useMemo(() => getDailyKey(), [])
+  const [dateKey, setDateKey] = useState(getDailyKey)
+  const today = formatPuzzleDateHeading(dateKey)
 
   const [suitePrefs, setSuitePrefs] = useState(() => readSuiteDashboardPreferences())
   const [showSettings, setShowSettings] = useState(false)
@@ -420,7 +407,10 @@ export default function Home() {
   const [showLinks, setShowLinks] = useState(false)
 
   React.useEffect(() => {
-    const bumpStreaks = () => setStreakRefresh((n) => n + 1)
+    const bumpStreaks = () => {
+      setDateKey(getDailyKey())
+      setStreakRefresh((n) => n + 1)
+    }
     const onVisible = () => {
       if (document.visibilityState === 'visible') bumpStreaks()
     }

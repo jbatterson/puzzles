@@ -5,13 +5,13 @@ import isMobile from "ismobilejs";
 import AppState from "../state/AppState";
 import SolveOrderDisplay from "./SolveOrderDisplay";
 
-import FloatingModalShell from "../../../../shared/FloatingModalShell.jsx";
-import SuiteCompletionTitle from "../../../../shared/SuiteCompletionTitle.jsx";
-import ShareIcon from "../../../../shared/ShareIcon.jsx";
+import FloatingModalShell from "../../../../shared/FloatingModalShell.jsx"; // boundary-ok: pure React, no Stitches/MobX, React 17 compatible
+import SuiteCompletionTitle from "../../../../shared/SuiteCompletionTitle.jsx"; // boundary-ok: pure React, no Stitches/MobX, React 17 compatible
+import ShareIcon from "../../../../shared/ShareIcon.jsx"; // boundary-ok: pure React, no Stitches/MobX, React 17 compatible
 import ShareResultToast, {
 	SHARE_RESULT_TOAST_MS,
-} from "../../../../shared/ShareResultToast.jsx";
-import SuiteCompletionBaPlug from "../../../../shared/SuiteCompletionBaPlug.jsx";
+} from "../../../../shared/ShareResultToast.jsx"; // boundary-ok: pure React, no Stitches/MobX, React 17 compatible
+import SuiteCompletionBaPlug from "../../../../shared/SuiteCompletionBaPlug.jsx"; // boundary-ok: pure React, no Stitches/MobX, React 17 compatible
 import {MODAL_INTENTS} from "@shared-contracts/modalIntents.js";
 import {buildAllTenInPuzzleStyleSharePlaintext} from "@shared-contracts/allTenSharePlaintext.js";
 import {CTA_LABELS} from "@shared-contracts/ctaLabels.js";

@@ -49,11 +49,12 @@ export default function GameShareNavButton({ gameKey, dateKey, canShare }) {
     setShareToast(null)
   }, [])
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback(async () => {
     if (!canShare) return
     const text = buildHubSharePlaintext(gameKey, dateKey, base)
     if (!text) return
-    navigator.clipboard.writeText(text).then(() => {
+    try {
+      await navigator.clipboard.writeText(text)
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
       const n = wrapRef.current
       const r = n?.getBoundingClientRect()
@@ -63,7 +64,9 @@ export default function GameShareNavButton({ gameKey, dateKey, canShare }) {
         setShareToast((prev) => (prev ? { ...prev, fadeOut: true } : null))
         toastTimeoutRef.current = null
       }, SHARE_RESULT_TOAST_MS)
-    })
+    } catch {
+      // clipboard unavailable (non-secure context or permission denied) — no-op
+    }
   }, [canShare, gameKey, dateKey, base])
 
   const toastViewportStyle =

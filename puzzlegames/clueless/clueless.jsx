@@ -35,6 +35,7 @@ import {
   PostSolvePrimaryLink,
 } from '../../src/shared/PostSolvePrimaryCta.jsx'
 import { getDailyKey, getDateLabel, getDayIndex } from '@shared-contracts/dailyPuzzleDate.js'
+import { HubDiceStar } from '../../src/shared/HubDiceStar.jsx'
 
 /** Curate uses easy geometry for all roster puzzles (full word on middle row/col). */
 const CURATE_PUZZLE_DIFFICULTY = 'easy'
@@ -199,6 +200,24 @@ function boardCheckSignature(inputOrder, guesses) {
 
 const BLOCKED = new Set(['1,1', '1,3', '3,1', '3,3'])
 
+/**
+ * True when the non-blocked cell (r, c) is a clue (pre-revealed) rather than
+ * an input for the given difficulty. Call only for cells not in BLOCKED.
+ */
+function isClueCellForDifficulty(r, c, difficulty) {
+  if (difficulty === 'easy') {
+    // Easy: only the crossing middle letter of each word is an input; everything else is a clue.
+    return !(r % 2 === 0 && c === 2) && !(c % 2 === 0 && r === 2)
+  }
+  // Medium/Hard: odd-index positions (within each word) are inputs; even-index are clues.
+  // For row words (r even) the index within the word is c; for col words (c even) it is r.
+  const indexParity = r % 2 === 0 ? c % 2 : r % 2
+  if (indexParity === 1) return true
+  // Medium bonus hints: top-left and bottom-right corner letters revealed.
+  if (difficulty === 'medium' && ((r === 0 && c === 0) || (r === 4 && c === 4))) return true
+  return false
+}
+
 const ALL_PLAYABLE_KEYS = new Set()
 
 for (let r = 0; r < 5; r++) {
@@ -235,22 +254,7 @@ function getPuzzleData(p, difficulty) {
         if (letter == null) letter = vLetter
       }
 
-      // Medium/Hard: clues at positions 2 and 4 (indices 1 and 3), inputs at 1/3/5 (indices 0/2/4).
-      // Easy: only the middle letter (position 3 / index 2) is an input; everything else is a clue.
-      let isClue = true
-      if (difficulty === 'easy') {
-        const isAcrossMiddle = r % 2 === 0 && c === 2
-        const isDownMiddle = c % 2 === 0 && r === 2
-        isClue = !(isAcrossMiddle || isDownMiddle)
-      } else {
-        // Determine clue vs input based on index parity within the word.
-        // For row words (r even) index is c; for col words (c even) index is r.
-        const indexParity = r % 2 === 0 ? c % 2 : r % 2
-        isClue = indexParity === 1
-      }
-      // Medium bonus hints: give the top-left and bottom-right corner letters.
-      if (difficulty === 'medium' && (key === '0,0' || key === '4,4')) isClue = true
-      if (isClue) clues[key] = letter
+      if (isClueCellForDifficulty(r, c, difficulty)) clues[key] = letter
       else answers[key] = letter
     }
   }
@@ -431,7 +435,7 @@ function retreatAlongAxis(fromIdx, axisMode, inputOrder, locked) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function CluelessGame() {
+export default function Clueless() {
   const chrome = getGameChrome(GAME_KEYS.CLUELESS)
   const [difficultyIdx, setDifficultyIdx] = useState(() =>
     resolveHubDailySlotWithPrefs(
@@ -457,7 +461,7 @@ export default function CluelessGame() {
     return getDailyPuzzle(difficulty)
   }, [curateMode, curateIdx, roster, difficulty])
 
-  const dateLabel = useMemo(() => getDateLabel(), [])
+  const dateLabel = useMemo(() => getDateLabel(daily.key), [daily.key])
   const puzzleDifficulty = curateMode ? CURATE_PUZZLE_DIFFICULTY : difficulty
   const { clues, answers } = useMemo(() => {
     if (!daily.puzzle) return { clues: {}, answers: {} }
@@ -475,22 +479,12 @@ export default function CluelessGame() {
       for (let c = 0; c < 5; c++) {
         const key = `${r},${c}`
         if (BLOCKED.has(key)) continue
-        let isClue = true
-        if (puzzleDifficulty === 'easy') {
-          const isAcrossMiddle = r % 2 === 0 && c === 2
-          const isDownMiddle = c % 2 === 0 && r === 2
-          isClue = !(isAcrossMiddle || isDownMiddle)
-        } else {
-          const indexParity = r % 2 === 0 ? c % 2 : r % 2
-          isClue = indexParity === 1
-        }
-        // Medium bonus hints: give the top-left and bottom-right corner letters.
-        if (puzzleDifficulty === 'medium' && (key === '0,0' || key === '4,4')) isClue = true
-        if (isClue) clueCells.add(key)
+        if (isClueCellForDifficulty(r, c, puzzleDifficulty)) clueCells.add(key)
         else inputOrder.push({ r, c })
       }
     }
-    return { clueCells, inputOrder }
+    const inputIndexByKey = new Map(inputOrder.map(({ r, c }, i) => [`${r},${c}`, i]))
+    return { clueCells, inputOrder, inputIndexByKey }
   }, [puzzleDifficulty])
 
   // Puzzle state (loaded per difficulty via effect below)
@@ -1109,22 +1103,19 @@ export default function CluelessGame() {
     suitePrefsEpoch,
   ])
 
-  const handleStatsClick = useCallback(() => {
+  const handleStatsClick = useCallback(async () => {
     if (curateMode) {
       const entry = roster[curateIdx]
       const p = entry?.puzzle
       if (!p) return
       const text = formatCurateClipboard('clueless', entry.tier, entry.indexInTier + 1, p, 200)
-      void navigator.clipboard.writeText(text).then(
-        () => {
-          setCurateCopyHint('Copied puzzle id')
-          window.setTimeout(() => setCurateCopyHint(null), 2500)
-        },
-        () => {
-          setCurateCopyHint('Copy failed')
-          window.setTimeout(() => setCurateCopyHint(null), 2500)
-        }
-      )
+      try {
+        await navigator.clipboard.writeText(text)
+        setCurateCopyHint('Copied puzzle id')
+      } catch {
+        setCurateCopyHint('Copy failed')
+      }
+      window.setTimeout(() => setCurateCopyHint(null), 2500)
       return
     }
     setShowStats(true)
@@ -1239,7 +1230,7 @@ export default function CluelessGame() {
         continue
       }
 
-      const idx = geometry.inputOrder.findIndex((p) => p.r === r && p.c === c)
+      const idx = geometry.inputIndexByKey.get(key) ?? -1
       const isSelected = idx === selected && !solved
       const isLocked = locked.has(key)
       const isWrong = cellGuessShowsWrong(key, locked, guesses, triedLettersByCell)
@@ -1379,7 +1370,7 @@ export default function CluelessGame() {
                   const done = a != null
                   const content = done ? (
                     a === 1 ? (
-                      '★'
+                      <HubDiceStar />
                     ) : (
                       String(Math.min(a, 99))
                     )

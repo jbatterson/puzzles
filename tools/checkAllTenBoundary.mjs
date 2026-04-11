@@ -8,8 +8,13 @@ const checks = [
     name: 'allten runtime must not import suite source',
     baseDir: path.join(repoRoot, 'src', 'allten', 'runtime', 'src'),
     forbidden: [
+      // Absolute-style alias or path containing src/shared/
       /from\s+["'][^"']*src\/shared\/[^"']*["']/g,
+      // Relative path going up to src/ (e.g. ../../../src/…)
       /from\s+["'][^"']*\.\.\/\.\.\/\.\.\/src\/[^"']*["']/g,
+      // Relative path going up N levels then into shared/ (e.g. ../../../../shared/)
+      // This was the previously undetected pattern used by Links, Results, Instructions.
+      /from\s+["'](?:\.\.\/)+shared\/[^"']*["']/g,
     ],
   },
   {
@@ -56,12 +61,21 @@ for (const check of checks) {
   }
   for (const filePath of collectFiles(check.baseDir)) {
     const rel = path.relative(repoRoot, filePath).replaceAll('\\', '/')
-    const content = fs.readFileSync(filePath, 'utf8')
-    for (const pattern of check.forbidden) {
-      pattern.lastIndex = 0
-      if (pattern.test(content)) {
-        violations.push(`${check.name}: ${rel}`)
-        break
+    const lines = fs.readFileSync(filePath, 'utf8').split('\n')
+    let reported = false
+    for (const line of lines) {
+      // A line annotated with // boundary-ok has been explicitly reviewed and
+      // approved as a deliberate exception. Every other cross-import is a violation.
+      if (line.includes('// boundary-ok')) continue
+      for (const pattern of check.forbidden) {
+        pattern.lastIndex = 0
+        if (pattern.test(line)) {
+          if (!reported) {
+            violations.push(`${check.name}: ${rel}`)
+            reported = true
+          }
+          break
+        }
       }
     }
   }

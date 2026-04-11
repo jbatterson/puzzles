@@ -120,10 +120,11 @@ export default function SimpleGameStatsModal({ show, onClose, gameKey, dailySuit
     setShareUi(null)
   }, [])
 
-  const handleShare = useCallback(() => {
+  const handleShare = useCallback(async () => {
     if (!useSuiteLayout || !dailySuiteFooter?.dateKey) return
     const text = buildHubSharePlaintext(gameKey, dailySuiteFooter.dateKey, base)
-    navigator.clipboard.writeText(text).then(() => {
+    try {
+      await navigator.clipboard.writeText(text)
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
       const r = shareAnchorRef.current?.getBoundingClientRect()
       setShareUi({
@@ -135,7 +136,9 @@ export default function SimpleGameStatsModal({ show, onClose, gameKey, dailySuit
         setShareUi((prev) => (prev ? { ...prev, fadeOut: true } : null))
         toastTimeoutRef.current = null
       }, SHARE_RESULT_TOAST_MS)
-    })
+    } catch {
+      // clipboard unavailable (non-secure context or permission denied) — no-op
+    }
   }, [useSuiteLayout, dailySuiteFooter?.dateKey, gameKey, base])
 
   const shareToastViewportStyle =

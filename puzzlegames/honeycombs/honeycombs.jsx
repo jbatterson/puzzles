@@ -30,10 +30,9 @@ import { hasShareableHubProgress } from '@shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import HoneycombsIcon from '../../src/shared/icons/HoneycombsIcon.jsx'
 import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
-import { buildTierRoster } from '../../src/shared/curateRoster.js'
+import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
-import { formatHoneycombPuzzleSourceLine } from './formatHoneycombPuzzleForCopy.js'
 import './honeycombs.css'
 import { getDateLabel } from '@shared-contracts/dailyPuzzleDate.js'
 
@@ -92,10 +91,10 @@ function PuzzleBoxes({ current, completions, perfects, onChange, tierSlots = [0,
   )
 }
 
-export default function HoneycombsApp() {
+export default function Honeycombs() {
   const chrome = getGameChrome(GAME_KEYS.HONEYCOMBS)
   const daily = useMemo(() => getDailyHoneycombsPuzzles(), [])
-  const dateLabel = useMemo(() => getDateLabel(), [])
+  const dateLabel = useMemo(() => getDateLabel(daily.dateKey), [daily.dateKey])
   const baseRaw = import.meta.env.BASE_URL || '/'
   const base = baseRaw.endsWith('/') ? baseRaw : `${baseRaw}/`
 
@@ -279,7 +278,7 @@ export default function HoneycombsApp() {
       const entry = roster[curateIdx]
       const p = entry?.puzzle
       if (!entry || !p) return
-      const text = `honeycombs ${entry.tier} ${entry.indexInTier + 1}\n${formatHoneycombPuzzleSourceLine(p)}`
+      const text = formatCurateClipboard('honeycombs', entry.tier, entry.indexInTier + 1, p)
       void navigator.clipboard.writeText(text).then(
         () => {
           setCurateCopyHint('Copied puzzle id')

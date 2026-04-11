@@ -30,14 +30,13 @@ import { hasShareableHubProgress } from '@shared-contracts/hubSharePlaintext.js'
 import GameShareNavButton from '../../src/shared/GameShareNavButton.jsx'
 import BugIconPuzzle from '../../src/shared/icons/BugIconPuzzle.jsx'
 import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
-import { buildTierRoster } from '../../src/shared/curateRoster.js'
+import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import {
   PostSolvePrimaryButton,
   PostSolvePrimaryLink,
 } from '../../src/shared/PostSolvePrimaryCta.jsx'
-import { formatScurryPuzzleSourceLine } from './formatScurryPuzzleForCopy.js'
 import { getDailyKey, getDateLabel, getDayIndex } from '@shared-contracts/dailyPuzzleDate.js'
 
 /** After the last winning placement: 300ms pre-celebration + 800ms `celebrating-bug` (see `placeBug`). */
@@ -213,10 +212,10 @@ function PuzzleBoxes({ current, completions, perfects, onChange, tierSlots = [0,
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-const BugPuzzle = () => {
+const Scurry = () => {
   const chrome = getGameChrome(GAME_KEYS.SCURRY)
   const daily = useMemo(() => getDailyPuzzles(), [])
-  const dateLabel = useMemo(() => getDateLabel(), [])
+  const dateLabel = useMemo(() => getDateLabel(daily.key), [daily.key])
   const roster = useMemo(() => buildTierRoster(puzzleData), [])
   const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 
@@ -542,7 +541,7 @@ const BugPuzzle = () => {
     if (curateMode) {
       const entry = roster[curateIdx]
       if (!entry || !level) return
-      const text = `scurry ${entry.tier} ${entry.indexInTier + 1}\n${formatScurryPuzzleSourceLine(level)}`
+      const text = formatCurateClipboard('scurry', entry.tier, entry.indexInTier + 1, level)
       void navigator.clipboard.writeText(text).then(
         () => {
           setCurateCopyHint('Copied puzzle id')
@@ -903,4 +902,4 @@ const BugPuzzle = () => {
   )
 }
 
-export default BugPuzzle
+export default Scurry

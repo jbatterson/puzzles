@@ -325,7 +325,7 @@ function PuzzleBoxes({
 export default function SumTiles() {
   const chrome = getGameChrome(GAME_KEYS.SUMTILES)
   const daily = useMemo(() => getDailyPuzzles(), [])
-  const dateLabel = useMemo(() => getDateLabel(), [])
+  const dateLabel = useMemo(() => getDateLabel(daily.key), [daily.key])
   const roster = useMemo(() => buildTierRoster(puzzleData), [])
   const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 

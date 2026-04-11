@@ -1,10 +1,14 @@
 /**
- * Entry point for building the client code. Does not automatically start things
- * up; instead exports a render function that gets passed a DOM element and
- * parameters about the problem.
+ * Legacy Webpack standalone entry point (webpack.config.js → entry: "./src/main.ts").
  *
- * Also exports a query-string parser just as a convenience, in case the JS
- * using this code is not being built and has no easy access to a parser.
+ * This file is NOT used by the suite's Vite build. The active entry point is
+ * src/allten/main.jsx, which is bundled by Vite alongside the rest of the suite.
+ *
+ * ReactDOM.render is the correct React 17 API here; createRoot (React 18+) is
+ * used in main.jsx because that module runs under the suite's React 19 runtime.
+ *
+ * Webpack is not run in CI. This file is retained so the standalone Webpack
+ * build remains functional for local development against the original pipeline.
  */
 
 import ReactDOM from "react-dom";

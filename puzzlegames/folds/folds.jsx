@@ -462,10 +462,10 @@ const FOLDS_TUTORIAL_HINT_FINE_POINTER =
 const FOLDS_TUTORIAL_HINT_TWO_FOLDS = 'It takes two folds to match this pattern.'
 
 // ── Main component ───────────────────────────────────────────────────────────
-const App = () => {
+const Folds = () => {
   const chrome = getGameChrome(GAME_KEYS.FOLDS)
   const daily = useMemo(() => getDailyPuzzles(), [])
-  const dateLabel = useMemo(() => getDateLabel(), [])
+  const dateLabel = useMemo(() => getDateLabel(daily.key), [daily.key])
   const roster = useMemo(() => buildTierRoster(puzzleData), [])
   const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 
@@ -1770,4 +1770,4 @@ const App = () => {
   )
 }
 
-export default App
+export default Folds

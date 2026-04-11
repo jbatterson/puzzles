@@ -18,3 +18,16 @@ export const MODAL_CLOSE_ARIA_LABELS = Object.freeze({
 export function getModalCloseAriaLabel(intent) {
   return MODAL_CLOSE_ARIA_LABELS[intent] || MODAL_CLOSE_ARIA_LABELS.default
 }
+
+const MODAL_DIALOG_LABELS = Object.freeze({
+  [MODAL_INTENTS.INSTRUCTIONS]: 'Instructions',
+  [MODAL_INTENTS.LINKS]: 'Links',
+  [MODAL_INTENTS.STATS]: 'Stats',
+  [MODAL_INTENTS.RESULTS]: 'Results',
+  [MODAL_INTENTS.SETTINGS]: 'Settings',
+  default: 'Dialog',
+})
+
+export function getModalDialogLabel(intent) {
+  return MODAL_DIALOG_LABELS[intent] || MODAL_DIALOG_LABELS.default
+}

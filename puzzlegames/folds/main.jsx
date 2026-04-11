@@ -1,10 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import GameErrorBoundary from '../../src/shared/GameErrorBoundary.jsx'
-import App from './folds.jsx'
+import Folds from './folds.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <GameErrorBoundary>
-    <App />
+    <Folds />
   </GameErrorBoundary>
 )

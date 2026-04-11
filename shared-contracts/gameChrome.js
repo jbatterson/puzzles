@@ -21,3 +21,10 @@ const GAME_CHROME = Object.freeze({
 export function getGameChrome(gameKey) {
   return GAME_CHROME[gameKey] || { title: 'Puzzle', showStats: false }
 }
+
+const TILE_GAME_KEYS = new Set([GAME_KEYS.SUMTILES, GAME_KEYS.PRODUCTILES])
+
+/** True for games that track move counts and show them on hub tiles (Sum Tiles, Productiles). */
+export function isTileGameKey(gameKey) {
+  return TILE_GAME_KEYS.has(gameKey)
+}
