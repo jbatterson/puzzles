@@ -287,8 +287,11 @@ const CLUELESS_CLUE_FONT = 'clamp(1rem, 4vw, 1.5rem)'
 /** Matches input cells; active-band clues use this so they read at the same scale. */
 const CLUELESS_INPUT_FONT = 'clamp(1.2rem, 5vw, 2rem)'
 
-/** Board outer width — keyboard and post-solve buttons use the same value so they match the grid. */
-const CLUELESS_STAGE_WIDTH = 'min(calc(100vw - 40px), calc(100dvh - 346px), 460px)'
+/** Board outer max-width — caps the grid+keyboard to the height-available space and an absolute max.
+ *  Intentionally excludes vw: horizontal sizing comes from width:'100%' on the container so it
+ *  always matches the padded parent rather than the raw viewport (which diverges when a scrollbar
+ *  is present and was the cause of the board drifting right as the window narrowed). */
+const CLUELESS_STAGE_MAX_WIDTH = 'min(calc(100dvh - 346px), 460px)'
 /** Keyboard + CTA share this min height in both play and solved states so the board doesn’t jump on win. */
 const CLUELESS_KEYBOARD_BAND_MIN_HEIGHT = 'clamp(100px, 22vh, 170px)'
 
@@ -1463,8 +1466,8 @@ export default function Clueless() {
         <div
           style={{
             position: 'relative',
-            width: CLUELESS_STAGE_WIDTH,
-            maxWidth: '100%',
+            width: '100%',
+            maxWidth: CLUELESS_STAGE_MAX_WIDTH,
             flexShrink: 0,
           }}
         >

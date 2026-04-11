@@ -32,10 +32,7 @@ import SumTilesIcon from '../../src/shared/icons/SumTilesIcon.jsx'
 import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
-import {
-  PostSolvePrimaryButton,
-  PostSolvePrimaryLink,
-} from '../../src/shared/PostSolvePrimaryCta.jsx'
+import SmartRightButton from '../../src/shared/SmartRightButton.jsx'
 import {
   TILE_WIN_HIGHLIGHT_FILL,
   TILES_WIN_FLOURISH_TOTAL_MS,
@@ -1127,32 +1124,15 @@ export default function SumTiles() {
         <button className="btn-secondary" onClick={handleUndo} disabled={historyLen === 0}>
           Undo
         </button>
-        <button className="btn-secondary" onClick={handleReset} disabled={historyLen === 0}>
-          Reset
-        </button>
-      </div>
-
-      {!isSolved ? (
-        <div className="goal-text">Match the Sums</div>
-      ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
-        <PostSolvePrimaryLink
+        <SmartRightButton
+          primaryLabel={primaryLabel}
+          primaryHref={primaryLabel === CTA_LABELS.ALL_PUZZLES ? base : undefined}
+          onPrimaryClick={handlePrimary}
           attention={postSolveCtaAttention}
-          href={base}
-          style={{
-            textAlign: 'center',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {CTA_LABELS.ALL_PUZZLES}
-        </PostSolvePrimaryLink>
-      ) : primaryLabel ? (
-        <PostSolvePrimaryButton attention={postSolveCtaAttention} onClick={handlePrimary}>
-          {primaryLabel}
-        </PostSolvePrimaryButton>
-      ) : null}
+          resetDisabled={historyLen === 0}
+          onReset={handleReset}
+        />
+      </div>
 
       <SharedModalShell
         show={showInstructions}

@@ -53,6 +53,54 @@ export const HEX_VIEWBOX = {
   h: HEX_BOUNDS.height + 2 * VB_PAD,
 }
 
+/** Rendered board is rotated by this angle in `folds.jsx`. */
+export const HEX_ROTATE_DEG = 30
+
+const HEX_CENTER = {
+  x: HEX_BOUNDS.minX + HEX_BOUNDS.width / 2,
+  y: HEX_BOUNDS.minY + HEX_BOUNDS.height / 2,
+}
+
+function rotatePoint(point, degrees, center) {
+  const radians = (degrees * Math.PI) / 180
+  const cos = Math.cos(radians)
+  const sin = Math.sin(radians)
+  const dx = point.x - center.x
+  const dy = point.y - center.y
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos,
+  }
+}
+
+export const HEX_ROTATED_BOUNDS = (() => {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  HEX_POLY.map((p) => rotatePoint(p, HEX_ROTATE_DEG, HEX_CENTER)).forEach((p) => {
+    minX = Math.min(minX, p.x)
+    maxX = Math.max(maxX, p.x)
+    minY = Math.min(minY, p.y)
+    maxY = Math.max(maxY, p.y)
+  })
+  return { minX, minY, width: maxX - minX, height: maxY - minY }
+})()
+
+/**
+ * Viewbox that matches the post-rotation extents (used by the live SVG).
+ *
+ * Keep this padding modest so the board can expand toward the stage edges.
+ * Too much pad creates dead space; too little clips outer strokes.
+ */
+export const HEX_ROTATED_VB_PAD = 8
+export const HEX_ROTATED_VIEWBOX = {
+  x: HEX_ROTATED_BOUNDS.minX - HEX_ROTATED_VB_PAD,
+  y: HEX_ROTATED_BOUNDS.minY - HEX_ROTATED_VB_PAD,
+  w: HEX_ROTATED_BOUNDS.width + 2 * HEX_ROTATED_VB_PAD,
+  h: HEX_ROTATED_BOUNDS.height + 2 * HEX_ROTATED_VB_PAD,
+}
+
 export const isInsideHex = (r, c) => {
   const p = cent(r, c)
   let inside = false

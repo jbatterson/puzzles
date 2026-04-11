@@ -12,7 +12,8 @@ import {
   pts,
   HEX_POLY,
   HEX_BOUNDS,
-  HEX_VIEWBOX,
+  HEX_ROTATE_DEG,
+  HEX_ROTATED_VIEWBOX,
   isInsideHex,
   isPointInsideHex,
   snap,
@@ -51,10 +52,7 @@ import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
 import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
-import {
-  PostSolvePrimaryButton,
-  PostSolvePrimaryLink,
-} from '../../src/shared/PostSolvePrimaryCta.jsx'
+import SmartRightButton from '../../src/shared/SmartRightButton.jsx'
 import { getDailyKey, getDateLabel, getDayIndex } from '@shared-contracts/dailyPuzzleDate.js'
 
 /** Clueless-style wave flourish: cap × stagger + pop + tail (keep in sync with `src/shared/style.css` `.folds-win-flourish-pop`). */
@@ -987,7 +985,7 @@ const Folds = () => {
   const isWon = useMemo(() => boardsMatchTarget(board, puzzle.target), [board, puzzle])
   /** Treat as solved during win replay / pause so CTAs stay in “won” mode. */
   const uiWon = isWon || winShowcase != null
-  /** Rewind / replay / pause / flourish — bottom chrome should match post-solve (no goal-text blink during replay `anim`). */
+  /** Rewind / replay / pause / flourish — bottom chrome should match post-solve state during replay `anim`. */
   const foldsCelebrationActive = winShowcase != null || winFlourishActive
 
   /** Skip celebration and snap to final solved board (Undo / Reset / primary CTA during celebration). */
@@ -1163,7 +1161,7 @@ const Folds = () => {
         : nextIncompleteEnabledTierExcluding(GAME_KEYS.FOLDS, daily.key, dailyIdx) != null
           ? CTA_LABELS.NEXT_PUZZLE
           : CTA_LABELS.ALL_PUZZLES
-    : folds <= 0
+    : folds <= 0 && !anim
       ? 'Retry Puzzle'
       : null
 
@@ -1205,7 +1203,7 @@ const Folds = () => {
   }, [curateMode, roster, curateIdx, puzzle])
 
   return (
-    <div className="game-container">
+    <div className="game-container folds">
       <TopBar
         title={chrome.title}
         onHome={() => {
@@ -1341,18 +1339,13 @@ const Folds = () => {
         </div>
       )}
 
-      <div
-        className="game-stage"
-        style={{ border: 'none', boxShadow: 'none', outline: 'none', background: 'transparent' }}
-      >
-        <div
-          id="canvas-wrapper"
-          ref={canvasWrapperRef}
-          style={{ border: 'none', outline: 'none', boxShadow: 'none' }}
-        >
+      <div className="game-stage">
+        <div id="canvas-wrapper" ref={canvasWrapperRef}>
           <svg
             ref={svgRef}
-            viewBox={`${HEX_VIEWBOX.x} ${HEX_VIEWBOX.y} ${HEX_VIEWBOX.w} ${HEX_VIEWBOX.h}`}
+            /* Rotation-aware viewBox from geometry is required.
+               If this regresses to unrotated bounds, board fit/clip issues return. */
+            viewBox={`${HEX_ROTATED_VIEWBOX.x} ${HEX_ROTATED_VIEWBOX.y} ${HEX_ROTATED_VIEWBOX.w} ${HEX_ROTATED_VIEWBOX.h}`}
             preserveAspectRatio="xMidYMid meet"
             style={{
               width: '100%',
@@ -1371,7 +1364,7 @@ const Folds = () => {
             }}
           >
             <g
-              transform={`rotate(30 ${HEX_BOUNDS.minX + HEX_BOUNDS.width / 2} ${HEX_BOUNDS.minY + HEX_BOUNDS.height / 2})`}
+              transform={`rotate(${HEX_ROTATE_DEG} ${HEX_BOUNDS.minX + HEX_BOUNDS.width / 2} ${HEX_BOUNDS.minY + HEX_BOUNDS.height / 2})`}
             >
               {ALL_TRIANGLES.map((t) => (
                 <polygon
@@ -1594,7 +1587,9 @@ const Folds = () => {
         </div>
       </div>
 
-      <div className="button-tray">
+      {/* data-fold-confirm prevents onPointerDownCapture from clearing pendingFoldLine
+          before the SmartRightButton click handler can confirm the fold */}
+      <div className="button-tray" data-fold-confirm="">
         <button
           onClick={() => {
             if (foldsCelebrationActive) cancelFoldsWinCelebration()
@@ -1611,48 +1606,29 @@ const Folds = () => {
         >
           Undo
         </button>
-        <button
-          onClick={() => {
-            if (foldsCelebrationActive) cancelFoldsWinCelebration()
-            clearFoldLineInteractionState()
-            usedUndoOrResetRef.current = true
-            if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
-            setBoard(puzzle.start)
-            setHistory([puzzle.start])
-            setFolds(puzzle.folds)
-          }}
-          disabled={history.length <= 1 && !pendingFoldLine && !pendingFoldAnchor}
-          className="btn-secondary"
-        >
-          Reset
-        </button>
+        {(() => {
+          const foldButtonActive =
+            !anim && !uiWon && folds > 0 && pendingFoldLine && !foldsCelebrationActive
+          return (
+            <SmartRightButton
+              primaryLabel={foldButtonActive ? 'FOLD' : primaryLabel}
+              primaryHref={primaryLabel === CTA_LABELS.ALL_PUZZLES ? base : undefined}
+              onPrimaryClick={foldButtonActive ? confirmPendingFold : handlePrimaryClick}
+              attention={foldsPrimaryCtaAttention}
+              resetDisabled={history.length <= 1}
+              onReset={() => {
+                if (foldsCelebrationActive) cancelFoldsWinCelebration()
+                clearFoldLineInteractionState()
+                usedUndoOrResetRef.current = true
+                if (mode === 'daily') clearFoldsWip(daily.key, dailyIdx)
+                setBoard(puzzle.start)
+                setHistory([puzzle.start])
+                setFolds(puzzle.folds)
+              }}
+            />
+          )
+        })()}
       </div>
-
-      {!anim && !uiWon && folds > 0 && pendingFoldLine && !foldsCelebrationActive ? (
-        <button className="btn-primary" data-fold-confirm onClick={confirmPendingFold}>
-          FOLD
-        </button>
-      ) : (anim && !foldsCelebrationActive) || (!uiWon && folds > 0) ? (
-        <div className="goal-text">Match the Pattern</div>
-      ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
-        <PostSolvePrimaryLink
-          attention={foldsPrimaryCtaAttention}
-          href={base}
-          style={{
-            textAlign: 'center',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {CTA_LABELS.ALL_PUZZLES}
-        </PostSolvePrimaryLink>
-      ) : primaryLabel ? (
-        <PostSolvePrimaryButton attention={foldsPrimaryCtaAttention} onClick={handlePrimaryClick}>
-          {primaryLabel}
-        </PostSolvePrimaryButton>
-      ) : null}
 
       <SharedModalShell
         show={showInstructions}

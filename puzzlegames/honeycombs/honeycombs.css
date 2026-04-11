@@ -24,9 +24,15 @@
 #keyboard button,
 .kb-key,
 .kb-action-btn-secondary,
-.kb-next-puzzle {
+.kb-action-btn-primary {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+a.kb-action-btn-primary {
+  text-decoration: none;
+  color: #fff;
+  box-sizing: border-box;
 }
 
 /* ── HONEYCOMB GRID ── */
@@ -34,7 +40,7 @@
   width: 100%;
   max-width: 500px;
   flex: 1;
-  min-height: 0;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -269,79 +275,7 @@ svg#hex-grid {
   filter: none;
 }
 
-/* Goal line or full-width CHECK / NEXT */
-.hc-bottom-strip {
-  width: 100%;
-  max-width: 460px;
-  margin-top: 0;
-  padding-top: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-.hc-goal-line {
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
-  color: #1a3d5b;
-  padding: 0 8px;
-  line-height: 1.35;
-}
 
-.kb-solve-strip {
-  width: 100%;
-  max-width: 460px;
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-a.kb-next-puzzle {
-  text-decoration: none;
-  color: #fff;
-  box-sizing: border-box;
-}
-.kb-next-puzzle {
-  width: 100%;
-  min-height: 52px;
-  border-radius: 4px;
-  border: none;
-  background: var(--puzzle-ink, #1a3d5b);
-  color: #fff;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    transform 0.08s ease,
-    background-color 0.12s ease,
-    filter 0.12s ease,
-    opacity 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.kb-next-puzzle:active {
-  transform: scale(0.96);
-  filter: brightness(0.9);
-}
-@media (hover: hover) {
-  .kb-next-puzzle:hover {
-    background: var(--puzzle-ink-hover, #465d7e);
-    transform: translateY(-1px);
-  }
-}
 .kb-action-btn-secondary:disabled {
   opacity: 0.35;
   cursor: not-allowed;

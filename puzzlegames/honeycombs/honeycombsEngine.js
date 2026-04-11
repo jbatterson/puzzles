@@ -1023,89 +1023,64 @@ export function createHoneycombsEngine({
       handleUndo()
     })
 
-    const rst = document.createElement('button')
-    rst.type = 'button'
-    rst.className = 'kb-action-btn-secondary'
-    rst.textContent = 'Reset'
-    rst.title = 'Clear all player entries'
-    rst.disabled = state.moveHistory.length === 0
-    rst.addEventListener('click', (e) => {
-      e.stopPropagation()
-      handleClearAll()
-    })
-
-    actions.appendChild(undoBtn)
-    actions.appendChild(rst)
-    keyboard.appendChild(actions)
-
-    const bottom = document.createElement('div')
-    bottom.className = 'hc-bottom-strip'
-    let hasBottom = false
-
+    // Smart right button: promotes to primary CTA when a contextual action is available
+    let rightEl
     if (state.solved && state.puzzleIdx < enginePuzzles.length - 1) {
-      hasBottom = true
-      const nextBtn = document.createElement('button')
-      nextBtn.type = 'button'
-      nextBtn.className = 'kb-next-puzzle'
-      nextBtn.textContent = CTA_LABELS.NEXT_PUZZLE
-      nextBtn.addEventListener('click', (e) => {
-        e.stopPropagation()
-        onRequestNextPuzzle?.()
-      })
-      bottom.appendChild(nextBtn)
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'kb-action-btn-primary'
+      btn.textContent = CTA_LABELS.NEXT_PUZZLE
+      btn.addEventListener('click', (e) => { e.stopPropagation(); onRequestNextPuzzle?.() })
+      rightEl = btn
     } else if (
       state.solved &&
       state.puzzleIdx === enginePuzzles.length - 1 &&
       finalSolvedAction?.label
     ) {
-      hasBottom = true
       if (finalSolvedAction.href) {
-        const actionLink = document.createElement('a')
-        actionLink.href = finalSolvedAction.href
-        actionLink.className = 'kb-next-puzzle'
-        actionLink.textContent = finalSolvedAction.label
-        actionLink.addEventListener('click', (e) => e.stopPropagation())
-        bottom.appendChild(actionLink)
+        const a = document.createElement('a')
+        a.href = finalSolvedAction.href
+        a.className = 'kb-action-btn-primary'
+        a.textContent = finalSolvedAction.label
+        a.addEventListener('click', (e) => e.stopPropagation())
+        rightEl = a
       } else {
-        const actionBtn = document.createElement('button')
-        actionBtn.type = 'button'
-        actionBtn.className = 'kb-next-puzzle'
-        actionBtn.textContent = finalSolvedAction.label
-        actionBtn.addEventListener('click', (e) => {
-          e.stopPropagation()
-          finalSolvedAction.onClick?.()
-        })
-        bottom.appendChild(actionBtn)
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'kb-action-btn-primary'
+        btn.textContent = finalSolvedAction.label
+        btn.addEventListener('click', (e) => { e.stopPropagation(); finalSolvedAction.onClick?.() })
+        rightEl = btn
       }
     } else if (state.solved && state.puzzleIdx === enginePuzzles.length - 1 && hubBaseHref) {
-      hasBottom = true
-      const hub = document.createElement('a')
-      hub.href = hubBaseHref
-      hub.className = 'kb-next-puzzle'
-      hub.textContent = CTA_LABELS.ALL_PUZZLES
-      hub.addEventListener('click', (e) => e.stopPropagation())
-      bottom.appendChild(hub)
+      const a = document.createElement('a')
+      a.href = hubBaseHref
+      a.className = 'kb-action-btn-primary'
+      a.textContent = CTA_LABELS.ALL_PUZZLES
+      a.addEventListener('click', (e) => e.stopPropagation())
+      rightEl = a
     } else if (!state.solved && allFilled()) {
-      hasBottom = true
-      const chk = document.createElement('button')
-      chk.type = 'button'
-      chk.className = 'kb-next-puzzle'
-      chk.textContent = 'Check'
-      chk.title = 'Check your answer'
-      chk.addEventListener('click', (e) => {
-        e.stopPropagation()
-        handleCheck()
-      })
-      bottom.appendChild(chk)
-    } else if (!state.solved) {
-      hasBottom = true
-      const goal = document.createElement('div')
-      goal.className = 'hc-goal-line'
-      goal.textContent = `Number a path 1–${n}`
-      bottom.appendChild(goal)
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'kb-action-btn-primary'
+      btn.textContent = 'Check'
+      btn.title = 'Check your answer'
+      btn.addEventListener('click', (e) => { e.stopPropagation(); handleCheck() })
+      rightEl = btn
+    } else {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'kb-action-btn-secondary'
+      btn.textContent = 'Reset'
+      btn.title = 'Clear all player entries'
+      btn.disabled = state.moveHistory.length === 0
+      btn.addEventListener('click', (e) => { e.stopPropagation(); handleClearAll() })
+      rightEl = btn
     }
 
-    if (hasBottom) keyboard.appendChild(bottom)
+    actions.appendChild(undoBtn)
+    actions.appendChild(rightEl)
+    keyboard.appendChild(actions)
   }
 
   function render() {

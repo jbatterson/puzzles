@@ -38,17 +38,23 @@
   font-family: 'Outfit', sans-serif;
   /*
      * --max-stage-size: the vertical space available for the game board after
-     * subtracting the header, nav, buttons, and bottom padding (~320px total).
+     * subtracting the header, nav, buttons, and bottom padding (~250px total).
      * Uses dvh where supported to avoid the "first paint lies" problem caused
      * by mobile browser chrome changing 100vh on scroll.
      */
-  --max-stage-size: calc(100dvh - 320px);
+  --max-stage-size: calc(100dvh - 250px);
 }
 
 @supports not (height: 100dvh) {
   * {
-    --max-stage-size: calc(100vh - 320px);
+    --max-stage-size: calc(100vh - 250px);
   }
+}
+
+html {
+  /* Prevent horizontal scroll when a vertical scrollbar appears and causes 100vw
+     to be slightly wider than the layout — this misaligns the TopBar full-bleed trick. */
+  overflow-x: clip;
 }
 
 html,
@@ -997,6 +1003,48 @@ body {
   margin-bottom: 0.25rem;
 }
 
+/* =============================================================================
+   FOLDS-SPECIFIC
+   Folds uses a rotation-aware viewBox (HEX_ROTATED_VIEWBOX in foldsGeometry.js)
+   because the board is rendered with a 30° rotation. The SVG content is laid out
+   as a flat-top hex but rotated to pointy-top at render time, so the viewBox and
+   all sizing here must reflect the POST-ROTATION extents, not the raw geometry.
+   If you ever see clipping on top/bottom or unexpected whitespace on the sides,
+   check that folds.jsx is using HEX_ROTATED_VIEWBOX (not HEX_VIEWBOX).
+
+   The container intentionally uses the default min-height: 100dvh (not height),
+   matching Scurry/Tiles — the page scrolls on tiny viewports rather than overlapping.
+   ============================================================================= */
+
+.game-container.folds {
+  /* No height override: inherits min-height: 100dvh from .game-container.
+     This gives Scurry-like scroll behavior instead of overlap on short viewports. */
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.game-container.folds .level-nav,
+.game-container.folds .button-tray {
+  padding: 0 20px;
+}
+
+.game-container.folds #canvas-wrapper {
+  /* Rotation-aware aspect ratio derived from HEX_ROTATED_VIEWBOX (w≈446, h≈512).
+     With aspect-ratio + max-height set, modern browsers proportionally reduce width
+     when max-height would otherwise be exceeded — no clipping, correct proportions.
+     min-height matches the min-width floor used by square games (280px), so the board
+     stops shrinking at ~280px tall and the page scrolls instead (Scurry-like). */
+  aspect-ratio: 446 / 512;
+  width: 100%;
+  max-height: var(--max-stage-size);
+  min-height: 280px;
+  max-width: none;
+  margin: 0 auto;
+  /* Debug tip: temporarily set background-color to black to inspect board fit. */
+  background-color: transparent;
+  border: none;
+}
+
 /* Clueless on-screen keyboard */
 .clueless-key {
   border: none;
@@ -1154,7 +1202,6 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
 .btn-primary,
@@ -1233,20 +1280,6 @@ body {
   transform: none;
 }
 
-/* Goal text shown while puzzle is in progress — match primary CTA min height so swapping goal ↔ button does not shift layout */
-.goal-text {
-  text-align: center;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  min-height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  padding: 0 12px;
-  color: var(--puzzle-ink-goal);
-}
 
 /* =============================================================================
    MODALS (Menu + optional full-bleed instructions)

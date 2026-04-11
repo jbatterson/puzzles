@@ -33,10 +33,7 @@ import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
 import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateRoster.js'
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
-import {
-  PostSolvePrimaryButton,
-  PostSolvePrimaryLink,
-} from '../../src/shared/PostSolvePrimaryCta.jsx'
+import SmartRightButton from '../../src/shared/SmartRightButton.jsx'
 import { getDailyKey, getDateLabel, getDayIndex } from '@shared-contracts/dailyPuzzleDate.js'
 
 /** After the last winning placement: 300ms pre-celebration + 800ms `celebrating-bug` (see `placeBug`). */
@@ -755,43 +752,18 @@ const Scurry = () => {
         <button className="btn-secondary" onClick={undo} disabled={history.length === 0}>
           Undo
         </button>
-        <button
-          className="btn-secondary"
-          disabled={history.length === 0}
-          onClick={() => {
+        <SmartRightButton
+          primaryLabel={primaryLabel}
+          primaryHref={primaryLabel === CTA_LABELS.ALL_PUZZLES ? base : undefined}
+          onPrimaryClick={handlePrimaryClick}
+          attention={scurryPostWinCtaAttention}
+          resetDisabled={history.length === 0}
+          onReset={() => {
             usedUndoOrResetRef.current = true
             resetLevel()
           }}
-        >
-          Reset
-        </button>
+        />
       </div>
-
-      {curateMode && allTargetsFilled && curateIdx >= roster.length - 1 ? (
-        <div className="goal-text" style={{ textAlign: 'center' }}>
-          End of list — use ← → to review other puzzles
-        </div>
-      ) : primaryLabel === CTA_LABELS.ALL_PUZZLES ? (
-        <PostSolvePrimaryLink
-          attention={scurryPostWinCtaAttention}
-          href={base}
-          style={{
-            textAlign: 'center',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {CTA_LABELS.ALL_PUZZLES}
-        </PostSolvePrimaryLink>
-      ) : primaryLabel ? (
-        <PostSolvePrimaryButton attention={scurryPostWinCtaAttention} onClick={handlePrimaryClick}>
-          {primaryLabel}
-        </PostSolvePrimaryButton>
-      ) : (
-        <div className="goal-text">Fill All Target Squares</div>
-      )}
 
       {/* INSTRUCTIONS */}
       <SharedModalShell
