@@ -5,16 +5,7 @@
  */
 
 import { GAME_KEYS } from './gameChrome.js'
-
-const CLUELESS_DIFFS = ['easy', 'medium', 'hard']
-
-function lsGet(key) {
-  try {
-    return localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
+import { lsGet, CLUELESS_DIFFS, loadCluelessAttempt } from './hubProgress.js'
 
 function lsSet(key, val) {
   try {
@@ -49,32 +40,12 @@ function suiteElapsedCompletionMaskKey(gameKey, dateKey) {
   return `${gameKey}:${dateKey}:suiteElapsedCompletionMask`
 }
 
-/** Mirrors `simpleGameStats` / hub clueless loading — one non-null attempt = slot complete for the mask. */
-function loadCluelessAttemptForMask(dateKey, diff) {
-  const v = lsGet(`clueless:${dateKey}:${diff}:bestAttempts`)
-  if (v != null) {
-    const n = parseInt(v, 10)
-    if (n >= 1 && n <= 99) return n
-  }
-  if (diff === 'medium') {
-    const legacy = lsGet(`clueless:${dateKey}:bestAttempts`)
-    if (legacy != null) {
-      const n = parseInt(legacy, 10)
-      if (n >= 1 && n <= 99) return n
-    }
-  }
-  const legacy = lsGet(`clueless:${dateKey}`)
-  if (legacy === '2') return 1
-  if (legacy === '1') return 2
-  return null
-}
-
 /** @returns {number} bits 1|2|4 for slots 0,1,2 — matches hub / game storage. */
 function readDailySlotCompletionMask(gameKey, dateKey) {
   if (gameKey === GAME_KEYS.CLUELESS) {
     let mask = 0
     for (let i = 0; i < 3; i++) {
-      if (loadCluelessAttemptForMask(dateKey, CLUELESS_DIFFS[i]) != null) mask |= 1 << i
+      if (loadCluelessAttempt(dateKey, CLUELESS_DIFFS[i]) != null) mask |= 1 << i
     }
     return mask
   }

@@ -1,9 +1,19 @@
 /**
- * Hub and in-game share plaintext — matches `src/home.jsx` share rules (single source of truth).
+ * Hub and in-game share plaintext formatters for suite games (not All Ten — use allTenSharePlaintext).
+ * Progress is read via hubProgress.js, which is the single source of truth for localStorage access.
  */
 
 import { readSuiteGameElapsedMs } from './suiteCompletionTimer.js'
 import { formatAllTenElapsedMsForShare } from './allTenSharePlaintext.js'
+import {
+  lsGet,
+  loadCompletions,
+  loadPerfects,
+  loadMoveCounts,
+  CLUELESS_DIFFS,
+  loadCluelessAttempt,
+  loadCluelessAttempts,
+} from './hubProgress.js'
 import {
   getEnabledTierIndices,
   isSuiteTimerEnabled,
@@ -17,62 +27,13 @@ function elapsedLineForShare(gameKey, dateKey) {
   return `\n${formatAllTenElapsedMsForShare(ms)}\n`
 }
 
-function lsGet(key) {
-  try {
-    return localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
-function loadCompletions(gameKey, dateKey) {
-  return [0, 1, 2].map((i) => ['1', '2'].includes(lsGet(`${gameKey}:${dateKey}:${i}`)))
-}
-
-function loadPerfects(gameKey, dateKey) {
-  return [0, 1, 2].map((i) => lsGet(`${gameKey}:${dateKey}:${i}`) === '2')
-}
-
-function loadMoveCounts(gameKey, dateKey) {
-  return [0, 1, 2].map((i) => {
-    const v = lsGet(`${gameKey}:${dateKey}:${i}:moves`)
-    return v != null ? parseInt(v, 10) : null
-  })
-}
-
-const CLUELESS_DIFFS = ['easy', 'medium', 'hard']
-
-function loadSingleBestAttemptsClueless(dateKey) {
-  const v = lsGet(`clueless:${dateKey}:bestAttempts`)
-  if (v == null) return null
-  const n = parseInt(v, 10)
-  return n >= 1 && n <= 99 ? n : null
-}
-
-function loadCluelessAttempt(dateKey, diff) {
-  const v = lsGet(`clueless:${dateKey}:${diff}:bestAttempts`)
-  if (v != null) {
-    const n = parseInt(v, 10)
-    if (n >= 1 && n <= 99) return n
-  }
-  if (diff === 'medium') {
-    const legacy = loadSingleBestAttemptsClueless(dateKey)
-    if (legacy != null) return legacy
-  }
-  return null
-}
-
-function loadCluelessAttempts(dateKey) {
-  return CLUELESS_DIFFS.map((diff) => loadCluelessAttempt(dateKey, diff))
-}
-
 function loadSingleCompletion(gameKey, dateKey) {
-  if (gameKey === 'clueless') return loadSingleBestAttemptsClueless(dateKey) != null
+  if (gameKey === 'clueless') return loadCluelessAttempt(dateKey, 'medium') != null
   return ['1', '2'].includes(lsGet(`${gameKey}:${dateKey}`))
 }
 
 function loadSinglePerfect(gameKey, dateKey) {
-  if (gameKey === 'clueless') return loadSingleBestAttemptsClueless(dateKey) === 1
+  if (gameKey === 'clueless') return loadCluelessAttempt(dateKey, 'medium') === 1
   return lsGet(`${gameKey}:${dateKey}`) === '2'
 }
 
@@ -97,8 +58,11 @@ function buildShareText(key, title, href, completions, perfects, moveCounts, dat
   for (const i of tiers) {
     const label = DIFF_LABELS[i]
     if (completions[i]) {
-      const moves =
-        isTileGame && moveCounts && moveCounts[i] != null ? ` (${moveCounts[i]} moves)` : ''
+      let moves = ''
+      if (isTileGame && moveCounts && moveCounts[i] != null) {
+        const star = perfects && perfects[i] ? ' ⭐' : ''
+        moves = ` (${moveCounts[i]} moves${star})`
+      }
       const firstTry = !isTileGame && perfects && perfects[i] ? ' (⭐ First try!)' : ''
       out += `${label}   🟩${moves}${firstTry}\n`
     } else {
@@ -128,16 +92,15 @@ function buildSingleShareText(gameKey, dateKey, title, href, completed, perfect)
 function buildCluelessShareText(dateKey, title, href, attempts, prefs) {
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const playUrl = new URL(href, origin || 'http://localhost').href
-  const labels = ['Easy', 'Med', 'Hard']
   const tiers = getEnabledTierIndices('clueless', prefs)
   let out = title.toUpperCase() + '\n'
   for (const i of tiers) {
     const a = attempts?.[i] ?? null
     if (a != null) {
       const suffix = a === 1 ? ' (⭐ First try!)' : ` ${String(Math.min(a, 99))}`
-      out += `${labels[i]}   🟩${suffix}\n`
+      out += `${DIFF_LABELS[i]}   🟩${suffix}\n`
     } else {
-      out += `${labels[i]}   ⬜\n`
+      out += `${DIFF_LABELS[i]}   ⬜\n`
     }
   }
   out += elapsedLineForShare('clueless', dateKey)

@@ -31,6 +31,7 @@ import {
 	SHORT_TARGET_DISPLAY_BREAKPOINT,
 	QUARTER_PADDING_UNIT,
 	SHORT_TARGET_DISPLAY_HEIGHT,
+	LARGE_KEYBOARD_BREAKPOINT,
 	SMALL_KEYBOARD_BREAKPOINT,
 	MEDIUM_KEYBOARD_BREAKPOINT,
 } from "./util/Constants";
@@ -379,12 +380,8 @@ const Main: React.FC<Props> = function (props: Props) {
 		? height < SHORT_TARGET_DISPLAY_BREAKPOINT
 		: undefined;
 
-	// calculate what the size of the keyboard should be
-	// calculate the ratios of what things should be
-	// load it up in JS
-
 	let keyboardSize: ButtonGridSize;
-	if (!useCompactLayout) {
+	if (!height || height > LARGE_KEYBOARD_BREAKPOINT) {
 		keyboardSize = "large";
 	} else if (height > MEDIUM_KEYBOARD_BREAKPOINT) {
 		keyboardSize = "mediumLarge";

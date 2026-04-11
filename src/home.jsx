@@ -23,34 +23,15 @@ import {
   readSuiteDashboardPreferences,
 } from '@shared-contracts/suiteDashboardPreferences.js'
 import { getDailyKey, computeStreak } from '@shared-contracts/dailyPuzzleDate.js'
+import {
+  lsGet,
+  loadCompletions,
+  loadPerfects,
+  loadMoveCounts,
+  loadCluelessAttempts,
+} from '@shared-contracts/hubProgress.js'
 
 const base = import.meta.env.BASE_URL
-
-/** Avoid crashing the hub if localStorage is blocked (strict privacy / enterprise policy). */
-function lsGet(key) {
-  try {
-    return localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
-// ── Multi-puzzle games (3 per day) ───────────────────────────────────────────
-
-function loadCompletions(gameKey, dateKey) {
-  return [0, 1, 2].map((i) => ['1', '2'].includes(lsGet(`${gameKey}:${dateKey}:${i}`)))
-}
-
-function loadPerfects(gameKey, dateKey) {
-  return [0, 1, 2].map((i) => lsGet(`${gameKey}:${dateKey}:${i}`) === '2')
-}
-
-function loadMoveCounts(gameKey, dateKey) {
-  return [0, 1, 2].map((i) => {
-    const v = lsGet(`${gameKey}:${dateKey}:${i}:moves`)
-    return v != null ? parseInt(v, 10) : null
-  })
-}
 
 // ── Single-puzzle games (1 per day) ──────────────────────────────────────────
 // Clueless uses bestAttempts (1..99 = CHECKs to complete) and legacy failed; others use '1'/'2'.
@@ -76,28 +57,6 @@ function loadSingleCompletion(gameKey, dateKey) {
 function loadSinglePerfect(gameKey, dateKey) {
   if (gameKey === 'clueless') return loadSingleBestAttempts(gameKey, dateKey) === 1
   return lsGet(`${gameKey}:${dateKey}`) === '2'
-}
-
-// ── Clueless difficulties (Easy/Med/Hard) ────────────────────────────────────
-
-const CLUELESS_DIFFS = ['easy', 'medium', 'hard']
-
-function loadCluelessAttempt(dateKey, diff) {
-  const v = lsGet(`clueless:${dateKey}:${diff}:bestAttempts`)
-  if (v != null) {
-    const n = parseInt(v, 10)
-    if (n >= 1 && n <= 99) return n
-  }
-  // Legacy (pre-difficulty) progress is treated as Medium
-  if (diff === 'medium') {
-    const legacy = loadSingleBestAttempts('clueless', dateKey)
-    if (legacy != null) return legacy
-  }
-  return null
-}
-
-function loadCluelessAttempts(dateKey) {
-  return CLUELESS_DIFFS.map((diff) => loadCluelessAttempt(dateKey, diff))
 }
 
 /** Maps hub puzzle day (YYYY-MM-DD) to All Ten `-targets` localStorage suffix (PST calendar). */
@@ -170,7 +129,9 @@ function PuzzleBoxes({ gameKey, completions, perfects, moveCounts, tierSlots }) 
         const content = !done ? (
           <DiceFace count={i + 1} size={20} />
         ) : isTileGame ? (
-          moves != null ? (
+          perfect ? (
+            <HubDiceStar />
+          ) : moves != null ? (
             String(Math.min(moves, 99))
           ) : (
             '✓'

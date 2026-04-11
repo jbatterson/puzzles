@@ -12,9 +12,13 @@ export const TITLEBAR_HEIGHT = 57;
 // layout
 export const COMPACT_LAYOUT_BREAKPOINT = 750;
 export const COMPACT_LINKS_BREAKPOINT = 720;
-// keyboard
-export const SMALL_KEYBOARD_BREAKPOINT = 630; // below this, a small keyboard will be used
-export const MEDIUM_KEYBOARD_BREAKPOINT = 655; // below this, a medium keyboard will be used
+// keyboard – decoupled from COMPACT_LAYOUT_BREAKPOINT so the keypad stays
+// large even after spacing tightens.  The notice overlay (40 px absolute) sits
+// in the whitespace between the target area and the expression bar, so it
+// remains visible at all sizes.
+export const LARGE_KEYBOARD_BREAKPOINT = 680;
+export const MEDIUM_KEYBOARD_BREAKPOINT = 600;
+export const SMALL_KEYBOARD_BREAKPOINT = 560;
 // target display
 export const SHORT_TARGET_DISPLAY_HEIGHT = 105;
 export const SHORT_TARGET_DISPLAY_BREAKPOINT = 600;

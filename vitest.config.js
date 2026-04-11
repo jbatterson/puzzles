@@ -12,6 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    setupFiles: ['./vitest.setup.js'],
     include: ['shared-contracts/__tests__/**/*.test.js'],
   },
 })

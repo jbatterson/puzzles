@@ -53,7 +53,9 @@ export default function SuiteCompletionHubDice({
           content = !done ? (
             <DiceFace count={i + 1} size={20} />
           ) : isTileGame ? (
-            moves != null ? (
+            perfects[i] ? (
+              '★'
+            ) : moves != null ? (
               String(Math.min(moves, 99))
             ) : (
               '✓'

@@ -83,16 +83,23 @@ function getStoredMoveCount(dateKey, idx) {
   return v != null ? parseInt(v, 10) : null
 }
 
-function markComplete(dateKey, idx, noUndo, movesThisRun) {
+function markComplete(dateKey, idx, movesThisRun, puzzleMinMoves) {
+  const hitMin =
+    puzzleMinMoves != null &&
+    Number.isFinite(puzzleMinMoves) &&
+    movesThisRun === puzzleMinMoves
+  const starWorthy = hitMin
   const key = `sumtiles:${dateKey}:${idx}`
   const existing = localStorage.getItem(key)
   const storedMoves = getStoredMoveCount(dateKey, idx)
   if (existing !== '1' && existing !== '2') {
-    localStorage.setItem(key, noUndo ? '2' : '1')
+    localStorage.setItem(key, starWorthy ? '2' : '1')
     saveMoveCount(dateKey, idx, movesThisRun)
   } else if (storedMoves != null && movesThisRun < storedMoves) {
-    localStorage.setItem(key, '1')
+    localStorage.setItem(key, starWorthy ? '2' : '1')
     saveMoveCount(dateKey, idx, movesThisRun)
+  } else if (existing === '1' && hitMin) {
+    localStorage.setItem(key, '2')
   }
 }
 
@@ -298,7 +305,9 @@ function PuzzleBoxes({
           }}
         >
           {completions[i] ? (
-            moveCounts && moveCounts[i] != null ? (
+            perfects && perfects[i] ? (
+              '★'
+            ) : moveCounts && moveCounts[i] != null ? (
               String(Math.min(moveCounts[i], MAX_MOVE_DISPLAY))
             ) : (
               '✓'
@@ -598,12 +607,12 @@ export default function SumTiles() {
         s.targets.cols.every((v, i) => curC[i] === v)
       if (!won) return
       const moves = s.moveHistory?.length ?? 0
-      markComplete(daily.key, dailyIdx, !usedUndoOrResetRef.current, moves)
+      markComplete(daily.key, dailyIdx, moves, currentPuzzleData?.minMoves)
       setCompletions(loadCompletions(daily.key))
       setPerfects(loadPerfects(daily.key))
       setMoveCounts(loadMoveCounts(daily.key))
     }
-  }, [isSolved, curateMode, mode, daily.key, dailyIdx])
+  }, [isSolved, curateMode, mode, daily.key, dailyIdx, currentPuzzleData])
 
   useEffect(() => {
     if (curateMode || mode !== 'daily') return
@@ -1012,6 +1021,7 @@ export default function SumTiles() {
             <>
               <span className="stats-label">Moves</span>
               <span className="stats-num">{Math.min(historyLen, MAX_MOVE_DISPLAY)}</span>
+              <span className="stats-label">{`min=${currentPuzzleData?.minMoves ?? '?'}`}</span>
             </>
           }
         />
@@ -1053,6 +1063,7 @@ export default function SumTiles() {
           <div className="stats-group">
             <span className="stats-label">Moves</span>
             <span className="stats-num">{Math.min(historyLen, MAX_MOVE_DISPLAY)}</span>
+            <span className="stats-label">{`min=${currentPuzzleData?.minMoves ?? '?'}`}</span>
           </div>
         </div>
       ) : (
@@ -1087,6 +1098,7 @@ export default function SumTiles() {
           <div className="stats-group">
             <span className="stats-label">Moves</span>
             <span className="stats-num">{Math.min(historyLen, MAX_MOVE_DISPLAY)}</span>
+            <span className="stats-label">{`min=${currentPuzzleData?.minMoves ?? '?'}`}</span>
           </div>
         </div>
       )}

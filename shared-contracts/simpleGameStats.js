@@ -4,6 +4,13 @@
  */
 
 import { GAME_KEYS } from './gameChrome.js'
+import { computeStreak } from './dailyPuzzleDate.js'
+import {
+  lsGet,
+  CLUELESS_DIFFS,
+  loadCluelessAttempt,
+  loadCluelessAttempts,
+} from './hubProgress.js'
 import {
   getEnabledTierIndices,
   isSuiteCompleteForPrefs,
@@ -11,47 +18,6 @@ import {
 } from './suiteDashboardPreferences.js'
 
 const MAX_STREAK_DAYS = 365
-
-const CLUELESS_DIFFS = ['easy', 'medium', 'hard']
-
-function lsGet(key) {
-  try {
-    return localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
-/** PST calendar date key YYYY-MM-DD, matching games + hub. */
-export function getPstDateKeyFromOffset(dayOffset) {
-  const d = new Date()
-  d.setDate(d.getDate() - dayOffset)
-  const pst = new Date(d.getTime() - 8 * 60 * 60 * 1000)
-  return `${pst.getUTCFullYear()}-${String(pst.getUTCMonth() + 1).padStart(2, '0')}-${String(pst.getUTCDate()).padStart(2, '0')}`
-}
-
-function loadCluelessAttempt(dateKey, diff) {
-  const v = lsGet(`clueless:${dateKey}:${diff}:bestAttempts`)
-  if (v != null) {
-    const n = parseInt(v, 10)
-    if (n >= 1 && n <= 99) return n
-  }
-  if (diff === 'medium') {
-    const legacy = lsGet(`clueless:${dateKey}:bestAttempts`)
-    if (legacy != null) {
-      const n = parseInt(legacy, 10)
-      if (n >= 1 && n <= 99) return n
-    }
-  }
-  const legacy = lsGet(`clueless:${dateKey}`)
-  if (legacy === '2') return 1
-  if (legacy === '1') return 2
-  return null
-}
-
-function loadCluelessAttempts(dateKey) {
-  return CLUELESS_DIFFS.map((diff) => loadCluelessAttempt(dateKey, diff))
-}
 
 function dayHasMultiCompletion(gameKey, dateKey) {
   if (isThreeTierGameKey(gameKey)) return isSuiteCompleteForPrefs(gameKey, dateKey)
@@ -72,15 +38,7 @@ function dayHasCompletion(gameKey, dateKey) {
 }
 
 function getStreak(gameKey) {
-  const hasToday = dayHasCompletion(gameKey, getPstDateKeyFromOffset(0))
-  const startOffset = hasToday ? 0 : 1
-  let count = 0
-  for (let dayOffset = startOffset; dayOffset <= MAX_STREAK_DAYS; dayOffset++) {
-    const dateKey = getPstDateKeyFromOffset(dayOffset)
-    if (dayHasCompletion(gameKey, dateKey)) count++
-    else break
-  }
-  return count
+  return computeStreak((dateKey) => dayHasCompletion(gameKey, dateKey), MAX_STREAK_DAYS)
 }
 
 function aggregateMultiGameFromStorage(gameKey) {

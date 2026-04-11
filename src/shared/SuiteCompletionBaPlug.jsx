@@ -8,7 +8,7 @@ export default function SuiteCompletionBaPlug() {
     <div className="suite-completion-ba-plug">
       <p className="suite-completion-ba-plug-lead">Love puzzles?</p>
       <p className="suite-completion-ba-plug-copy">
-        Beast Academy is a complete curriculum
+        Find thousands more in our complete curriculum
         <br />
         for aspiring math beasts ages 6-13.
       </p>
@@ -19,7 +19,7 @@ export default function SuiteCompletionBaPlug() {
         target="_blank"
         rel="noreferrer"
       >
-        CHECK IT OUT!
+        BeastAcademy.com
       </a>
     </div>
   )
