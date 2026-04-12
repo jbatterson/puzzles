@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
-import puzzleData, { getDailyHoneycombsPuzzles, getHoneycombsDailyDateKey } from './puzzles.js'
+import puzzleData from './puzzles.js'
 import HoneycombsBoard from './HoneycombsBoard.jsx'
+import { getMaxWinTraceCompleteMs } from './useHoneycombsTrace.js'
+import { honeycombCellCount } from './honeycombsGeometry.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
@@ -34,14 +36,32 @@ import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateR
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import './honeycombs.css'
-import { getDateLabel } from '@shared-contracts/dailyPuzzleDate.js'
+import { getDailyKey, getDateLabel, getDayIndex } from '@shared-contracts/dailyPuzzleDate.js'
 import { puzzleFingerprint } from './honeycombsPersistence.js'
 
 const HONEYCOMBS_TUTORIAL_HINT_PATH =
   'Tap empty hexagons to place the missing numbers.\nMake a continuous path from 1-10.'
 const HONEYCOMBS_TUTORIAL_HINT_KEYBOARD =
   'Tap a dark-blue keyboard key to set it to active. \n Try starting this puzzle by placing the 5 and 6.'
-const HONEYCOMBS_TUTORIAL_HINT_ERASE = 'Tap any placed number to erase it and set it to active.'
+const HONEYCOMBS_TUTORIAL_HINT_ERASE = 'Tap any placed number to erase it. \nThis sets it to active on the keyboard.'
+const HONEYCOMBS_TUTORIAL_HINT_STAR =
+  'On daily puzzles, earn a ★ by solving without an erase, Undo, or Reset.'
+
+function getDailyHoneycombsPuzzles() {
+  const key = getDailyKey()
+  const dayIndex = getDayIndex(key)
+  const easy = puzzleData.easy || []
+  const medium = puzzleData.medium || []
+  const hard = puzzleData.hard || []
+  return {
+    key,
+    puzzles: [
+      easy[dayIndex % easy.length],
+      medium[dayIndex % medium.length],
+      hard[dayIndex % hard.length],
+    ],
+  }
+}
 
 function storageKey(dateKey, idx) {
   return `honeycombs:${dateKey}:${idx}`
@@ -95,7 +115,7 @@ function PuzzleBoxes({ current, completions, perfects, onChange, tierSlots = [0,
 export default function Honeycombs() {
   const chrome = getGameChrome(GAME_KEYS.HONEYCOMBS)
   const daily = useMemo(() => getDailyHoneycombsPuzzles(), [])
-  const dateLabel = useMemo(() => getDateLabel(daily.dateKey), [daily.dateKey])
+  const dateLabel = useMemo(() => getDateLabel(daily.key), [daily.key])
   const baseRaw = import.meta.env.BASE_URL || '/'
   const base = baseRaw.endsWith('/') ? baseRaw : `${baseRaw}/`
 
@@ -108,7 +128,7 @@ export default function Honeycombs() {
   const [dailyIdx, setDailyIdx] = useState(() =>
     resolveHubDailySlotWithPrefs(
       GAME_KEYS.HONEYCOMBS,
-      getHoneycombsDailyDateKey(),
+      getDailyKey(),
       typeof window !== 'undefined' ? window.location.search : ''
     )
   )
@@ -117,21 +137,23 @@ export default function Honeycombs() {
     void suitePrefsEpoch
     return getEnabledTierIndices(GAME_KEYS.HONEYCOMBS)
   }, [suitePrefsEpoch])
-  const [completions, setCompletions] = useState(() => loadCompletions(daily.dateKey))
-  const [perfects, setPerfects] = useState(() => loadPerfects(daily.dateKey))
+  const [completions, setCompletions] = useState(() => loadCompletions(daily.key))
+  const [perfects, setPerfects] = useState(() => loadPerfects(daily.key))
   const canShareHub = useMemo(
-    () => hasShareableHubProgress(GAME_KEYS.HONEYCOMBS, daily.dateKey),
-    [daily.dateKey, completions]
+    () => hasShareableHubProgress(GAME_KEYS.HONEYCOMBS, daily.key),
+    [daily.key, completions]
   )
   const [showLinks, setShowLinks] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const [curateCopyHint, setCurateCopyHint] = useState(null)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [suitePauseAllPuzzlesCta, setSuitePauseAllPuzzlesCta] = useState(false)
   const roster = useMemo(() => buildTierRoster(puzzleData), [])
   const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
   const [tutorialHintPathDismissed, setTutorialHintPathDismissed] = useState(false)
   const [tutorialHintKeyboardDismissed, setTutorialHintKeyboardDismissed] = useState(false)
   const [tutorialHintEraseDismissed, setTutorialHintEraseDismissed] = useState(false)
+  const [tutorialHintStarDismissed, setTutorialHintStarDismissed] = useState(false)
 
   const { hasSeenInstructions, showInstructions, setShowInstructions, closeInstructions } =
     useInstructionsGate('honeycombs:hasSeenInstructions', {
@@ -140,15 +162,38 @@ export default function Honeycombs() {
       initiallyClosed: curateMode,
     })
 
-  useSuiteCompletionTimer(GAME_KEYS.HONEYCOMBS, daily.dateKey, {
+  useSuiteCompletionTimer(GAME_KEYS.HONEYCOMBS, daily.key, {
     track: !curateMode && mode === 'daily',
-    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.HONEYCOMBS, daily.dateKey),
+    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.HONEYCOMBS, daily.key),
+    pauseForHubCompleteCta: suitePauseAllPuzzlesCta,
   })
 
   const modalsOpenRef = useRef(false)
-  const pendingSuiteModalRef = useRef(false)
+  const pendingSuiteModalAfterTraceRef = useRef(false)
+  const suiteModalFallbackTimeoutRef = useRef(null)
   const allDailyDoneCompletionRef = useRef(null)
   const tutorialPuzzles = useMemo(() => puzzleData.tutorial || [], [])
+
+  const clearSuiteModalFallback = useCallback(() => {
+    if (suiteModalFallbackTimeoutRef.current != null) {
+      window.clearTimeout(suiteModalFallbackTimeoutRef.current)
+      suiteModalFallbackTimeoutRef.current = null
+    }
+  }, [])
+
+  useEffect(
+    () => () => {
+      clearSuiteModalFallback()
+    },
+    [clearSuiteModalFallback]
+  )
+
+  useEffect(() => {
+    if (curateMode || mode !== 'daily') {
+      pendingSuiteModalAfterTraceRef.current = false
+      clearSuiteModalFallback()
+    }
+  }, [curateMode, mode, clearSuiteModalFallback])
 
   useEffect(() => {
     if (!curateMode) persistTutorialResumeState(GAME_KEYS.HONEYCOMBS, mode, tutorialIdx)
@@ -156,8 +201,8 @@ export default function Honeycombs() {
 
   useEffect(() => {
     if (curateMode || mode !== 'daily') return
-    persistHubDailySlot(GAME_KEYS.HONEYCOMBS, daily.dateKey, dailyIdx)
-  }, [curateMode, mode, daily.dateKey, dailyIdx])
+    persistHubDailySlot(GAME_KEYS.HONEYCOMBS, daily.key, dailyIdx)
+  }, [curateMode, mode, daily.key, dailyIdx])
 
   useEffect(() => {
     if (curateMode || mode !== 'daily') return
@@ -178,16 +223,16 @@ export default function Honeycombs() {
 
   const honeycombsBoardKey = useMemo(() => {
     const scope = curateMode ? 'curate' : mode
-    const dk = curateMode ? 'curate' : daily.dateKey
+    const dk = curateMode ? 'curate' : daily.key
     const p = activePuzzles[activePuzzleIdx]
     const fp = puzzleFingerprint(p)
     return `${scope}:${dk}:${activePuzzleIdx}:${fp ?? 'none'}`
-  }, [curateMode, mode, daily.dateKey, activePuzzles, activePuzzleIdx])
+  }, [curateMode, mode, daily.key, activePuzzles, activePuzzleIdx])
 
   const bumpCompletions = useCallback(() => {
-    setCompletions(loadCompletions(daily.dateKey))
-    setPerfects(loadPerfects(daily.dateKey))
-  }, [daily.dateKey])
+    setCompletions(loadCompletions(daily.key))
+    setPerfects(loadPerfects(daily.key))
+  }, [daily.key])
 
   const onRequestNext = useCallback(() => {
     if (curateMode) {
@@ -205,12 +250,13 @@ export default function Honeycombs() {
     (puzzleIdx) => {
       if (curateMode) return
       if (mode !== 'daily') return
-      if (!pendingSuiteModalRef.current) return
+      if (!pendingSuiteModalAfterTraceRef.current) return
       if (puzzleIdx !== dailyIdx) return
-      pendingSuiteModalRef.current = false
+      pendingSuiteModalAfterTraceRef.current = false
+      clearSuiteModalFallback()
       setShowCompletionModal(true)
     },
-    [curateMode, mode, dailyIdx]
+    [curateMode, mode, dailyIdx, clearSuiteModalFallback]
   )
 
   const tutorialFinalAction = useMemo(() => {
@@ -229,20 +275,35 @@ export default function Honeycombs() {
     modalsOpenRef.current = showInstructions || showStats || showLinks
   }, [showInstructions, showStats, showLinks])
 
-  // Track when all three daily Honeycombs are completed; the engine calls
-  // `onWinAnimationComplete` after the 3× trace pulse (honeycombsEngine WIN_TRACE_PULSE_TOTAL_MS).
-  useLayoutEffect(() => {
+  // When the suite becomes complete, wait for the board's win-trace `onWin` (bee + pulse), with a
+  // size-aware fallback deadline so any tier (small / medium / large) still opens the modal.
+  useEffect(() => {
     if (curateMode || mode !== 'daily') return
-    const done = isSuiteCompleteForPrefs(GAME_KEYS.HONEYCOMBS, daily.dateKey)
+    const done = isSuiteCompleteForPrefs(GAME_KEYS.HONEYCOMBS, daily.key)
     if (allDailyDoneCompletionRef.current === null) {
       allDailyDoneCompletionRef.current = done
       return
     }
+    if (!done) {
+      pendingSuiteModalAfterTraceRef.current = false
+      clearSuiteModalFallback()
+    }
     if (done && !allDailyDoneCompletionRef.current) {
-      pendingSuiteModalRef.current = true
+      pendingSuiteModalAfterTraceRef.current = true
+      const maxTraceMs = daily.puzzles.reduce(
+        (max, p) => Math.max(max, getMaxWinTraceCompleteMs(honeycombCellCount(p.size))),
+        getMaxWinTraceCompleteMs(1)
+      )
+      clearSuiteModalFallback()
+      suiteModalFallbackTimeoutRef.current = window.setTimeout(() => {
+        suiteModalFallbackTimeoutRef.current = null
+        if (!pendingSuiteModalAfterTraceRef.current) return
+        pendingSuiteModalAfterTraceRef.current = false
+        setShowCompletionModal(true)
+      }, maxTraceMs)
     }
     allDailyDoneCompletionRef.current = done
-  }, [curateMode, mode, completions, daily.dateKey, suitePrefsEpoch])
+  }, [curateMode, mode, completions, daily.key, daily.puzzles, suitePrefsEpoch, clearSuiteModalFallback])
 
 
   const handleStatsClick = useCallback(() => {
@@ -338,6 +399,13 @@ export default function Honeycombs() {
                   onDismiss={() => setTutorialHintPathDismissed(true)}
                 />
               )}
+              {tutorialIdx === 1 && !tutorialHintEraseDismissed && (
+                <DismissibleHintToast
+                  message={HONEYCOMBS_TUTORIAL_HINT_ERASE}
+                  align="center"
+                  onDismiss={() => setTutorialHintEraseDismissed(true)}
+                />
+              )}
               {tutorialIdx === 3 && !tutorialHintKeyboardDismissed && (
                 <DismissibleHintToast
                   message={HONEYCOMBS_TUTORIAL_HINT_KEYBOARD}
@@ -345,11 +413,11 @@ export default function Honeycombs() {
                   onDismiss={() => setTutorialHintKeyboardDismissed(true)}
                 />
               )}
-              {tutorialIdx === 4 && !tutorialHintEraseDismissed && (
+              {tutorialIdx === 4 && !tutorialHintStarDismissed && (
                 <DismissibleHintToast
-                  message={HONEYCOMBS_TUTORIAL_HINT_ERASE}
+                  message={HONEYCOMBS_TUTORIAL_HINT_STAR}
                   align="center"
-                  onDismiss={() => setTutorialHintEraseDismissed(true)}
+                  onDismiss={() => setTutorialHintStarDismissed(true)}
                 />
               )}
             </div>
@@ -387,7 +455,7 @@ export default function Honeycombs() {
               <div className="game-dice-share-gap" aria-hidden />
               <GameShareNavButton
                 gameKey={GAME_KEYS.HONEYCOMBS}
-                dateKey={daily.dateKey}
+                dateKey={daily.key}
                 canShare={canShareHub}
               />
             </div>
@@ -401,7 +469,7 @@ export default function Honeycombs() {
         puzzle={activePuzzles[activePuzzleIdx]}
         puzzleIdx={activePuzzleIdx}
         totalPuzzles={activePuzzles.length}
-        dateKey={curateMode ? 'curate' : daily.dateKey}
+        dateKey={curateMode ? 'curate' : daily.key}
         hubBaseHref={base}
         onRequestNextPuzzle={onRequestNext}
         onCompletionsUpdated={bumpCompletions}
@@ -409,6 +477,7 @@ export default function Honeycombs() {
         onWin={handleWinAnimationComplete}
         trackCompletion={!curateMode && mode === 'daily'}
         finalSolvedAction={tutorialFinalAction}
+        onHubCompleteCtaPauseChange={setSuitePauseAllPuzzlesCta}
       />
 
       <SharedModalShell
@@ -479,7 +548,7 @@ export default function Honeycombs() {
         onClose={() => setShowStats(false)}
         gameKey={GAME_KEYS.HONEYCOMBS}
         dailySuiteFooter={{
-          dateKey: daily.dateKey,
+          dateKey: daily.key,
           completions,
           perfects,
         }}
@@ -489,7 +558,7 @@ export default function Honeycombs() {
         show={showCompletionModal}
         onClose={() => setShowCompletionModal(false)}
         gameKey={GAME_KEYS.HONEYCOMBS}
-        dateKey={daily.dateKey}
+        dateKey={daily.key}
         hubDiceCompletions={completions}
         hubDicePerfects={perfects}
       />

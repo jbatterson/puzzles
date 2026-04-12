@@ -119,6 +119,7 @@ export default function HoneycombsBoard({
   isBlockingModalOpen,
   finalSolvedAction,
   hubBaseHref,
+  onHubCompleteCtaPauseChange,
 }) {
   const svgRef = useRef(null)
   const stageRef = useRef(null)
@@ -524,6 +525,13 @@ export default function HoneycombsBoard({
       return hubBaseHref
     return undefined
   }, [solved, puzzleIdx, totalPuzzles, finalSolvedAction?.href, finalSolvedAction?.label, hubBaseHref])
+
+  useEffect(() => {
+    onHubCompleteCtaPauseChange?.(
+      smartPrimaryLabel === CTA_LABELS.ALL_PUZZLES ||
+        smartPrimaryLabel === CTA_LABELS.NEXT_PUZZLE
+    )
+  }, [smartPrimaryLabel, onHubCompleteCtaPauseChange])
 
   const handleSmartPrimaryClick = useCallback(() => {
     if (solved && !isLastPuzzle) {

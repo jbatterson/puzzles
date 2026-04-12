@@ -16,6 +16,13 @@ export const GRID_DEFS = {
   large:  { rows: [3, 4, 5, 4, 3], rowOffsets: [1.0, 0.5, 0,   0.5, 1.0] },
 }
 
+/** Cell count for a size (a solved path visits 1…n on a full honeycomb). */
+export function honeycombCellCount(size) {
+  const rows = GRID_DEFS[size]?.rows
+  if (!rows) return 19
+  return rows.reduce((sum, r) => sum + r, 0)
+}
+
 /** Gap between hex edges in pixels. */
 export const HEX_GAP = 3
 

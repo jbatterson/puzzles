@@ -15,8 +15,6 @@ const TIER_ORDER = ['tutorial', 'easy', 'medium', 'hard']
 const HONEYCOMBS_HEADER = `// Honeycombs puzzle definitions — batched like other suite games (easy / medium / hard).
 // Format per puzzle: { size: 'small'|'medium'|'large', clues: [[row, col, value], ...] }
 
-import { getDailyKey, getDayIndex } from '@shared-contracts/dailyPuzzleDate.js'
-
 `
 
 /**
@@ -85,22 +83,6 @@ function formatFoldsExportBody(data) {
   return `export default {\n${blocks.join('\n\n')}\n}\n`
 }
 
-/**
- * @param {Record<string, unknown[]>} puzzleData
- * @param {string} tailFromGetHoneycombs
- */
-function formatHoneycombsFile(puzzleData, tailFromGetHoneycombs) {
-  const tiers = TIER_ORDER.filter((t) => Object.prototype.hasOwnProperty.call(puzzleData, t))
-  const blocks = tiers.map((tier) => {
-    const list = puzzleData[tier]
-    if (!Array.isArray(list)) throw new Error(`Tier "${tier}" is not an array`)
-    const lines = list.map((p) => `    ${toJs(p)},`)
-    return `  ${tier}: [\n${lines.join('\n')}\n  ],`
-  })
-  const body = `const puzzleData = {\n${blocks.join('\n\n')}\n}\n\nexport default puzzleData\n\n`
-  return HONEYCOMBS_HEADER + body + tailFromGetHoneycombs
-}
-
 let cacheNonce = 0
 
 async function loadDefault(rel) {
@@ -128,17 +110,10 @@ async function main() {
   }
 
   const honeyPath = path.join(repoRoot, 'puzzlegames/honeycombs/puzzles.js')
-  const honeyText = fs.readFileSync(honeyPath, 'utf8')
-  const tailMatch = honeyText.match(/\nexport function getHoneycombsDailyDateKey\(\)[\s\S]*$/m)
-  if (!tailMatch) throw new Error('Could not find Honeycombs tail exports')
-  const tail = tailMatch[0].replace(/^\n/, '')
-  const honeyMod = await import(pathToFileURL(honeyPath).href + `?c=${++cacheNonce}`)
-  const puzzleData = honeyMod.default
-  if (!puzzleData || typeof puzzleData !== 'object')
-    throw new Error('Honeycombs default export missing')
+  const honeyData = await loadDefault('puzzlegames/honeycombs/puzzles.js')
   fs.writeFileSync(
     honeyPath,
-    formatHoneycombsFile(/** @type {Record<string, unknown[]>} */ (puzzleData), tail),
+    HONEYCOMBS_HEADER + formatExportBody(/** @type {Record<string, unknown[]>} */ (honeyData)),
     'utf8'
   )
   console.log('Wrote puzzlegames/honeycombs/puzzles.js')

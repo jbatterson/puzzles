@@ -462,7 +462,7 @@ function PuzzleBoxes({ current, completions, perfects, onChange, tierSlots = [0,
 const FOLDS_TUTORIAL_HINT_TOUCH =
   'Tap or trace a fold line to select it, then use the FOLD button to fold the colored triangles onto the faded ones.'
 const FOLDS_TUTORIAL_HINT_FINE_POINTER =
-  'Select a fold line to fold the colored triangles across so that they land on the faded ones.'
+  'Select a fold line to fold the colored triangles onto the faded ones.'
 const FOLDS_TUTORIAL_HINT_TWO_FOLDS = 'It takes two folds to match this pattern.'
 
 // ── Main component ───────────────────────────────────────────────────────────
@@ -516,14 +516,10 @@ const Folds = () => {
   /** When the suite becomes all-complete during daily play, open modal after win flourish (not during rewind/replay). */
   const pendingSuiteModalAfterCelebrationRef = useRef(false)
 
-  useSuiteCompletionTimer(GAME_KEYS.FOLDS, daily.key, {
-    track: !curateMode && mode === 'daily',
-    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.FOLDS, daily.key),
-  })
-
   const [tutorialHint1Dismissed, setTutorialHint1Dismissed] = useState(false)
   /** Puzzle 5 in the UI (tutorial index 4): two-folds hint. */
   const [tutorialHintTwoFoldsDismissed, setTutorialHintTwoFoldsDismissed] = useState(false)
+  const [tutorialHintStarDismissed, setTutorialHintStarDismissed] = useState(false)
   const [coarsePointer, setCoarsePointer] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
   )
@@ -1206,6 +1202,13 @@ const Folds = () => {
       ? 'Retry Puzzle'
       : null
 
+  useSuiteCompletionTimer(GAME_KEYS.FOLDS, daily.key, {
+    track: !curateMode && mode === 'daily',
+    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.FOLDS, daily.key),
+    pauseForHubCompleteCta:
+      primaryLabel === CTA_LABELS.ALL_PUZZLES || primaryLabel === CTA_LABELS.NEXT_PUZZLE,
+  })
+
   const foldsPrimaryCtaAttention = uiWon && !foldsCelebrationActive && !!primaryLabel
 
   useEffect(() => {
@@ -1328,6 +1331,13 @@ const Folds = () => {
                   message={FOLDS_TUTORIAL_HINT_TWO_FOLDS}
                   align="center"
                   onDismiss={() => setTutorialHintTwoFoldsDismissed(true)}
+                />
+              )}
+              {tutorialIdx === puzzleData.tutorial.length - 1 && !tutorialHintStarDismissed && (
+                <DismissibleHintToast
+                  message="On daily puzzles, earn a ★ by solving without using Undo or Reset."
+                  align="center"
+                  onDismiss={() => setTutorialHintStarDismissed(true)}
                 />
               )}
             </div>
@@ -1542,13 +1552,10 @@ const Folds = () => {
                             return
                           }
                           if (e.pointerType === 'touch') {
-                            const grid = clientToGrid(e.clientX, e.clientY)
                             if (pendingFoldLine === l.lineKey) {
-                              setPendingFoldLine(null)
-                              setPendingFoldAnchor(null)
-                              handleFold(l.lineKey)
                               return
                             }
+                            const grid = clientToGrid(e.clientX, e.clientY)
                             beginFoldTouchTrace(e, grid, l.lineKey)
                           }
                         }
@@ -1613,8 +1620,7 @@ const Folds = () => {
                         y2={l.y2}
                         stroke={getLineStroke(l.lineKey)}
                         strokeWidth={4}
-                        style={{ pointerEvents: 'stroke' }}
-                        onPointerDown={confirmFold}
+                        style={{ pointerEvents: 'none' }}
                       />
                       <g
                         transform={`rotate(-30 ${cx} ${cy})`}
@@ -1703,8 +1709,8 @@ const Folds = () => {
             <br />
             {coarsePointer ? (
               <>
-                Tap or trace a line to select it. Touch the line again or use the <b>fold</b> button
-                to fold the triangles across it.
+                Tap or trace a line to select it. Use the <b>FOLD</b> button on the line or at the
+                bottom to fold the triangles across it.
               </>
             ) : (
               <>

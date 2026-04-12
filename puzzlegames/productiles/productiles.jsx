@@ -33,6 +33,7 @@ import { buildTierRoster, formatCurateClipboard } from '../../src/shared/curateR
 import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import SmartRightButton from '../../src/shared/SmartRightButton.jsx'
+import DismissibleHintToast from '../../src/shared/DismissibleHintToast.jsx'
 import {
   TILE_WIN_HIGHLIGHT_FILL,
   TILES_WIN_FLOURISH_TOTAL_MS,
@@ -48,6 +49,13 @@ const SOLVE_STEP_MS = 200
 /** Worst-case row+col wave + flourish (grid size ≤ 6); used if suite completes without an active `solveAnim`. */
 const PRODUCTILES_SUITE_MODAL_SOLVE_ANIM_MAX_MS =
   6 * SOLVE_STEP_MS * 2 + TILES_WIN_FLOURISH_TOTAL_MS + 200
+
+const PRODUCTILES_TUTORIAL_HINT_SLIDE =
+  'Slide tiles so the product in each row and column matches its target.'
+const PRODUCTILES_TUTORIAL_HINT_RECT =
+  'Square tiles slide both ways.\nRectangles slide only along their longer side.'
+const PRODUCTILES_TUTORIAL_HINT_STAR =
+  'On daily puzzles, earn a ★ by solving a puzzle in the minimum number of moves.'
 
 // ── Daily helpers ────────────────────────────────────────────────────────────
 
@@ -393,11 +401,9 @@ export default function Productiles() {
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const allDailyDoneCompletionRef = useRef(null)
   const pendingSuiteModalAfterAnimRef = useRef(false)
-
-  useSuiteCompletionTimer(GAME_KEYS.PRODUCTILES, daily.key, {
-    track: !curateMode && mode === 'daily',
-    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.PRODUCTILES, daily.key),
-  })
+  const [tutorialHintSlideDismissed, setTutorialHintSlideDismissed] = useState(false)
+  const [tutorialHintRectDismissed, setTutorialHintRectDismissed] = useState(false)
+  const [tutorialHintStarDismissed, setTutorialHintStarDismissed] = useState(false)
 
   useEffect(() => {
     if (!curateMode) persistTutorialResumeState(GAME_KEYS.PRODUCTILES, mode, tutorialIdx)
@@ -973,6 +979,13 @@ export default function Productiles() {
           : CTA_LABELS.NEXT_PUZZLE
     : null
 
+  useSuiteCompletionTimer(GAME_KEYS.PRODUCTILES, daily.key, {
+    track: !curateMode && mode === 'daily',
+    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.PRODUCTILES, daily.key),
+    pauseForHubCompleteCta:
+      primaryLabel === CTA_LABELS.ALL_PUZZLES || primaryLabel === CTA_LABELS.NEXT_PUZZLE,
+  })
+
   const base = import.meta.env.BASE_URL
 
   const handleStatsClick = useCallback(() => {
@@ -1056,9 +1069,39 @@ export default function Productiles() {
             >
               ←
             </button>
-            <div className="level-label">
-              <span className="sub">Tutorial</span>
-              <span className="num">{tutorialIdx + 1}</span>
+            <div
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+              }}
+            >
+              <div className="level-label">
+                <span className="sub">Tutorial</span>
+                <span className="num">{tutorialIdx + 1}</span>
+              </div>
+              {tutorialIdx === 0 && !tutorialHintSlideDismissed && (
+                <DismissibleHintToast
+                  message={PRODUCTILES_TUTORIAL_HINT_SLIDE}
+                  align="center"
+                  onDismiss={() => setTutorialHintSlideDismissed(true)}
+                />
+              )}
+              {tutorialIdx === 2 && !tutorialHintRectDismissed && (
+                <DismissibleHintToast
+                  message={PRODUCTILES_TUTORIAL_HINT_RECT}
+                  align="center"
+                  onDismiss={() => setTutorialHintRectDismissed(true)}
+                />
+              )}
+              {tutorialIdx === puzzleData.tutorial.length - 1 && !tutorialHintStarDismissed && (
+                <DismissibleHintToast
+                  message={PRODUCTILES_TUTORIAL_HINT_STAR}
+                  align="center"
+                  onDismiss={() => setTutorialHintStarDismissed(true)}
+                />
+              )}
             </div>
             <button
               className={`nav-arrow ${tutorialIdx === puzzleData.tutorial.length - 1 ? 'disabled' : ''}`}

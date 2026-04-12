@@ -91,20 +91,15 @@ function writeFolds(filePath, data) {
   fs.writeFileSync(filePath, out, 'utf8')
 }
 
-function writeHoneycombs(filePath, data) {
-  // Preserve the import header and the exported helper functions at the bottom
-  const original = fs.readFileSync(filePath, 'utf8')
-  const headerEnd = original.indexOf('const puzzleData = {')
-  const dataStart = headerEnd
-  // Find the closing brace of puzzleData (the lone `}` on its own line before `export default`)
-  const exportDefaultIdx = original.indexOf('\nexport default puzzleData')
-  const dataEnd = exportDefaultIdx
+const HONEYCOMBS_FILE_HEADER = `// Honeycombs puzzle definitions — batched like other suite games (easy / medium / hard).
+// Format per puzzle: { size: 'small'|'medium'|'large', clues: [[row, col, value], ...] }
 
+`
+
+function writeHoneycombs(filePath, data) {
   const tiers = TIER_ORDER.filter(t => Array.isArray(data[t]))
   const blocks = tiers.map(t => buildTierBlock(t, data[t], formatHoneycombsPuzzle))
-  const newData = `const puzzleData = {\n${blocks.join('\n\n')}\n}`
-
-  const out = original.slice(0, dataStart) + newData + original.slice(dataEnd)
+  const out = `${HONEYCOMBS_FILE_HEADER}export default {\n${blocks.join('\n\n')}\n}\n`
   fs.writeFileSync(filePath, out, 'utf8')
 }
 

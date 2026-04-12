@@ -1,9 +1,7 @@
 // Honeycombs puzzle definitions — batched like other suite games (easy / medium / hard).
 // Format per puzzle: { size: 'small'|'medium'|'large', clues: [[row, col, value], ...] }
 
-import { getDailyKey, getDayIndex } from '@shared-contracts/dailyPuzzleDate.js'
-
-const puzzleData = {
+export default {
   tutorial: [
     { size: 'small', clues: [[0, 0, 3], [0, 1, 2], [0, 2, 1], [2, 0, 10], [2, 1, 9], [2, 2, 8]] },
     { size: 'small', clues: [[0, 0, 5], [1, 1, 6], [1, 2, 7], [2, 1, 8], [2, 0, 9], [1, 0, 10]] },
@@ -211,26 +209,4 @@ const puzzleData = {
     { size: 'large', clues: [[4, 2, 5], [4, 0, 7], [1, 1, 11], [2, 2, 12], [3, 2, 15], [1, 2, 17]] },
     { size: 'large', clues: [[2, 0, 3], [1, 0, 5], [2, 3, 10], [3, 3, 16], [4, 1, 18], [4, 0, 19]] },
   ],
-}
-
-export default puzzleData
-
-export function getHoneycombsDailyDateKey() {
-  return getDailyKey()
-}
-
-export function getDailyHoneycombsPuzzles() {
-  const key = getDailyKey()
-  const dayIndex = getDayIndex(key)
-  const easy = puzzleData.easy || []
-  const medium = puzzleData.medium || []
-  const hard = puzzleData.hard || []
-  return {
-    dateKey: key,
-    puzzles: [
-      easy[dayIndex % easy.length],
-      medium[dayIndex % medium.length],
-      hard[dayIndex % hard.length],
-    ],
-  }
 }

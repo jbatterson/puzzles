@@ -9,6 +9,19 @@ const SEG_MS = 150
 /** Keep in sync with `#hex-trace.trace-pulse-win` in honeycombs.css (0.6s × 3 iterations). */
 export const WIN_TRACE_PULSE_TOTAL_MS = 0.6 * 3 * 1000
 
+/**
+ * Conservative upper bound from `runTrace(..., onDone)` start until `onDone` runs on a winning
+ * trace (bee segments + win pulse). Used for suite-modal fallback if `onDone` never fires.
+ * @param {number} cellCountOnGrid
+ */
+export function getMaxWinTraceCompleteMs(cellCountOnGrid) {
+  const n = Math.max(1, Math.min(40, Math.floor(cellCountOnGrid)))
+  const segments = Math.max(0, n - 1)
+  // Per segment: bee + line use `SEG_MS`; allow slack for rAF + transitionend.
+  const perSegmentMs = SEG_MS + 150
+  return segments * perSegmentMs + WIN_TRACE_PULSE_TOTAL_MS + 400
+}
+
 function normalizeAngleDeg(deg) {
   return ((deg % 360) + 360) % 360
 }

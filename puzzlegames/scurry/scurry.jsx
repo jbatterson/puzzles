@@ -67,6 +67,10 @@ const SCURRY_TUTORIAL_HINTS = [
     idx: 8,
     message: 'If two bugs are side-by-side, pushing one into the other will move them both.',
   },
+  {
+    idx: 9,
+    message: 'On daily puzzles, earn a ★ by solving without using an Undo or Reset.',
+  },
 ]
 
 // ── Daily puzzle selection ───────────────────────────────────────────────────
@@ -252,11 +256,6 @@ const Scurry = () => {
   const [curateCopyHint, setCurateCopyHint] = useState(null)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const allDailyDoneCompletionRef = useRef(null)
-
-  useSuiteCompletionTimer(GAME_KEYS.SCURRY, daily.key, {
-    track: !curateMode && mode === 'daily',
-    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.SCURRY, daily.key),
-  })
 
   const [tutorialHintsDismissed, setTutorialHintsDismissed] = useState(() =>
     Object.fromEntries(SCURRY_TUTORIAL_HINTS.map(({ idx }) => [idx, false]))
@@ -531,6 +530,13 @@ const Scurry = () => {
     : isOutOfBugs
       ? 'Retry Puzzle'
       : null
+
+  useSuiteCompletionTimer(GAME_KEYS.SCURRY, daily.key, {
+    track: !curateMode && mode === 'daily',
+    alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.SCURRY, daily.key),
+    pauseForHubCompleteCta:
+      primaryLabel === CTA_LABELS.ALL_PUZZLES || primaryLabel === CTA_LABELS.NEXT_PUZZLE,
+  })
 
   const base = import.meta.env.BASE_URL
 
