@@ -457,7 +457,7 @@ export default function Productiles() {
     const labelCol = 52
     const boardPx = wrapperRef.current.getBoundingClientRect().width - labelCol
     if (boardPx <= 0) return
-    const gs = Math.min(72, Math.max(20, Math.floor(boardPx / s.size)))
+    const gs = Math.min(80, Math.max(20, Math.floor(boardPx / s.size)))
     const actualPx = s.size * gs
     const offset = Math.floor((boardPx - actualPx) / 2)
     const canvas = canvasRef.current
@@ -521,7 +521,7 @@ export default function Productiles() {
       const boardPx = wrapperRef.current.getBoundingClientRect().width - labelCol
       if (boardPx > 50) {
         const data = currentPuzzleData
-        const gs = Math.min(72, Math.max(20, Math.floor(boardPx / (data?.s || 3))))
+        const gs = Math.min(80, Math.max(20, Math.floor(boardPx / (data?.s || 3))))
         loadPuzzle(data, gs)
         document.fonts.ready.then(() => resizeBoard())
       } else requestAnimationFrame(waitForLayout)
@@ -538,7 +538,7 @@ export default function Productiles() {
     if (!data) return
     const labelCol = 52
     const boardPx = wrapperRef.current.getBoundingClientRect().width - labelCol
-    const gs = Math.min(72, Math.max(20, Math.floor(boardPx / data.s)))
+    const gs = Math.min(80, Math.max(20, Math.floor(boardPx / data.s)))
     if (curateMode) {
       const saved = loadGameState('curate', curateIdx, data)
       if (saved) {

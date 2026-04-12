@@ -35,6 +35,7 @@ import { useCurateModeFromRoster } from '../../src/shared/useCurateMode.js'
 import { CurateCopyToast, CurateLevelNav } from '../../src/shared/CurateModeChrome.jsx'
 import './honeycombs.css'
 import { getDateLabel } from '@shared-contracts/dailyPuzzleDate.js'
+import { puzzleFingerprint } from './honeycombsPersistence.js'
 
 const HONEYCOMBS_TUTORIAL_HINT_PATH =
   'Tap empty hexagons to place the missing numbers.\nMake a continuous path from 1-10.'
@@ -174,6 +175,14 @@ export default function Honeycombs() {
     [curateMode, roster, mode, tutorialPuzzles, daily.puzzles]
   )
   const activePuzzleIdx = curateMode ? curateIdx : mode === 'tutorial' ? tutorialIdx : dailyIdx
+
+  const honeycombsBoardKey = useMemo(() => {
+    const scope = curateMode ? 'curate' : mode
+    const dk = curateMode ? 'curate' : daily.dateKey
+    const p = activePuzzles[activePuzzleIdx]
+    const fp = puzzleFingerprint(p)
+    return `${scope}:${dk}:${activePuzzleIdx}:${fp ?? 'none'}`
+  }, [curateMode, mode, daily.dateKey, activePuzzles, activePuzzleIdx])
 
   const bumpCompletions = useCallback(() => {
     setCompletions(loadCompletions(daily.dateKey))
@@ -388,6 +397,7 @@ export default function Honeycombs() {
       )}
 
       <HoneycombsBoard
+        key={honeycombsBoardKey}
         puzzle={activePuzzles[activePuzzleIdx]}
         puzzleIdx={activePuzzleIdx}
         totalPuzzles={activePuzzles.length}

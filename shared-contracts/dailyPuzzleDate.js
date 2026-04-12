@@ -18,11 +18,19 @@ const PAC_LABEL = new Intl.DateTimeFormat('en-US', {
 })
 
 function formatPacificDateKey(date) {
-  const parts = PAC_YMD.formatToParts(date)
-  const y = parts.find((p) => p.type === 'year').value
-  const m = parts.find((p) => p.type === 'month').value
-  const d = parts.find((p) => p.type === 'day').value
-  return `${y}-${m}-${d}`
+  const dIn =
+    date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date()
+  try {
+    const parts = PAC_YMD.formatToParts(dIn)
+    const y = parts.find((p) => p.type === 'year')?.value
+    const m = parts.find((p) => p.type === 'month')?.value
+    const day = parts.find((p) => p.type === 'day')?.value
+    if (y != null && m != null && day != null) return `${y}-${m}-${day}`
+  } catch {
+    // Intl / formatToParts can fail in edge environments; avoid blank hub from thrown render.
+  }
+  // Degraded: UTC calendar day (not Pacific). Wrong within ~hours of PT midnight, but stable string.
+  return dIn.toISOString().slice(0, 10)
 }
 
 /** Today's daily-puzzle date key in Pacific Time ("YYYY-MM-DD"). */

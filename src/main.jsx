@@ -84,7 +84,10 @@ function renderLoadFailure(rootEl, err) {
 
 async function boot() {
   const rootEl = document.getElementById('root')
-  if (!rootEl) return
+  if (!rootEl) {
+    console.error('[Puzzles] Missing #root — hub cannot mount (check index.html).')
+    return
+  }
 
   let Home
   try {

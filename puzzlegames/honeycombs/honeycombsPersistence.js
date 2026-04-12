@@ -10,7 +10,7 @@ function cellKey(r, c) {
   return `${r},${c}`
 }
 
-function puzzleFingerprint(puzzle) {
+export function puzzleFingerprint(puzzle) {
   if (!puzzle) return null
   return JSON.stringify({ size: puzzle.size, clues: puzzle.clues })
 }

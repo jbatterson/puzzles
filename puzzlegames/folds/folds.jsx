@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react'
 import puzzleData from './puzzles.js'
-import { fillColor } from './palette.js'
+import { fillColor, FOLDS_OVERLAP_MIX } from './palette.js'
 import { applyFoldsDailyPresentation } from './foldsDailyPresentation.js'
 import {
   S,
@@ -19,6 +19,7 @@ import {
   snap,
   ALL_TRIANGLES,
   FOLD_FLOURISH_MIN_RC,
+  isBoardOuterEdgeFoldLine,
 } from './foldsGeometry.js'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
@@ -68,7 +69,6 @@ const FOLDS_WIN_REPLAY_PAUSE_MS = 100
 
 const ANIM_MS = 450
 const easeIO = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
-const BROWN = '#653700'
 /** Emphasized fold line / touch confirm (lighter than suite ink for legibility on the grid). */
 const FOLD_LINE_ACCENT = '#205786'
 
@@ -211,10 +211,16 @@ const ALL_LINES = (() => {
         addLine(0, x, y)
         addLine(Math.atan2(H, -S / 2), x, y)
         addLine(Math.atan2(H, S / 2), x + S, y)
-      }
     }
-  return lines
+  }
+  return lines.map((line) => ({
+    ...line,
+    isBoardOuterEdge: isBoardOuterEdgeFoldLine(line),
+  }))
 })()
+
+/** Fold lines the player can select (excludes the six outer-hex boundary creases). */
+const INTERACTIVE_FOLD_LINES = ALL_LINES.filter((l) => !l.isBoardOuterEdge)
 
 /** Half of fold-hit strokeWidth (22) in grid space — a sample counts only if within this distance of a segment. */
 const FOLD_PICK_TOL = 11
@@ -229,7 +235,7 @@ const FOLD_TRACE_MIN_COUNT_LEAD = 2
  * Pick the fold line best supported by stroke samples. Only lines within FOLD_PICK_TOL count.
  * Returns null if ambiguous or weak evidence (no global closest-line fallback).
  */
-function pickLineFromStrokePoints(points, lines = ALL_LINES) {
+function pickLineFromStrokePoints(points, lines = INTERACTIVE_FOLD_LINES) {
   if (!points || points.length < FOLD_TRACE_MIN_SAMPLES) return null
   const n = points.length
   const scored = lines.map((line) => {
@@ -370,7 +376,7 @@ function computeFoldedBoardFromBoard(board, lineKey) {
       const destKey = `${nr},${nc}`
       const prev = next[destKey]
       if (prev === undefined || prev === color) next[destKey] = color
-      else next[destKey] = BROWN
+      else next[destKey] = FOLDS_OVERLAP_MIX
     } else {
       lostKeys[key] = true
     }
@@ -395,7 +401,7 @@ function inferFoldSequence(historyBoards) {
     const prev = historyBoards[i]
     const exp = historyBoards[i + 1]
     let found = null
-    for (const l of ALL_LINES) {
+    for (const l of INTERACTIVE_FOLD_LINES) {
       const r = computeFoldedBoardFromBoard(prev, l.lineKey)
       if (r && boardsEqual(r.next, exp)) {
         found = l.lineKey
@@ -662,7 +668,14 @@ const Folds = () => {
     }
   }
 
-  /** Clears hover / pending fold UI. Use ignorePointerMs (e.g. 400) after modal close to absorb stray pointer events. */
+  /**
+   * Clears hover / pending fold UI. Use ignorePointerMs (e.g. 400) after modal close to absorb stray pointer events.
+   *
+   * Touch UX invariant: a highlighted fold line with no FOLD chip should only appear when
+   * `pendingFoldLine` is set (or brief `tapFlash`). Stale `hoverLine` is cleared on touch down
+   * (`onSvgPointerDownCapture`) and when `(pointer: coarse)` matches — do not remove those without
+   * checking ghost-line regressions on hybrid devices.
+   */
   const clearFoldLineInteractionState = useCallback((options = {}) => {
     const { ignorePointerMs = false } = options
     endFoldTouchTrace()
@@ -935,6 +948,16 @@ const Folds = () => {
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
+  /** Mouse-hover fold emphasis must not linger when the device is touch-primary (see onSvgPointerDownCapture). */
+  useEffect(() => {
+    if (!coarsePointer) return
+    if (hoverDelayRef.current) {
+      clearTimeout(hoverDelayRef.current)
+      hoverDelayRef.current = null
+    }
+    setHoverLine(null)
+  }, [coarsePointer])
+
   useEffect(() => {
     if (mode !== 'tutorial') {
       setTutorialHint1Dismissed(false)
@@ -966,13 +989,27 @@ const Folds = () => {
     return () => window.removeEventListener('pointerdown', onPointerDownCapture, true)
   }, [showInstructions, showStats, showLinks, clearFoldLineInteractionState])
 
+  /**
+   * Touch / hybrid devices: `hoverLine` (mouse-only pointerenter) can stick because touch does not
+   * always deliver pointerleave to the line under the cursor. That shows the thick “emphasis”
+   * stroke without `pendingFoldLine`, so there is no in-SVG FOLD chip — looks like a ghost fold.
+   * Clear hover on any finger down on the board; keep the pending-dismiss branch below unchanged.
+   *
+   * Do not drop this touch-first hover reset without re-testing iPad / Win hybrid / Chrome “synthetic mouse”.
+   */
   const onSvgPointerDownCapture = useCallback(
     (e) => {
       if (e.pointerType !== 'touch') return
+      if (Date.now() < ignoreBoardPointerUntilRef.current) return
+      if (hoverDelayRef.current) {
+        clearTimeout(hoverDelayRef.current)
+        hoverDelayRef.current = null
+      }
+      setHoverLine(null)
+
       if (foldTraceActiveRef.current) return
       if (!pendingFoldLineRef.current) return
       if (showInstructions || showStats || showLinks) return
-      if (Date.now() < ignoreBoardPointerUntilRef.current) return
       const raw = e.target
       const el = raw instanceof Element ? raw : raw?.parentElement
       if (!el || !(el instanceof Element)) return
@@ -1020,6 +1057,7 @@ const Folds = () => {
   const validateFold = (lineKey) => {
     const line = ALL_LINES.find((l) => l.lineKey === lineKey)
     if (!line) return { ok: false, reason: 'offboard' }
+    if (line.isBoardOuterEdge) return { ok: false, reason: 'outer-edge' }
     const c2 = Math.cos(2 * line.theta),
       s2 = Math.sin(2 * line.theta)
     for (const [key, color] of Object.entries(board)) {
@@ -1058,7 +1096,7 @@ const Folds = () => {
         const destKey = `${nr},${nc}`
         const prev = next[destKey]
         if (prev === undefined || prev === color) next[destKey] = color
-        else next[destKey] = BROWN
+        else next[destKey] = FOLDS_OVERLAP_MIX
       } else {
         lostKeys[key] = true
       }
@@ -1103,8 +1141,11 @@ const Folds = () => {
     return () => cancelAnimationFrame(rafId)
   }, [anim])
 
+  /** `hoverLine` is mouse-only; never treat it as emphasis on coarse pointers (see touch hover reset above). */
   const isFoldLineEmphasized = (lineKey) =>
-    hoverLine === lineKey || pendingFoldLine === lineKey || tapFlash === lineKey
+    (hoverLine === lineKey && !coarsePointer) ||
+    pendingFoldLine === lineKey ||
+    tapFlash === lineKey
 
   const getLineStroke = (lineKey) => {
     if (isFoldLineEmphasized(lineKey)) return FOLD_LINE_ACCENT
@@ -1460,45 +1501,58 @@ const Folds = () => {
                 <g
                   key={l.lineKey}
                   className="fold-group"
-                  onPointerEnter={(e) => {
-                    if (Date.now() < ignoreBoardPointerUntilRef.current) return
-                    if (e.pointerType !== 'mouse') return
-                    if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
-                    hoverDelayRef.current = setTimeout(() => {
-                      if (Date.now() < ignoreBoardPointerUntilRef.current) return
-                      setHoverLine(l.lineKey)
-                    }, 80)
-                  }}
-                  onPointerLeave={(e) => {
-                    if (Date.now() < ignoreBoardPointerUntilRef.current) return
-                    if (e.pointerType !== 'mouse') return
-                    if (hoverDelayRef.current) {
-                      clearTimeout(hoverDelayRef.current)
-                      hoverDelayRef.current = null
-                    }
-                    setHoverLine((h) => (h === l.lineKey ? null : h))
-                  }}
-                  onPointerDown={(e) => {
-                    if (Date.now() < ignoreBoardPointerUntilRef.current) return
-                    e.preventDefault()
-                    if (e.pointerType === 'mouse') {
-                      setTapFlash(l.lineKey)
-                      setTimeout(() => setTapFlash(null), 120)
-                      setPendingFoldLine(null)
-                      handleFold(l.lineKey)
-                      return
-                    }
-                    if (e.pointerType === 'touch') {
-                      const grid = clientToGrid(e.clientX, e.clientY)
-                      if (pendingFoldLine === l.lineKey) {
-                        setPendingFoldLine(null)
-                        setPendingFoldAnchor(null)
-                        handleFold(l.lineKey)
-                        return
-                      }
-                      beginFoldTouchTrace(e, grid, l.lineKey)
-                    }
-                  }}
+                  style={l.isBoardOuterEdge ? { pointerEvents: 'none' } : undefined}
+                  onPointerEnter={
+                    l.isBoardOuterEdge
+                      ? undefined
+                      : (e) => {
+                          if (Date.now() < ignoreBoardPointerUntilRef.current) return
+                          if (e.pointerType !== 'mouse' || coarsePointer) return
+                          if (hoverDelayRef.current) clearTimeout(hoverDelayRef.current)
+                          hoverDelayRef.current = setTimeout(() => {
+                            if (Date.now() < ignoreBoardPointerUntilRef.current) return
+                            setHoverLine(l.lineKey)
+                          }, 80)
+                        }
+                  }
+                  onPointerLeave={
+                    l.isBoardOuterEdge
+                      ? undefined
+                      : (e) => {
+                          if (Date.now() < ignoreBoardPointerUntilRef.current) return
+                          if (e.pointerType !== 'mouse') return
+                          if (hoverDelayRef.current) {
+                            clearTimeout(hoverDelayRef.current)
+                            hoverDelayRef.current = null
+                          }
+                          setHoverLine((h) => (h === l.lineKey ? null : h))
+                        }
+                  }
+                  onPointerDown={
+                    l.isBoardOuterEdge
+                      ? undefined
+                      : (e) => {
+                          if (Date.now() < ignoreBoardPointerUntilRef.current) return
+                          e.preventDefault()
+                          if (e.pointerType === 'mouse') {
+                            setTapFlash(l.lineKey)
+                            setTimeout(() => setTapFlash(null), 120)
+                            setPendingFoldLine(null)
+                            handleFold(l.lineKey)
+                            return
+                          }
+                          if (e.pointerType === 'touch') {
+                            const grid = clientToGrid(e.clientX, e.clientY)
+                            if (pendingFoldLine === l.lineKey) {
+                              setPendingFoldLine(null)
+                              setPendingFoldAnchor(null)
+                              handleFold(l.lineKey)
+                              return
+                            }
+                            beginFoldTouchTrace(e, grid, l.lineKey)
+                          }
+                        }
+                  }
                 >
                   <line
                     x1={l.x1}
@@ -1508,7 +1562,9 @@ const Folds = () => {
                     className="fold-hit"
                     stroke="transparent"
                     strokeWidth="22"
-                    style={{ pointerEvents: 'stroke' }}
+                    style={{
+                      pointerEvents: l.isBoardOuterEdge ? 'none' : 'stroke',
+                    }}
                   />
                   {!isFoldLineEmphasized(l.lineKey) && (
                     <line

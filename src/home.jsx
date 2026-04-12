@@ -419,6 +419,12 @@ export default function Home() {
     }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('pageshow', onPageShow)
+    /**
+     * Any cross-tab `localStorage` write bumps the hub date + streaks so “tomorrow” appears after
+     * midnight without reload. If the hub ever looks blank after idle overnight, first suspect:
+     * (1) stale deploy — cached `index.html` pointing at removed JS chunks (hard refresh fixes);
+     * (2) an uncaught render error — check console; (3) rare Intl failures — see `dailyPuzzleDate`.
+     */
     const onStorage = (e) => {
       bumpStreaks()
       if (e.key === SUITE_DASHBOARD_PREFS_KEY) refreshSuitePrefs()

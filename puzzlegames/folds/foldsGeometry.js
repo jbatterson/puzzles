@@ -158,3 +158,37 @@ export const ALL_TRIANGLES = (() => {
 })()
 
 export const FOLD_FLOURISH_MIN_RC = Math.min(...ALL_TRIANGLES.map((t) => t.r + t.c))
+
+function pointToSegmentDistSq(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len2 = dx * dx + dy * dy
+  if (len2 < 1e-18) return (px - x1) ** 2 + (py - y1) ** 2
+  let t = ((px - x1) * dx + (py - y1) * dy) / len2
+  t = Math.max(0, Math.min(1, t))
+  const qx = x1 + t * dx
+  const qy = y1 + t * dy
+  return (px - qx) ** 2 + (py - qy) ** 2
+}
+
+/**
+ * True when both segment endpoints lie on the same outer edge of the board hex.
+ * Those segments are cosmetic boundary creases, not playable folds.
+ */
+export function isBoardOuterEdgeFoldLine(line, tol = 3.5) {
+  const tolSq = tol * tol
+  const { x1, y1, x2, y2 } = line
+  for (let i = 0; i < HEX_POLY.length; i++) {
+    const ax = HEX_POLY[i].x
+    const ay = HEX_POLY[i].y
+    const bx = HEX_POLY[(i + 1) % HEX_POLY.length].x
+    const by = HEX_POLY[(i + 1) % HEX_POLY.length].y
+    if (
+      pointToSegmentDistSq(x1, y1, ax, ay, bx, by) <= tolSq &&
+      pointToSegmentDistSq(x2, y2, ax, ay, bx, by) <= tolSq
+    ) {
+      return true
+    }
+  }
+  return false
+}
