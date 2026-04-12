@@ -1,83 +1,52 @@
-/* Do not set overflow:hidden on #root/body — it clips the TopBar full-bleed margins. */
+/*
+ * Honeycombs game-specific styles.
+ *
+ * Layout (game-container, game-stage, SVG sizing) is handled by style.css via
+ * the shared .game-container / .game-stage rules and the .game-container.honeycombs
+ * override for --max-stage-size. Only appearance-level rules live here.
+ */
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-.game-container {
-  width: 100%;
-  max-width: 500px;
-  box-sizing: border-box;
-}
-
-.honeycombs-board-mount {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-}
-
-/* Touch hints for board UI only — do not target TopBar buttons (same component as other games). */
+/* Touch hints for board UI only — do not target TopBar buttons. */
 #keyboard button,
 .kb-key,
-.kb-action-btn-secondary,
-.kb-action-btn-primary {
+.game-container.honeycombs .button-tray .btn-secondary,
+.game-container.honeycombs .button-tray .btn-primary,
+.game-container.honeycombs .button-tray a.btn-primary {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-}
-
-a.kb-action-btn-primary {
-  text-decoration: none;
-  color: #fff;
-  box-sizing: border-box;
 }
 
 /* ── HONEYCOMB GRID ── */
-#play-area {
-  width: 100%;
-  max-width: 500px;
-  flex: 1;
-  min-height: 280px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: stretch;
-  padding: 8px 0 0;
-  overflow: hidden;
+/*
+ * Board wrapper.
+ *
+ * The live height cap is measured in HoneycombsBoard.jsx from the shared
+ * `.game-stage` height. That lets the board stay vertically centered in the
+ * stage while still shrinking as soon as the stage loses room to the keyboard
+ * and bottom tray below it.
+ */
+.game-container.honeycombs .game-stage {
+  flex-basis: 0;
+  min-height: var(--hc-min-h, 0px);
 }
-#grid-shell {
-  width: 100%;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0 8px;
-  max-height: 100%;
-  overflow: hidden;
-}
-#grid-container {
-  position: relative;
-  flex-shrink: 1;
-  margin: 0 auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+
+.hc-board-wrap {
+  width: min(
+    100%,
+    460px,
+    var(--hc-geom-cap-w, 460px),
+    calc(var(--hc-live-max-h, var(--max-stage-size, 9999px)) * var(--hc-ar, 1))
+  );
   max-width: 100%;
-  max-height: 100%;
-  overflow: hidden;
+  max-height: max(0px, var(--hc-live-max-h, var(--max-stage-size, 9999px)));
+  aspect-ratio: var(--hc-aspect, 1);
+  margin: 0 auto;
+  min-width: 280px;
+  min-height: calc(280px / var(--hc-ar, 1));
+  flex-shrink: 1;
 }
 svg#hex-grid {
-  display: block;
   overflow: visible;
-  /* natural pixel dimensions set by JS; shrinks to fit container, never stretches */
-  max-width: 100%;
-  max-height: 100%;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
 }
 
 /* hex cell styles */
@@ -134,7 +103,8 @@ svg#hex-grid {
   margin: 8px auto 0;
   width: 100%;
   max-width: 500px;
-  padding: 0 10px calc(8px + env(safe-area-inset-bottom));
+  /* Horizontal padding matches .game-container (20px); safe-area is on the container bottom. */
+  padding: 0 0 4px;
   align-items: center;
   flex-shrink: 0;
   touch-action: manipulation;
@@ -149,13 +119,13 @@ svg#hex-grid {
   max-width: 460px;
 }
 .kb-key {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: none;
   font-family: 'Outfit', sans-serif;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   cursor: pointer;
   transition:
     background 0.12s,
@@ -195,98 +165,11 @@ svg#hex-grid {
   background: #3a7399;
 }
 
-/* Undo / Reset row */
-.kb-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  width: 100%;
-  max-width: 460px;
-  margin-top: 4px;
-}
-.kb-action-btn-secondary {
-  min-height: 52px;
-  border-radius: 4px;
-  border: 2px solid #1a3d5b;
-  background: #fff;
-  color: #1a3d5b;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  font-size: 0.68rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    transform 0.08s ease,
-    filter 0.12s ease,
-    background-color 0.12s ease,
-    opacity 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.kb-action-btn-secondary:active {
-  transform: scale(0.96);
-  filter: brightness(0.96);
-}
-@media (hover: hover) {
-  .kb-action-btn-secondary:hover {
-    background-color: rgba(26, 61, 91, 0.07);
-    transform: translateY(-1px);
-  }
-}
-.kb-action-btn-primary {
-  min-height: 52px;
-  border-radius: 4px;
-  border: none;
-  background: var(--puzzle-ink, #1a3d5b);
-  color: #fff;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  font-size: 0.68rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    transform 0.08s ease,
-    background-color 0.12s ease,
-    filter 0.12s ease,
-    opacity 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.kb-action-btn-primary:active:not(:disabled) {
-  transform: scale(0.96);
-  filter: brightness(0.9);
-}
-@media (hover: hover) {
-  .kb-action-btn-primary:not(:disabled):hover {
-    background: var(--puzzle-ink-hover, #465d7e);
-    transform: translateY(-1px);
-  }
-}
-.kb-action-btn-primary:disabled {
-  opacity: 0.32;
-  cursor: not-allowed;
-  transform: none;
-  filter: none;
+.game-container.honeycombs .button-tray {
+  margin-top: 14px;
 }
 
-
-.kb-action-btn-secondary:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  border-color: rgba(26, 61, 91, 0.22);
-  color: rgba(26, 61, 91, 0.36);
-  background: #fff;
-  transform: none;
-  filter: none;
-}
-
-/* Folds-style win pulse on completed path (matches shared pulseWin) */
+/* Win pulse on completed path */
 @keyframes tracePulseWin {
   0%,
   100% {

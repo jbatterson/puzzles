@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
 import puzzleData, { getDailyHoneycombsPuzzles, getHoneycombsDailyDateKey } from './puzzles.js'
-import { createHoneycombsEngine } from './honeycombsEngine.js'
+import HoneycombsBoard from './HoneycombsBoard.jsx'
 import TopBar from '../../src/shared/TopBar.jsx'
 import DiceFace from '../../src/shared/DiceFace.jsx'
 import SharedModalShell from '../../src/shared/SharedModalShell.jsx'
@@ -144,8 +144,6 @@ export default function Honeycombs() {
     alreadyFullyComplete: isSuiteCompleteForPrefs(GAME_KEYS.HONEYCOMBS, daily.dateKey),
   })
 
-  const boardMountRef = useRef(null)
-  const engineRef = useRef(null)
   const modalsOpenRef = useRef(false)
   const pendingSuiteModalRef = useRef(false)
   const allDailyDoneCompletionRef = useRef(null)
@@ -237,41 +235,6 @@ export default function Honeycombs() {
     allDailyDoneCompletionRef.current = done
   }, [curateMode, mode, completions, daily.dateKey, suitePrefsEpoch])
 
-  useLayoutEffect(() => {
-    const mount = boardMountRef.current
-    if (!mount) return
-    const engine = createHoneycombsEngine({
-      mount,
-      puzzles: activePuzzles,
-      dateKey: curateMode ? 'curate' : daily.dateKey,
-      hubBaseHref: base,
-      onRequestNextPuzzle: onRequestNext,
-      onCompletionsUpdated: bumpCompletions,
-      isBlockingModalOpen: () => modalsOpenRef.current,
-      onWinAnimationComplete: handleWinAnimationComplete,
-      trackCompletion: !curateMode && mode === 'daily',
-      finalSolvedAction: tutorialFinalAction,
-    })
-    engineRef.current = engine
-    return () => {
-      engine.destroy()
-      engineRef.current = null
-    }
-  }, [
-    activePuzzles,
-    curateMode,
-    daily.dateKey,
-    base,
-    onRequestNext,
-    bumpCompletions,
-    handleWinAnimationComplete,
-    mode,
-    tutorialFinalAction,
-  ])
-
-  useLayoutEffect(() => {
-    engineRef.current?.initPuzzle(activePuzzleIdx)
-  }, [activePuzzleIdx, mode])
 
   const handleStatsClick = useCallback(() => {
     if (curateMode) {
@@ -295,7 +258,7 @@ export default function Honeycombs() {
   }, [curateMode, roster, curateIdx])
 
   return (
-    <div className="game-container">
+    <div className="game-container honeycombs">
       <TopBar
         title={chrome.title}
         onHome={() => {
@@ -424,16 +387,19 @@ export default function Honeycombs() {
         </div>
       )}
 
-      <div ref={boardMountRef} className="honeycombs-board-mount">
-        <div id="play-area">
-          <div id="grid-shell">
-            <div id="grid-container">
-              <svg id="hex-grid" />
-            </div>
-          </div>
-        </div>
-        <div id="keyboard" />
-      </div>
+      <HoneycombsBoard
+        puzzle={activePuzzles[activePuzzleIdx]}
+        puzzleIdx={activePuzzleIdx}
+        totalPuzzles={activePuzzles.length}
+        dateKey={curateMode ? 'curate' : daily.dateKey}
+        hubBaseHref={base}
+        onRequestNextPuzzle={onRequestNext}
+        onCompletionsUpdated={bumpCompletions}
+        isBlockingModalOpen={() => modalsOpenRef.current}
+        onWin={handleWinAnimationComplete}
+        trackCompletion={!curateMode && mode === 'daily'}
+        finalSolvedAction={tutorialFinalAction}
+      />
 
       <SharedModalShell
         show={showInstructions}

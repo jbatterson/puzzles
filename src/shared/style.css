@@ -982,6 +982,25 @@ body {
 }
 
 /* =============================================================================
+   HONEYCOMBS-SPECIFIC
+   Keyboard is taller than other games (up to 3 rows + shared .button-tray).
+   Reserve more vertical chrome than the global 250px so the board starts
+   shrinking before the keyboard/buttons clip on shorter screens.
+
+   The final board size is still capped by the geometry limit from
+   HONEYCOMBS_MAX_HEX_SCREEN_CR_PX in honeycombsGeometry.js.
+   ============================================================================= */
+
+.game-container.honeycombs {
+  --max-stage-size: calc(100dvh - 430px);
+}
+@supports not (height: 100dvh) {
+  .game-container.honeycombs {
+    --max-stage-size: calc(100vh - 430px);
+  }
+}
+
+/* =============================================================================
    CLUELESS-SPECIFIC
    Tighter spacing above board; larger reservation below so stage shrinks on
    short viewports (keyboard + buttons + "All Puzzles" fit).
@@ -1031,14 +1050,13 @@ body {
 .game-container.folds #canvas-wrapper {
   /* Rotation-aware aspect ratio derived from HEX_ROTATED_VIEWBOX (w≈446, h≈512).
      With aspect-ratio + max-height set, modern browsers proportionally reduce width
-     when max-height would otherwise be exceeded — no clipping, correct proportions.
-     min-height matches the min-width floor used by square games (280px), so the board
-     stops shrinking at ~280px tall and the page scrolls instead (Scurry-like). */
+     when max-height would otherwise be exceeded — no clipping, correct proportions. */
   aspect-ratio: 446 / 512;
   width: 100%;
   max-height: var(--max-stage-size);
-  min-height: 280px;
   max-width: none;
+  min-width: 280px;
+  min-height: calc(280px * 512 / 446);
   margin: 0 auto;
   /* Debug tip: temporarily set background-color to black to inspect board fit. */
   background-color: transparent;
