@@ -221,6 +221,10 @@ const Scurry = () => {
   const { curateMode, curateIdx, setCurateIdx, exitCurateHref } = useCurateModeFromRoster(roster)
 
   const usedUndoOrResetRef = useRef(false)
+  const boardVersionRef = useRef(0)
+  const settleTimeoutRef = useRef(null)
+  const celebrateStartTimeoutRef = useRef(null)
+  const celebrateEndTimeoutRef = useRef(null)
   const [mode, setMode] = useState(
     () => getInitialTutorialNav(GAME_KEYS.SCURRY, puzzleData.tutorial ?? []).mode
   )
@@ -283,6 +287,21 @@ const Scurry = () => {
   const [scurryPostWinCtaAttention, setScurryPostWinCtaAttention] = useState(false)
   const [history, setHistory] = useState([])
 
+  const clearPendingAnimationTimeouts = useCallback(() => {
+    if (settleTimeoutRef.current != null) {
+      window.clearTimeout(settleTimeoutRef.current)
+      settleTimeoutRef.current = null
+    }
+    if (celebrateStartTimeoutRef.current != null) {
+      window.clearTimeout(celebrateStartTimeoutRef.current)
+      celebrateStartTimeoutRef.current = null
+    }
+    if (celebrateEndTimeoutRef.current != null) {
+      window.clearTimeout(celebrateEndTimeoutRef.current)
+      celebrateEndTimeoutRef.current = null
+    }
+  }, [])
+
   const level = useMemo(() => {
     if (curateMode) return roster[curateIdx]?.puzzle
     if (mode === 'tutorial') return puzzleData.tutorial[tutorialIdx]
@@ -292,6 +311,8 @@ const Scurry = () => {
 
   const applyFreshBoard = useCallback(() => {
     if (!level) return
+    boardVersionRef.current += 1
+    clearPendingAnimationTimeouts()
     const initial = level.prePlaced.map((sq, i) => ({
       id: `pre-${i}-${Date.now()}`,
       square: sq,
@@ -304,7 +325,7 @@ const Scurry = () => {
     setHistory([])
     setIsAnimating(false)
     setIsCelebrating(false)
-  }, [level])
+  }, [clearPendingAnimationTimeouts, level])
 
   const resetLevel = useCallback(() => {
     if (curateMode) clearScurryWip('curate', curateIdx)
@@ -313,6 +334,9 @@ const Scurry = () => {
   }, [curateMode, mode, daily.key, dailyIdx, curateIdx, applyFreshBoard])
 
   useEffect(() => {
+    boardVersionRef.current += 1
+    clearPendingAnimationTimeouts()
+
     if (curateMode) {
       const loaded = loadScurryWip('curate', curateIdx, level)
       if (loaded) {
@@ -345,7 +369,23 @@ const Scurry = () => {
     }
     applyFreshBoard()
     usedUndoOrResetRef.current = false
-  }, [curateMode, curateIdx, mode, tutorialIdx, daily.key, dailyIdx, level, applyFreshBoard])
+  }, [
+    curateMode,
+    curateIdx,
+    mode,
+    tutorialIdx,
+    daily.key,
+    dailyIdx,
+    level,
+    applyFreshBoard,
+    clearPendingAnimationTimeouts,
+  ])
+
+  useEffect(() => {
+    return () => {
+      clearPendingAnimationTimeouts()
+    }
+  }, [clearPendingAnimationTimeouts])
 
   useEffect(() => {
     if (!level || isAnimating) return
@@ -429,6 +469,7 @@ const Scurry = () => {
     if (bugsPlacedCount >= (level?.maxBugs ?? 0)) return
     if (bugs.some((b) => b.square === square)) return
 
+    const placementBoardVersion = boardVersionRef.current
     setHistory((prev) => [...prev, bugs.map((b) => ({ ...b }))])
     setIsAnimating(true)
 
@@ -438,7 +479,8 @@ const Scurry = () => {
     setBugs(updatedBugs)
     setBugsPlacedCount((prev) => prev + 1)
 
-    setTimeout(() => {
+    settleTimeoutRef.current = window.setTimeout(() => {
+      if (placementBoardVersion !== boardVersionRef.current) return
       const finalBugs = updatedBugs
         .filter((b) => !b.isFalling)
         .map((b) => ({ ...b, isMoving: false, virtualPos: null }))
@@ -454,11 +496,18 @@ const Scurry = () => {
           setCompletions(loadCompletions(daily.key))
           setPerfects(loadPerfects(daily.key))
         }
-        setTimeout(() => {
+        celebrateStartTimeoutRef.current = window.setTimeout(() => {
+          if (placementBoardVersion !== boardVersionRef.current) return
           setIsCelebrating(true)
-          setTimeout(() => setIsCelebrating(false), 800)
+          celebrateEndTimeoutRef.current = window.setTimeout(() => {
+            if (placementBoardVersion !== boardVersionRef.current) return
+            setIsCelebrating(false)
+            celebrateEndTimeoutRef.current = null
+          }, 800)
+          celebrateStartTimeoutRef.current = null
         }, 300)
       }
+      settleTimeoutRef.current = null
     }, 500)
   }
 
