@@ -54,7 +54,7 @@ svg#hex-grid {
   cursor: pointer;
 }
 .hex-cell.given {
-  cursor: default;
+  cursor: pointer;
 }
 .hex-cell polygon {
   stroke: #faa80a;

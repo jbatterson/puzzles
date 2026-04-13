@@ -281,7 +281,9 @@ export default function HoneycombsBoard({
       if (d !== null && d <= n && !clueSet.has(d) && !playerUsed.has(d) && !solved) {
         e.preventDefault()
         notifyUserInput()
-        setActiveDigit(d)
+        setActiveDigit((cur) =>
+          cur === d ? computeActiveDigitAfterFill(cells, d) : d
+        )
       }
     }
     document.addEventListener('keydown', handleKeydown)
@@ -351,6 +353,17 @@ export default function HoneycombsBoard({
 
   // ─── handlers ─────────────────────────────────────────────────────────────
 
+  const handleClueCellClick = useCallback(
+    (row, col) => {
+      if (solved) return
+      notifyUserInput()
+      const cell = cells.find((c) => c.row === row && c.col === col)
+      if (!cell?.isClue || cell.value === null) return
+      setActiveDigit(computeActiveDigitAfterFill(cells, cell.value))
+    },
+    [solved, cells, notifyUserInput]
+  )
+
   const handleCellClick = useCallback(
     (row, col) => {
       if (solved) return
@@ -359,6 +372,10 @@ export default function HoneycombsBoard({
       if (!cell || cell.isClue) return
 
       if (cell.value !== null) {
+        if (cell.value === activeDigit) {
+          setActiveDigit(computeActiveDigitAfterFill(cells, cell.value))
+          return
+        }
         // erase: push history and restore digit as active
         usedUndoOrResetRef.current = true
         const newHistory = [...moveHistory, cells.map((c) => c.value)]
@@ -433,7 +450,10 @@ export default function HoneycombsBoard({
         cells.filter((c) => !c.isClue && c.value !== null).map((c) => c.value)
       )
       if (playerUsed.has(num)) return
-      if (activeDigit === num && !playerUsed.has(num)) return
+      if (activeDigit === num) {
+        setActiveDigit(computeActiveDigitAfterFill(cells, num))
+        return
+      }
       setActiveDigit(num)
     },
     [solved, cells, activeDigit, puzzle.clues, notifyUserInput]
@@ -632,14 +652,11 @@ export default function HoneycombsBoard({
                 className={cellClassName(cell)}
                 data-row={cell.row}
                 data-col={cell.col}
-                onPointerUp={
-                  cell.isClue
-                    ? undefined
-                    : (e) => {
-                        e.stopPropagation()
-                        handleCellClick(cell.row, cell.col)
-                      }
-                }
+                onPointerUp={(e) => {
+                  e.stopPropagation()
+                  if (cell.isClue) handleClueCellClick(cell.row, cell.col)
+                  else handleCellClick(cell.row, cell.col)
+                }}
               >
                 <polygon points={hexPoints(cell.cx, cell.cy, HEX_R - 1)} />
                 <text
