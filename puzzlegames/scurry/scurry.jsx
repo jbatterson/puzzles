@@ -590,7 +590,7 @@ const Scurry = () => {
           setCurateIdx={setCurateIdx}
           roster={roster}
           puzzleData={puzzleData}
-          rightSlot={
+          metricsSlot={
             <>
               <span className="stats-label">Bugs</span>
               <span className="stats-num">{bugsLeft}</span>
@@ -599,16 +599,9 @@ const Scurry = () => {
         />
       ) : mode === 'tutorial' ? (
         <div className="level-nav">
-          <div className="left-spacer">
-            <button
-              className="skip-link"
-              onClick={() => {
-                setMode('daily')
-                setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, 0))
-              }}
-            >
-              Skip Tutorial
-            </button>
+          <div className="stats-group stats-group--left">
+            <span className="stats-label">Bugs</span>
+            <span className="stats-num">{bugsLeft}</span>
           </div>
           <div className="selector-group">
             <button
@@ -653,24 +646,33 @@ const Scurry = () => {
               →
             </button>
           </div>
-          <div className="stats-group">
-            <span className="stats-label">Bugs</span>
-            <span className="stats-num">{bugsLeft}</span>
+          <div className="level-nav__right-slot">
+            <button
+              type="button"
+              className="skip-link"
+              onClick={() => {
+                setMode('daily')
+                setDailyIdx(clampDailyIndexToTierPrefs(GAME_KEYS.SCURRY, 0))
+              }}
+            >
+              Skip Tutorial
+            </button>
           </div>
         </div>
       ) : (
         <div className="level-nav">
-          <div className="left-spacer" aria-hidden />
+          <div className="stats-group stats-group--left">
+            <span className="stats-label">Bugs</span>
+            <span className="stats-num">{bugsLeft}</span>
+          </div>
           <div className="selector-group" style={{ flexDirection: 'column', gap: '4px' }}>
             <div className="level-label" style={{ textAlign: 'center' }}>
               <span className="sub">{dateLabel}</span>
             </div>
             <div
               className="game-dice-share-anchor"
-              style={{ display: 'flex', alignItems: 'center' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <div className="game-dice-share-phantom" aria-hidden />
-              <div className="game-dice-share-gap" aria-hidden />
               <PuzzleBoxes
                 current={dailyIdx}
                 completions={completions}
@@ -678,17 +680,14 @@ const Scurry = () => {
                 onChange={setDailyIdx}
                 tierSlots={tierSlots}
               />
-              <div className="game-dice-share-gap" aria-hidden />
-              <GameShareNavButton
-                gameKey={GAME_KEYS.SCURRY}
-                dateKey={daily.key}
-                canShare={canShareHub}
-              />
             </div>
           </div>
-          <div className="stats-group">
-            <span className="stats-label">Bugs</span>
-            <span className="stats-num">{bugsLeft}</span>
+          <div className="level-nav__right-slot">
+            <GameShareNavButton
+              gameKey={GAME_KEYS.SCURRY}
+              dateKey={daily.key}
+              canShare={canShareHub}
+            />
           </div>
         </div>
       )}

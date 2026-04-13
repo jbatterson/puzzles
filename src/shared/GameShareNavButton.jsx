@@ -4,7 +4,7 @@ import ShareResultToast, { SHARE_RESULT_TOAST_MS } from './ShareResultToast.jsx'
 
 /**
  * 28×28 nav share control (matches difficulty dice tiles). Font Awesome via shared style.css.
- * After copy: shared ShareResultToast; parent row should use .game-dice-share-anchor.
+ * After copy: shared ShareResultToast; typically wrapped in `.level-nav__right-slot` (daily bar).
  */
 export default function GameShareNavButton({ gameKey, dateKey, canShare }) {
   const base = import.meta.env.BASE_URL

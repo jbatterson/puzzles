@@ -404,7 +404,7 @@ body {
 
 /* =============================================================================
    LEVEL NAV BAR
-   3-column grid: left (skip/empty) | center (selector) | right (stats)
+   3-column grid: left (metrics) | center (selector / date + dice) | right (share or skip tutorial)
    ============================================================================= */
 
 .level-nav {
@@ -419,22 +419,26 @@ body {
   z-index: 100;
 }
 
-/* Positioning anchor for in-game share toast (wide row, not the 28px button wrap). */
-.game-dice-share-anchor {
-  position: relative;
+/* Curate: exit link + optional metrics under it */
+.level-nav__left-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
 
-/* Invisible 28×28 slot + 14px gap left of dice, mirroring [gap][share] so dice center under the date. */
-.game-dice-share-phantom {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  visibility: hidden;
-  pointer-events: none;
+/* Daily: share button; tutorial: skip link — same grid column as former stats */
+.level-nav__right-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 28px;
 }
-.game-dice-share-gap {
-  width: 14px;
-  flex-shrink: 0;
+
+/* Positioning anchor for in-game share toast stacking context */
+.game-dice-share-anchor {
+  position: relative;
 }
 
 /* Shared modal shell (All Ten-style chrome) */
@@ -925,6 +929,11 @@ body {
   flex-direction: column;
 }
 
+.stats-group--left {
+  text-align: left;
+  align-items: flex-start;
+}
+
 .stats-label {
   font-size: 0.7rem;
   font-weight: 600;
@@ -938,7 +947,7 @@ body {
   color: var(--puzzle-ink);
 }
 
-/* Skip Tutorial link shown in left slot during tutorial mode */
+/* Skip tutorial / exit curate — tutorial mode places this in .level-nav__right-slot */
 .skip-link {
   background: none;
   border: none;
@@ -1256,7 +1265,7 @@ body {
 }
 
 .btn-primary:disabled {
-  opacity: 0.3;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }
@@ -1290,10 +1299,10 @@ body {
 }
 
 .btn-secondary:disabled {
-  opacity: 0.35;
+  opacity: 0.5;
   cursor: not-allowed;
-  border-color: rgba(26, 61, 91, 0.22);
-  color: rgba(26, 61, 91, 0.36);
+  border-color: var(--puzzle-ink);
+  color: var(--puzzle-ink);
   background-color: var(--white);
   transform: none;
 }
@@ -1499,7 +1508,7 @@ body {
   max-width: 35ch;
 }
 
-/* In-game: toast positions against .game-dice-share-anchor (not this 28px-wide wrap). */
+/* In-game share: toast top derived from `.game-nav-share-wrap` (28px button). */
 .game-nav-share-wrap {
   position: static;
   display: inline-flex;
@@ -1507,7 +1516,7 @@ body {
   vertical-align: middle;
 }
 
-/* 28×28 share control beside difficulty dice — navy + token hover (desktop), incomplete surface when disabled */
+/* 28×28 share control in daily level-nav — navy + token hover (desktop), incomplete surface when disabled */
 .game-nav-share-btn {
   width: 28px;
   height: 28px;
