@@ -20,7 +20,7 @@ import {
   clampDailyIndexToTierPrefs,
   getEnabledTierIndices,
   isSuiteCompleteForPrefs,
-  nextEnabledDailyIdxAfterWin,
+  nextIncompleteEnabledTierExcluding,
   resolveHubDailySlotWithPrefs,
 } from '@shared-contracts/suiteDashboardPreferences.js'
 import useSuitePrefsEpoch from '../../src/shared/useSuitePrefsEpoch.js'
@@ -243,21 +243,20 @@ export default function Honeycombs() {
       setTutorialIdx((i) => Math.min(Math.max(0, tutorialPuzzles.length - 1), i + 1))
       return
     }
-    setDailyIdx((i) => nextEnabledDailyIdxAfterWin(GAME_KEYS.HONEYCOMBS, i))
-  }, [curateMode, roster.length, mode, tutorialPuzzles.length])
+    setDailyIdx((i) => {
+      const next = nextIncompleteEnabledTierExcluding(GAME_KEYS.HONEYCOMBS, daily.key, i)
+      return next !== null ? next : i
+    })
+  }, [curateMode, roster.length, mode, tutorialPuzzles.length, daily.key])
 
-  const handleWinAnimationComplete = useCallback(
-    (puzzleIdx) => {
-      if (curateMode) return
-      if (mode !== 'daily') return
-      if (!pendingSuiteModalAfterTraceRef.current) return
-      if (puzzleIdx !== dailyIdx) return
-      pendingSuiteModalAfterTraceRef.current = false
-      clearSuiteModalFallback()
-      setShowCompletionModal(true)
-    },
-    [curateMode, mode, dailyIdx, clearSuiteModalFallback]
-  )
+  const handleWinAnimationComplete = useCallback(() => {
+    if (curateMode) return
+    if (mode !== 'daily') return
+    if (!pendingSuiteModalAfterTraceRef.current) return
+    pendingSuiteModalAfterTraceRef.current = false
+    clearSuiteModalFallback()
+    setShowCompletionModal(true)
+  }, [curateMode, mode, clearSuiteModalFallback])
 
   const tutorialFinalAction = useMemo(() => {
     if (curateMode) return null

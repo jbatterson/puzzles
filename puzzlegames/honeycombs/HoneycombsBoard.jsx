@@ -16,6 +16,8 @@ import {
 } from './honeycombsPersistence.js'
 import useHoneycombsTrace from './useHoneycombsTrace.js'
 import SmartRightButton from '../../src/shared/SmartRightButton.jsx'
+import { GAME_KEYS } from '@shared-contracts/gameChrome.js'
+import { nextIncompleteEnabledTierExcluding } from '@shared-contracts/suiteDashboardPreferences.js'
 
 // ─── keyboard layouts ────────────────────────────────────────────────────────
 
@@ -326,7 +328,12 @@ export default function HoneycombsBoard({
         usedUndoOrReset: usedUndoOrResetRef.current,
         dateKey,
       })
-      if (puzzleIdx < totalPuzzles - 1) setPostWinCtaAttention(true)
+      if (trackCompletion) {
+        const next = nextIncompleteEnabledTierExcluding(GAME_KEYS.HONEYCOMBS, dateKey, puzzleIdx)
+        if (next !== null) setPostWinCtaAttention(true)
+      } else if (puzzleIdx < totalPuzzles - 1) {
+        setPostWinCtaAttention(true)
+      }
       runTrace(trace, () => onWin?.(puzzleIdx))
     },
     [
@@ -507,24 +514,57 @@ export default function HoneycombsBoard({
   )
   const allFilled = cells.every((c) => c.value !== null)
   const numRows = KB_ROWS[puzzle.size]
-  const isLastPuzzle = puzzleIdx === totalPuzzles - 1
 
   const smartPrimaryLabel = useMemo(() => {
-    if (solved && puzzleIdx < totalPuzzles - 1) return CTA_LABELS.NEXT_PUZZLE
-    if (solved && puzzleIdx === totalPuzzles - 1 && finalSolvedAction?.label)
-      return finalSolvedAction.label
-    if (solved && puzzleIdx === totalPuzzles - 1 && hubBaseHref) return CTA_LABELS.ALL_PUZZLES
-    if (!solved && allFilled) return 'Check'
+    if (!solved) {
+      if (allFilled) return 'Check'
+      return null
+    }
+    if (trackCompletion) {
+      const next = nextIncompleteEnabledTierExcluding(GAME_KEYS.HONEYCOMBS, dateKey, puzzleIdx)
+      if (next !== null) return CTA_LABELS.NEXT_PUZZLE
+      if (finalSolvedAction?.label) return finalSolvedAction.label
+      if (hubBaseHref) return CTA_LABELS.ALL_PUZZLES
+      return null
+    }
+    if (puzzleIdx < totalPuzzles - 1) return CTA_LABELS.NEXT_PUZZLE
+    if (finalSolvedAction?.label) return finalSolvedAction.label
+    if (hubBaseHref) return CTA_LABELS.ALL_PUZZLES
     return null
-  }, [solved, puzzleIdx, totalPuzzles, finalSolvedAction?.label, hubBaseHref, allFilled])
+  }, [
+    solved,
+    trackCompletion,
+    dateKey,
+    puzzleIdx,
+    totalPuzzles,
+    finalSolvedAction?.label,
+    hubBaseHref,
+    allFilled,
+  ])
 
   const smartPrimaryHref = useMemo(() => {
-    if (solved && puzzleIdx === totalPuzzles - 1 && finalSolvedAction?.href)
-      return finalSolvedAction.href
-    if (solved && puzzleIdx === totalPuzzles - 1 && hubBaseHref && !finalSolvedAction?.label)
+    if (!solved) return undefined
+    if (trackCompletion) {
+      const next = nextIncompleteEnabledTierExcluding(GAME_KEYS.HONEYCOMBS, dateKey, puzzleIdx)
+      if (next !== null) return undefined
+      if (finalSolvedAction?.href) return finalSolvedAction.href
+      if (hubBaseHref && !finalSolvedAction?.label) return hubBaseHref
+      return undefined
+    }
+    if (puzzleIdx === totalPuzzles - 1 && finalSolvedAction?.href) return finalSolvedAction.href
+    if (puzzleIdx === totalPuzzles - 1 && hubBaseHref && !finalSolvedAction?.label)
       return hubBaseHref
     return undefined
-  }, [solved, puzzleIdx, totalPuzzles, finalSolvedAction?.href, finalSolvedAction?.label, hubBaseHref])
+  }, [
+    solved,
+    trackCompletion,
+    dateKey,
+    puzzleIdx,
+    totalPuzzles,
+    finalSolvedAction?.href,
+    finalSolvedAction?.label,
+    hubBaseHref,
+  ])
 
   useEffect(() => {
     onHubCompleteCtaPauseChange?.(
@@ -534,19 +574,38 @@ export default function HoneycombsBoard({
   }, [smartPrimaryLabel, onHubCompleteCtaPauseChange])
 
   const handleSmartPrimaryClick = useCallback(() => {
-    if (solved && !isLastPuzzle) {
-      setPostWinCtaAttention(false)
-      onRequestNextPuzzle?.()
+    if (solved && trackCompletion) {
+      const next = nextIncompleteEnabledTierExcluding(GAME_KEYS.HONEYCOMBS, dateKey, puzzleIdx)
+      if (next !== null) {
+        setPostWinCtaAttention(false)
+        onRequestNextPuzzle?.()
+        return
+      }
+      if (finalSolvedAction?.label && !finalSolvedAction.href) {
+        finalSolvedAction.onClick?.()
+        return
+      }
       return
     }
-    if (solved && isLastPuzzle && finalSolvedAction?.label && !finalSolvedAction.href) {
-      finalSolvedAction.onClick?.()
+    if (solved && !trackCompletion) {
+      if (puzzleIdx < totalPuzzles - 1) {
+        setPostWinCtaAttention(false)
+        onRequestNextPuzzle?.()
+        return
+      }
+      if (finalSolvedAction?.label && !finalSolvedAction.href) {
+        finalSolvedAction.onClick?.()
+        return
+      }
       return
     }
     if (!solved && allFilled) handleCheck()
   }, [
     solved,
-    isLastPuzzle,
+    trackCompletion,
+    dateKey,
+    puzzleIdx,
+    totalPuzzles,
     allFilled,
     finalSolvedAction,
     onRequestNextPuzzle,

@@ -47,6 +47,8 @@ export default function useHoneycombsTrace(svgRef) {
   const traceGroupRef = useRef(null)
   const sessionRef = useRef(0)
   const fadeTimerRef = useRef(null)
+  /** Win callback must not share `fadeTimerRef` — `scheduleWinLineFade` clears that ref ~220ms after the pulse starts. */
+  const winAfterPulseTimerRef = useRef(null)
   const beeRafRef = useRef(null)
   const beeTokenRef = useRef(0)
 
@@ -81,15 +83,23 @@ export default function useHoneycombsTrace(svgRef) {
     }
   }, [])
 
+  const clearWinAfterPulseTimer = useCallback(() => {
+    if (winAfterPulseTimerRef.current) {
+      clearTimeout(winAfterPulseTimerRef.current)
+      winAfterPulseTimerRef.current = null
+    }
+  }, [])
+
   const clearTraceDom = useCallback(() => {
     stopBeeBuzz()
+    clearWinAfterPulseTimer()
     const g = traceGroupRef.current
     if (!g) return
     g.innerHTML = ''
     g.classList.remove('trace-pulse-win')
     g.style.opacity = '1'
     g.style.transition = ''
-  }, [stopBeeBuzz])
+  }, [stopBeeBuzz, clearWinAfterPulseTimer])
 
   // ─── public API ─────────────────────────────────────────────────────────────
 
@@ -104,11 +114,12 @@ export default function useHoneycombsTrace(svgRef) {
     const g = traceGroupRef.current
     if (!g || g.childNodes.length === 0) {
       clearFadeTimer()
+      clearWinAfterPulseTimer()
       return
     }
     clearFadeTimer()
     clearTraceDom()
-  }, [clearFadeTimer, clearTraceDom])
+  }, [clearFadeTimer, clearTraceDom, clearWinAfterPulseTimer])
 
   /**
    * Run the path trace animation.
@@ -116,7 +127,7 @@ export default function useHoneycombsTrace(svgRef) {
    * @param {{ complete: boolean, cells: Array<{cx: number, cy: number}> }} trace
    *   Cell objects must have FINAL viewBox coordinates (cx + offX, cy + offY already applied).
    * @param {(() => void) | null} onWinAnimationComplete
-   *   Called after WIN_TRACE_PULSE_TOTAL_MS if trace.complete is true.
+   *   Called when the win path pulse animation finishes (third iteration), with a timeout fallback.
    */
   const runTrace = useCallback(
     (trace, onWinAnimationComplete) => {
@@ -127,6 +138,7 @@ export default function useHoneycombsTrace(svgRef) {
       const session = sessionRef.current
 
       clearFadeTimer()
+      clearWinAfterPulseTimer()
       traceG.innerHTML = ''
       traceG.classList.remove('trace-pulse-win')
       traceG.style.opacity = '1'
@@ -244,11 +256,24 @@ export default function useHoneycombsTrace(svgRef) {
       // ── single-cell win ──────────────────────────────────────────────────────
 
       const scheduleWinModalAfterPulse = () => {
-        fadeTimerRef.current = setTimeout(() => {
-          fadeTimerRef.current = null
+        let cleaned = false
+        const fire = () => {
+          if (cleaned) return
+          cleaned = true
+          clearWinAfterPulseTimer()
+          traceG.removeEventListener('animationend', onAnimEnd)
           if (session !== sessionRef.current) return
           onWinAnimationComplete?.()
-        }, WIN_TRACE_PULSE_TOTAL_MS)
+        }
+        const onAnimEnd = (e) => {
+          if (e.target !== traceG) return
+          fire()
+        }
+        traceG.addEventListener('animationend', onAnimEnd)
+        winAfterPulseTimerRef.current = setTimeout(() => {
+          winAfterPulseTimerRef.current = null
+          fire()
+        }, WIN_TRACE_PULSE_TOTAL_MS + 80)
       }
 
       if (pts.length === 1) {
@@ -403,7 +428,7 @@ export default function useHoneycombsTrace(svgRef) {
 
       runSegment(0)
     },
-    [clearFadeTimer, clearTraceDom, stopBeeBuzz]
+    [clearFadeTimer, clearWinAfterPulseTimer, clearTraceDom, stopBeeBuzz]
   )
 
   // Cleanup on unmount
@@ -411,8 +436,9 @@ export default function useHoneycombsTrace(svgRef) {
     return () => {
       stopBeeBuzz()
       clearFadeTimer()
+      clearWinAfterPulseTimer()
     }
-  }, [stopBeeBuzz, clearFadeTimer])
+  }, [stopBeeBuzz, clearFadeTimer, clearWinAfterPulseTimer])
 
   return { runTrace, clearTrace, notifyUserInput }
 }
