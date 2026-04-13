@@ -17,7 +17,7 @@ const colors = {
   empty: "$disabled",
   interm1: "#FF00FF",
   interm2: "#0000FF",
-  done: "#7AC45F",
+  done: "#6b9b3b",
 };
 
 function transform(c) {

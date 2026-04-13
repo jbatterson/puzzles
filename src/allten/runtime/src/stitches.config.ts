@@ -2,6 +2,7 @@
  * Configuration for Stitches, the CSS-in-JS library. Used in most views.
  */
 
+import {PUZZLE_SUITE_CORRECT_GREEN} from "@shared-contracts/chromeUi.js";
 import {createStitches} from "@stitches/react";
 
 export const {
@@ -31,7 +32,7 @@ export const {
 			empty: "$disabled",
 			interm1: "#CC52CC",
 			interm2: "#CC52CC",
-			done: "#7AC45F",
+			done: PUZZLE_SUITE_CORRECT_GREEN,
 			ambientShadow: "rgba(0, 0, 0, .4)",
 
 			// branding colors
@@ -54,7 +55,8 @@ export const {
 			emptyHover: "$disabledHover",
 			interm1Hover: "#FF33FF",
 			interm2Hover: "#3333FF",
-			doneHover: "#95D07F",
+			// 20% mix toward white (see tools/makeHoverColors.mjs).
+			doneHover: "#89af62",
 		},
 	},
 	media: {
